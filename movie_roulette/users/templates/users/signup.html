@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Up - Movie Roulette</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Poppins', sans-serif; background-color: #111827; color: #f3f4f6; }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <div class="w-full max-w-md p-8 space-y-6 bg-gray-800 rounded-lg shadow-lg">
+        <div>
+            <h2 class="mt-6 text-center text-3xl font-extrabold text-white">
+                Create your account
+            </h2>
+        </div>
+        <form class="mt-8 space-y-6" method="POST">
+            {% csrf_token %}
+            
+            <!-- Loop through each form field to apply custom styling -->
+            {% for field in form %}
+                <div class="mb-4">
+                    <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-gray-300">{{ field.label }}</label>
+                    <input name="{{ field.name }}" id="{{ field.id_for_label }}" type="{{ field.field.widget.input_type }}" required 
+                           class="mt-1 block w-full px-3 py-2 border border-gray-700 bg-gray-900 rounded-md placeholder-gray-500 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                    
+                    <!-- Display help text and errors with proper styling -->
+                    {% if field.help_text %}
+                        <p class="mt-2 text-xs text-gray-400">{{ field.help_text|safe }}</p>
+                    {% endif %}
+                    {% for error in field.errors %}
+                        <p class="mt-2 text-xs text-red-400">{{ error }}</p>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+
+            <div>
+                <button type="submit" class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    Sign up
+                </button>
+            </div>
+        </form>
+         <p class="mt-4 text-center text-sm text-gray-400">
+            Already have an account?
+            <a href="{% url 'users:login' %}" class="font-medium text-indigo-400 hover:text-indigo-300">
+              Log in
+            </a>
+          </p>
+    </div>
+
+</body>
+</html>
+

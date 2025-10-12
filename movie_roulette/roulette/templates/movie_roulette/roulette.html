@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎲 Movie Roulette</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Poppins', sans-serif; background-color: #111827; color: #f3f4f6; }
+        .movie-card { background-color: #1f2937; border: 1px solid #374151; transform: scale(0); transition: transform 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55); }
+        .movie-card.show { transform: scale(1); }
+        .spinner-container { perspective: 800px; }
+        .spinner { width: 150px; height: 150px; position: relative; transform-style: preserve-3d; animation: spin 8s infinite linear; display: none; }
+        .spinner.spinning { display: block; animation: spin 1s infinite linear; }
+        @keyframes spin { from { transform: rotateY(0deg); } to { transform: rotateY(360deg); } }
+        .tab { cursor: pointer; border-bottom: 2px solid transparent; }
+        .tab.active { border-bottom-color: #4f46e5; color: #f3f4f6; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-4 md:p-8">
+
+    <!-- This is the updated header with login/logout logic -->
+    <header class="w-full max-w-4xl flex justify-between items-center mb-6">
+        <h1 class="text-3xl md:text-4xl font-bold text-white">🎲 Movie Roulette</h1>
+        
+        <div class="flex items-center space-x-4 text-sm font-semibold">
+            {% if user.is_authenticated %}
+                <!-- Show for logged-in users -->
+                <span class="text-gray-300">Welcome, {{ user.username }}!</span>
+                <form action="{% url 'users:logout' %}" method="post" class="inline">
+                    {% csrf_token %}
+                    <button type="submit" class="text-indigo-400 hover:text-white transition-colors bg-transparent border-none cursor-pointer">Logout</button>
+                </form>
+            {% else %}
+                <!-- Show for logged-out users -->
+                <a href="{% url 'users:login' %}" class="text-gray-300 hover:text-white transition-colors">Log In</a>
+                <a href="{% url 'users:signup' %}" class="bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors">Sign Up</a>
+            {% endif %}
+        </div>
+    </header>
+
+    <main class="w-full max-w-4xl">
+        <div class="bg-gray-800 p-4 rounded-lg mb-6">
+            <details>
+                <summary class="cursor-pointer font-semibold text-lg hover:text-indigo-400"><i class="fas fa-filter mr-2"></i>Filter Options</summary>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
+                    <div>
+                        <label for="genre-select" class="block text-sm font-medium text-gray-300 mb-1">Genre</label>
+                        <select id="genre-select" class="w-full bg-gray-700 rounded-md p-2"></select>
+                    </div>
+                    <div>
+                        <label for="platform-select" class="block text-sm font-medium text-gray-300 mb-1">Platform (US)</label>
+                        <select id="platform-select" class="w-full bg-gray-700 rounded-md p-2">
+                            <option value="">Any</option><option value="8">Netflix</option><option value="9">Amazon Prime</option><option value="337">Disney+</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="mood-select" class="block text-sm font-medium text-gray-300 mb-1">Mood</label>
+                        <select id="mood-select" class="w-full bg-gray-700 rounded-md p-2">
+                            <option value="">Any</option><option value="9648">Mind-Bending</option><option value="878">Sci-Fi</option><option value="10749">Romance</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="year-select" class="block text-sm font-medium text-gray-300 mb-1">Release Year</label>
+                        <input type="range" id="year-select" min="1950" max="2025" value="1990" class="w-full"><span id="year-label" class="text-center block text-sm">After 1990</span>
+                    </div>
+                </div>
+            </details>
+        </div>
+
+        <div class="text-center my-8">
+            <button id="spin-btn" class="bg-indigo-600 text-white font-bold py-4 px-10 rounded-full text-2xl transform hover:scale-105 transition-transform"><i class="fas fa-dice-d20 mr-3"></i>Spin!</button>
+            <div class="spinner-container mt-8 h-40 flex justify-center items-center"><div id="spinner" class="spinner"></div></div>
+        </div>
+
+        <div id="movie-result" class="movie-card rounded-lg overflow-hidden shadow-2xl max-w-3xl mx-auto"></div>
+        
+        <div class="mt-12 max-w-3xl mx-auto">
+            <div class="flex border-b border-gray-700">
+                <div id="tab-favorites" class="tab py-2 px-6 font-semibold active">Favorites</div>
+                <div id="tab-history" class="tab text-gray-400 py-2 px-6 font-semibold">History</div>
+            </div>
+            <div id="favorites-content" class="py-4"></div>
+            <div id="history-content" class="py-4 hidden"></div>
+        </div>
+    </main>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const csrfToken = '{{ csrf_token }}';
+            const tmdbApiKey = '{{ settings.TMDB_API_KEY }}';
+
+            const spinBtn = document.getElementById('spin-btn');
+            const spinner = document.getElementById('spinner');
+            const movieResult = document.getElementById('movie-result');
+            const genreSelect = document.getElementById('genre-select');
+            const platformSelect = document.getElementById('platform-select');
+            const moodSelect = document.getElementById('mood-select');
+            const yearSelect = document.getElementById('year-select');
+            const yearLabel = document.getElementById('year-label');
+            const tabFavorites = document.getElementById('tab-favorites');
+            const tabHistory = document.getElementById('tab-history');
+            const favoritesContent = document.getElementById('favorites-content');
+            const historyContent = document.getElementById('history-content');
+            let currentMovie = null;
+
+            async function fetchWithAuth(url, options = {}) {
+                const response = await fetch(url, options);
+                if (response.status === 403) {
+                     // If we get a forbidden error, it's likely because the user isn't logged in.
+                     // Redirect to the login page.
+                    window.location.href = "{% url 'users:login' %}?next={{ request.path }}";
+                }
+                return response;
+            }
+
+            async function spinRoulette() {
+                spinner.classList.add('spinning');
+                movieResult.classList.remove('show');
+                spinBtn.disabled = true;
+
+                const genre = genreSelect.value;
+                const platform = platformSelect.value;
+                const mood = moodSelect.value;
+                const year = yearSelect.value;
+                const url = `{% url 'movie_roulette:get_random_movie' %}?genre=${genre}&with_watch_providers=${platform}&mood_genre=${mood}&primary_release_date.gte=${year}`;
+
+                try {
+                    const response = await fetchWithAuth(url);
+                    if (!response.ok) throw new Error('Failed to fetch movie.');
+                    const data = await response.json();
+                    if (data.error) {
+                        throw new Error(data.error);
+                    }
+                    currentMovie = data;
+                    displayMovie(data);
+                    updateUserLists(data.id);
+                } catch (error) {
+                    console.error(error);
+                    movieResult.innerHTML = `<div class="p-8 text-center text-red-400">${error.message || 'Could not find a movie with these filters. Please try again!'}</div>`;
+                    movieResult.classList.add('show');
+                } finally {
+                    spinner.classList.remove('spinning');
+                    spinBtn.disabled = false;
+                }
+            }
+            
+            async function fetchGenres() {
+                try {
+                    const response = await fetch(`https://api.themoviedb.org/3/genre/movie/list?api_key=${tmdbApiKey}&language=en-US`);
+                    const data = await response.json();
+                    genreSelect.innerHTML = '<option value="">Any Genre</option>';
+                    data.genres.forEach(genre => genreSelect.innerHTML += `<option value="${genre.id}">${genre.name}</option>`);
+                } catch (error) { console.error("Failed to fetch genres:", error); }
+            }
+            
+            async function updateUserLists(movieId = null) {
+                const url = `{% url 'movie_roulette:get_user_lists' %}?movie_id=${movieId || ''}`;
+                const response = await fetchWithAuth(url);
+                if (!response.ok) return;
+                const data = await response.json();
+                renderList(data.favorites, favoritesContent, true);
+                renderList(data.history, historyContent, false);
+                if (movieId) updateLikeButton(data.is_favorite);
+            }
+
+            function displayMovie(movie) {
+                const posterUrl = movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : 'https://placehold.co/500x750/1f2937/374151?text=No+Poster';
+                const trailer = movie.videos?.results?.find(v => v.site === 'YouTube' && v.type === 'Trailer');
+                const providers = movie['watch/providers']?.results?.US?.flatrate?.map(p => `<img src="https://image.tmdb.org/t/p/w92${p.logo_path}" title="${p.provider_name}" class="w-10 h-10 rounded-md">`).join('') || '<p class="text-sm text-gray-500">Not available for streaming.</p>';
+                
+                movieResult.innerHTML = `
+                    <div class="md:flex">
+                        <img class="w-full h-96 md:h-auto md:w-64 object-cover" src="${posterUrl}">
+                        <div class="p-6 md:p-8 flex flex-col justify-between">
+                            <div>
+                                <h2 class="text-3xl font-bold mb-2">${movie.title}</h2>
+                                <div class="flex items-center text-gray-400 text-sm mb-4 space-x-4">
+                                    <span>${new Date(movie.release_date).getFullYear()}</span>
+                                    <span>${movie.runtime ? `${movie.runtime} min` : ''}</span>
+                                    <span><i class="fas fa-star text-yellow-400 mr-1"></i>${movie.vote_average.toFixed(1)}</span>
+                                </div>
+                                <p class="text-gray-300 mb-4">${movie.overview}</p>
+                            </div>
+                            <div>
+                                <p class="text-sm font-semibold text-gray-400 mb-2">Where to Watch (US):</p>
+                                <div class="flex items-center space-x-3 mb-6">${providers}</div>
+                                <div class="flex items-center space-x-4">
+                                    <a href="${trailer ? `https://www.youtube.com/watch?v=${trailer.key}` : '#'}" target="_blank" class="flex-1 bg-red-600 text-white text-center font-bold py-3 px-4 rounded-lg ${!trailer && 'opacity-50 cursor-not-allowed'}"><i class="fab fa-youtube mr-2"></i>Watch Trailer</a>
+                                    <button id="like-btn" class="text-2xl text-gray-400 hover:text-red-500"><i class="fas fa-heart"></i></button>
+                                    <button id="spin-again-btn" class="text-2xl text-gray-400 hover:text-indigo-400"><i class="fas fa-redo"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+                
+                movieResult.classList.add('show');
+                document.getElementById('spin-again-btn').addEventListener('click', spinRoulette);
+                document.getElementById('like-btn').addEventListener('click', toggleLike);
+            }
+
+            function renderList(items, container, isFavorite) {
+                container.innerHTML = `<p class="text-center text-gray-500">${isFavorite ? 'No favorites yet.' : 'No spin history yet.'}</p>`;
+                if (!items || items.length === 0) return;
+                container.innerHTML = '';
+                items.forEach(item => {
+                    const el = document.createElement('div');
+                    el.className = 'flex items-center p-2 rounded-lg hover:bg-gray-800';
+                    el.innerHTML = `
+                        <img src="${item.poster_path ? `https://image.tmdb.org/t/p/w92${item.poster_path}` : 'https://placehold.co/92x138?text=N/A'}" class="w-10 h-16 object-cover rounded-md mr-4">
+                        <div class="flex-grow"><p class="font-semibold">${item.title}</p><p class="text-sm text-gray-400">${item.release_year}</p></div>
+                        ${isFavorite ? `<button data-id="${item.movie_id}" class="remove-favorite-btn text-red-500 text-lg"><i class="fas fa-trash"></i></button>` : ''}
+                    `;
+                    container.appendChild(el);
+                });
+            }
+
+            function updateLikeButton(isFavorite) {
+                const likeBtnIcon = document.querySelector('#like-btn i');
+                if (isFavorite) likeBtnIcon.classList.add('text-red-500');
+                else likeBtnIcon.classList.remove('text-red-500');
+            }
+
+            async function toggleLike(isRemove = false, movieId = null) {
+                const idToToggle = isRemove ? movieId : currentMovie?.id;
+                if (!idToToggle) return;
+
+                const formData = new FormData();
+                if (isRemove) {
+                    formData.append('movie_id', idToToggle);
+                } else {
+                    formData.append('movie_id', currentMovie.id);
+                    formData.append('title', currentMovie.title);
+                    formData.append('poster_path', currentMovie.poster_path);
+                    formData.append('release_year', new Date(currentMovie.release_date).getFullYear());
+                }
+                
+                const response = await fetchWithAuth(`{% url 'movie_roulette:toggle_favorite' %}`, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrfToken },
+                    body: formData,
+                });
+                const data = await response.json();
+                if (data.success) {
+                    if (!isRemove) updateLikeButton(data.is_favorite);
+                    updateUserLists();
+                }
+            }
+            
+            document.body.addEventListener('click', function(event) {
+                const removeBtn = event.target.closest('.remove-favorite-btn');
+                if (removeBtn) {
+                    const movieId = removeBtn.dataset.id;
+                    toggleLike(true, movieId);
+                }
+            });
+
+            function switchTab(tabName) {
+                if (tabName === 'favorites') {
+                    tabFavorites.classList.add('active'); tabHistory.classList.remove('active');
+                    favoritesContent.classList.remove('hidden'); historyContent.classList.add('hidden');
+                } else {
+                    tabFavorites.classList.remove('active'); tabHistory.classList.add('active');
+                    favoritesContent.classList.add('hidden'); historyContent.classList.remove('hidden');
+                }
+            }
+            
+            yearSelect.addEventListener('input', () => yearLabel.textContent = `After ${yearSelect.value}`);
+            spinBtn.addEventListener('click', spinRoulette);
+            tabFavorites.addEventListener('click', () => switchTab('favorites'));
+            tabHistory.addEventListener('click', () => switchTab('history'));
+
+            fetchGenres();
+            updateUserLists();
+        });
+    </script>
+</body>
+</html>
