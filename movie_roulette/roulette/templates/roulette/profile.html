@@ -33,7 +33,7 @@
 
         <h3 class="text-2xl font-bold mb-4 text-indigo-400"><i class="fas fa-star mr-2"></i>Favorite Movies & Shows</h3>
         
-        <div id="favorite-list-content" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div id="favorite-list-content" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
             </div>
         
         {% if is_private %}
@@ -131,33 +131,32 @@
                 }
             }
 
-            // --- CORRECTED LIST RENDERING LOGIC ---
+            // --- UPDATED LIST RENDERING LOGIC for a Poster Grid ---
             function renderFavoriteList() {
                 const favoriteListContent = document.getElementById('favorite-list-content');
-                // Stop the function if the list is private
                 if ({{ is_private|yesno:"true,false" }}) {
                     return;
                 }
                 
-                // Safely parse the data from the json_script tag
                 const items = JSON.parse(document.getElementById('favorite-data').textContent);
                 
                 if (!items || items.length === 0) {
-                    favoriteListContent.innerHTML = `<p class="text-center text-gray-500 col-span-2">This user hasn't added any favorites yet.</p>`;
+                    favoriteListContent.innerHTML = `<p class="text-center text-gray-500 col-span-full">This user hasn't added any favorites yet.</p>`;
                     return;
                 }
                 
                 favoriteListContent.innerHTML = ''; 
 
                 items.forEach(item => {
+                    const posterUrl = item.poster_path ? `https://image.tmdb.org/t/p/w342${item.poster_path}` : 'https://placehold.co/342x513?text=N/A';
+                    const detailUrl = `/content/${item.content_type.toLowerCase()}/${item.tmdb_id}/`;
+
                     const el = document.createElement('div');
-                    el.className = 'flex items-center p-3 rounded-lg bg-gray-700 list-item hover:bg-gray-600 shadow-md';
+                    el.className = 'bg-gray-700 rounded-lg shadow-lg overflow-hidden transform hover:scale-105 transition-transform duration-200';
                     el.innerHTML = `
-                        <img src="${item.poster_path ? 'https://image.tmdb.org/t/p/w92' + item.poster_path : 'https://placehold.co/92x138?text=N/A'}" class="w-12 h-20 object-cover rounded-md mr-4">
-                        <div class="flex-grow">
-                            <a href="/content/${item.content_type.toLowerCase()}/${item.tmdb_id}/" class="font-semibold text-white hover:underline">${item.title}</a>
-                            <p class="text-sm text-gray-400">${item.release_year} | ${item.content_type === 'MOVIE' ? 'Movie' : 'TV Show'}</p>
-                        </div>
+                        <a href="${detailUrl}">
+                            <img src="${posterUrl}" alt="Poster for ${item.title}" class="w-full object-cover" style="aspect-ratio: 2/3;">
+                        </a>
                     `;
                     favoriteListContent.appendChild(el);
                 });

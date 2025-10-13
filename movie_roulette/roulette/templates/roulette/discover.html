@@ -1,0 +1,70 @@
+{% extends 'roulette/base.html' %}
+
+{% block title %}Discover Movies & TV Shows{% endblock %}
+
+{% block style %}
+/* This hides the default scrollbar */
+.scrolling-wrapper {
+    scrollbar-width: none; /* For Firefox */
+    -ms-overflow-style: none;  /* For Internet Explorer and Edge */
+}
+.scrolling-wrapper::-webkit-scrollbar {
+    display: none; /* For Chrome, Safari, and Opera */
+}
+{% endblock %}
+
+{% block content %}
+<div class="space-y-10">
+
+    {% include 'roulette/_content_row.html' with title="Popular Movies" items=popular_movies media_type='movie' %}
+    {% include 'roulette/_content_row.html' with title="Top Rated Movies" items=top_rated_movies media_type='movie' %}
+    {% include 'roulette/_content_row.html' with title="Popular TV Shows" items=popular_tv media_type='tv' %}
+    {% include 'roulette/_content_row.html' with title="Top Rated TV Shows" items=top_rated_tv media_type='tv' %}
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // This function will set up the arrows for each carousel on the page
+        function setupCarousel(container) {
+            const wrapper = container.querySelector('.scrolling-wrapper');
+            const leftArrow = container.querySelector('.left-arrow');
+            const rightArrow = container.querySelector('.right-arrow');
+
+            function updateArrowState() {
+                // Hide left arrow if we are at the beginning
+                leftArrow.classList.toggle('hidden', wrapper.scrollLeft <= 0);
+                // Hide right arrow if we are at the end
+                const maxScrollLeft = wrapper.scrollWidth - wrapper.clientWidth;
+                rightArrow.classList.toggle('hidden', wrapper.scrollLeft >= maxScrollLeft - 1); // -1 for precision
+            }
+
+            leftArrow.addEventListener('click', function() {
+                // Scroll left by 80% of the container's width
+                const scrollAmount = wrapper.clientWidth * 0.8;
+                wrapper.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+            });
+
+            rightArrow.addEventListener('click', function() {
+                // Scroll right by 80% of the container's width
+                const scrollAmount = wrapper.clientWidth * 0.8;
+                wrapper.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+            });
+
+            // Update arrows whenever the user scrolls
+            wrapper.addEventListener('scroll', updateArrowState);
+            
+            // Also check on window resize
+            new ResizeObserver(updateArrowState).observe(wrapper);
+            
+            // Set initial state
+            updateArrowState();
+        }
+
+        // Apply the setup function to every carousel on the page
+        document.querySelectorAll('.relative.group').forEach(setupCarousel);
+    });
+</script>
+{% endblock %}

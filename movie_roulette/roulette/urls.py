@@ -5,6 +5,7 @@ app_name = 'roulette'
 
 urlpatterns = [
     path('', views.roulette_view, name='roulette_view'),
+    path('discover/', views.discover_view, name='discover'),
     path('api/get-random-content/', views.get_random_content, name='get_random_content'),
     path('api/get-user-lists/', views.get_user_lists, name='get_user_lists'),
     path('api/toggle-favorite/', views.toggle_favorite, name='toggle_favorite'),

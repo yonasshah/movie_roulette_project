@@ -1,0 +1,32 @@
+<div>
+    <h2 class="text-2xl font-bold text-white mb-4">{{ title }}</h2>
+    <div class="relative group">
+        <button class="carousel-arrow left-arrow absolute top-1/2 left-0 transform -translate-y-1/2 -translate-x-1/2 bg-gray-800 bg-opacity-75 text-white p-2 rounded-full z-10 opacity-0 group-hover:opacity-100 transition-opacity hidden">
+            <i class="fas fa-chevron-left"></i>
+        </button>
+        
+        <div class="scrolling-wrapper flex overflow-x-auto space-x-4 pb-4">
+            {% for item in items %}
+            <div class="flex-shrink-0 w-40">
+                <a href="{% url 'roulette:content_detail' content_type=media_type tmdb_id=item.id %}">
+                    <div class="bg-gray-700 rounded-lg shadow-lg overflow-hidden transform hover:scale-105 transition-transform duration-200">
+                        {% if item.poster_path %}
+                        <img src="https://image.tmdb.org/t/p/w342/{{ item.poster_path }}" alt="{% if item.title %}{{ item.title }}{% else %}{{ item.name }}{% endif %}" class="w-full object-cover" style="aspect-ratio: 2/3;">
+                        {% else %}
+                        <div class="w-full bg-gray-900 flex items-center justify-center" style="aspect-ratio: 2/3;">
+                            <span class="text-gray-500">No Poster</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </a>
+            </div>
+            {% empty %}
+            <p class="text-gray-400">Could not load content for this category.</p>
+            {% endfor %}
+        </div>
+
+        <button class="carousel-arrow right-arrow absolute top-1/2 right-0 transform -translate-y-1/2 translate-x-1/2 bg-gray-800 bg-opacity-75 text-white p-2 rounded-full z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+            <i class="fas fa-chevron-right"></i>
+        </button>
+    </div>
+</div>

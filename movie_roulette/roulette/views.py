@@ -58,6 +58,29 @@ def user_profile_view(request, username):
     
     return render(request, 'roulette/profile.html', context)
 
+# Helper function to reduce repeated API call code
+def fetch_tmdb_data(endpoint):
+    base_url = "https://api.themoviedb.org/3"
+    params = {"api_key": settings.TMDB_API_KEY, "language": "en-US", "page": 1}
+    try:
+        response = requests.get(f"{base_url}/{endpoint}", params=params)
+        response.raise_for_status()
+        return response.json().get('results', [])
+    except requests.exceptions.RequestException as e:
+        print(f"API Error fetching {endpoint}: {e}")
+        return []
+
+# --- NEW DISCOVER VIEW ---
+@login_required
+def discover_view(request):
+    context = {
+        'popular_movies': fetch_tmdb_data('movie/popular'),
+        'top_rated_movies': fetch_tmdb_data('movie/top_rated'),
+        'popular_tv': fetch_tmdb_data('tv/popular'),
+        'top_rated_tv': fetch_tmdb_data('tv/top_rated'),
+    }
+    return render(request, 'roulette/discover.html', context)
+
 # --- NEW CONTENT DETAIL VIEW ---
 @login_required
 @login_required
@@ -127,27 +150,41 @@ def toggle_follow(request):
 @login_required
 def get_random_content(request):
     BASE_URL = "https://api.themoviedb.org/3"
+    
     content_type = request.GET.get('content_type', 'movie') 
+    watch_region = request.GET.get('watch_region', 'US')
     genre = request.GET.get('genre', '')
     platform = request.GET.get('with_watch_providers', '')
     year = request.GET.get('primary_release_date.gte', '1950')
-    mood_genre = request.GET.get('mood_genre', '')
-    all_genres = f"{genre},{mood_genre}".strip(',')
+    vote_average_gte = request.GET.get('vote_average_gte', '0')
+
     model_content_type = UserContent.ContentType.MOVIE if content_type == 'movie' else UserContent.ContentType.TV
     endpoint_type = 'movie' if content_type == 'movie' else 'tv'
     release_date_param = 'primary_release_date.gte' if content_type == 'movie' else 'first_air_date.gte'
 
     try:
         discover_params = {
-            "api_key": settings.TMDB_API_KEY, "language": "en-US", "sort_by": "popularity.desc",
-            "include_adult": "false", "watch_region": "US", "with_genres": all_genres,
-            "with_watch_providers": platform, release_date_param: f"{year}-01-01", "vote_count.gte": 100
+            "api_key": settings.TMDB_API_KEY,
+            "language": "en-US",
+            "sort_by": "popularity.desc",
+            "include_adult": "false",
+            "watch_region": watch_region,
+            "with_watch_providers": platform,
+            "with_genres": genre, # 'mood_genre' has been removed
+            release_date_param: f"{year}-01-01",
+            "vote_count.gte": 100,
+            "vote_average.gte": vote_average_gte
         }
         
         discover_res = requests.get(f"{BASE_URL}/discover/{endpoint_type}", params=discover_params)
         discover_res.raise_for_status()
         total_pages = discover_res.json().get('total_pages', 1)
+        
+        if total_pages == 0:
+             return JsonResponse({'error': 'No content found with the selected filters.'}, status=404)
+        
         random_page = random.randint(1, min(total_pages, 500))
+        
         discover_params['page'] = random_page
         movies_res = requests.get(f"{BASE_URL}/discover/{endpoint_type}", params=discover_params) 
         movies_res.raise_for_status()
@@ -158,13 +195,36 @@ def get_random_content(request):
 
         random_content_base = random.choice(results)
         content_id = random_content_base['id']
-        detail_params = {"api_key": settings.TMDB_API_KEY, "append_to_response": "videos,watch/providers"}
+
+        detail_params = {
+            "api_key": settings.TMDB_API_KEY,
+            "append_to_response": "videos,watch/providers"
+        }
         detail_res = requests.get(f"{BASE_URL}/{endpoint_type}/{content_id}", params=detail_params)
         detail_res.raise_for_status()
         content_details = detail_res.json()
+        
         content_details['content_type'] = content_type
+
         title_key = 'title' if content_type == 'movie' else 'name'
         date_key = 'release_date' if content_type == 'movie' else 'first_air_date'
+
+        UserContent.objects.update_or_create(
+            user=request.user,
+            tmdb_id=content_id,
+            list_type=UserContent.ListType.HISTORY,
+            content_type=model_content_type,
+            defaults={
+                'title': content_details.get(title_key, 'N/A'),
+                'poster_path': content_details.get('poster_path', ''),
+                'release_year': content_details.get(date_key, '----')[:4],
+            }
+        )
+
+        return JsonResponse(content_details)
+
+    except requests.exceptions.RequestException as e:
+        return JsonResponse({'error': f"API request failed: {e}"}, status=500)
 
         UserContent.objects.update_or_create(
             user=request.user, tmdb_id=content_id, list_type=UserContent.ListType.HISTORY,

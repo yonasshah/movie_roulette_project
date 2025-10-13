@@ -25,7 +25,7 @@
                 </a>
                 
                 <div class="hidden md:flex items-center space-x-6 text-sm font-semibold">
-                    <a href="#" class="text-gray-300 hover:text-white transition-colors">Discover</a>
+                    <a href="{% url 'roulette:discover' %}" class="text-gray-300 hover:text-white transition-colors">Discover</a>
                     
                     <form action="{% url 'roulette:search_results' %}" method="GET" class="relative">
                         <input type="text" name="q" placeholder="Search movies, shows, users..." class="bg-gray-800 border border-gray-700 rounded-full py-1 pl-4 pr-10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-64">

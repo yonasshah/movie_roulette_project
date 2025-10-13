@@ -16,10 +16,8 @@
         .toggle-label input { display: none; }
         .toggle-slider { background-color: #374151; padding: 4px; border-radius: 9999px; display: flex; position: relative; }
         .toggle-option { padding: 6px 16px; color: #9ca3af; font-weight: 600; z-index: 10; transition: color 0.2s; }
-        /* When checked (Movies is active) */
         .toggle-label input:checked + .toggle-slider .toggle-option:first-child {
         color: #f3f4f6; /* Sets Movies text to white */}
-        /* When NOT checked (TV Shows is active) */
         .toggle-label input:not(:checked) + .toggle-slider .toggle-option:last-child {
         color: #f3f4f6; /* Sets TV Shows text to white */ }
         .toggle-bg { position: absolute; top: 4px; left: 4px; width: calc(50% - 4px); height: calc(100% - 8px); background-color: #4f46e5; border-radius: 9999px; transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
@@ -27,7 +25,7 @@
 {% endblock %}
 
 {% block content %}
-        <div class="bg-gray-800 p-4 rounded-lg mb-6">
+        <div class="bg-gray-800 p-6 rounded-lg mb-6">
             
             <div class="flex items-center justify-center mb-6">
                 <label class="toggle-label">
@@ -45,37 +43,54 @@
                     Filter Options
                 </summary>
                 
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4 p-2">
-                    
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4 p-2">
+                    <div>
+                        <label for="region-select" class="block text-sm font-medium text-gray-300 mb-1">Region</label>
+                        <select id="region-select" class="w-full bg-gray-700 rounded-md p-2">
+                            <option value="US">United States</option>
+                            <option value="GB">United Kingdom</option>
+                            <option value="CA">Canada</option>
+                            <option value="AU">Australia</option>
+                            <option value="DE">Germany</option>
+                        </select>
+                    </div>
                     <div>
                         <label for="genre-select" class="block text-sm font-medium text-gray-300 mb-1">Genre</label>
                         <select id="genre-select" class="w-full bg-gray-700 rounded-md p-2"></select>
                     </div>
-                    
+
                     <div>
-                        <label for="platform-select" class="block text-sm font-medium text-gray-300 mb-1">Platform (US)</label>
-                        <select id="platform-select" class="w-full bg-gray-700 rounded-md p-2">
-                            <option value="">Any</option><option value="8">Netflix</option><option value="9">Amazon Prime</option><option value="337">Disney+</option>
-                        </select>
+                        <label for="year-select" class="block text-sm font-medium text-gray-300 mb-1">Released After</label>
+                        <input type="range" id="year-select" min="1950" max="2025" value="1990" class="w-full">
+                        <span id="year-label" class="text-center block text-sm text-gray-400">1990</span>
                     </div>
-                    
                     <div>
-                        <label for="year-select" class="block text-sm font-medium text-gray-300 mb-1">Release Year</label>
-                        <input type="range" id="year-select" min="1950" max="2025" value="1990" class="w-full"><span id="year-label" class="text-center block text-sm">After 1990</span>
+                        <label for="rating-select" class="block text-sm font-medium text-gray-300 mb-1">Minimum Rating</label>
+                        <input type="range" id="rating-select" min="0" max="10" value="0" step="0.5" class="w-full">
+                        <span id="rating-label" class="text-center block text-sm text-gray-400">Any</span>
                     </div>
-                    
+
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Platform</label>
+                        <div id="platform-select" class="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-2">
+                            <label class="flex items-center space-x-2"><input type="checkbox" name="platform" value="8" class="form-checkbox bg-gray-900 border-gray-700 rounded text-indigo-600"><span>Netflix</span></label>
+                            <label class="flex items-center space-x-2"><input type="checkbox" name="platform" value="9" class="form-checkbox bg-gray-900 border-gray-700 rounded text-indigo-600"><span>Prime Video</span></label>
+                            <label class="flex items-center space-x-2"><input type="checkbox" name="platform" value="337" class="form-checkbox bg-gray-900 border-gray-700 rounded text-indigo-600"><span>Disney+</span></label>
+                            <label class="flex items-center space-x-2"><input type="checkbox" name="platform" value="384" class="form-checkbox bg-gray-900 border-gray-700 rounded text-indigo-600"><span>HBO Max</span></label>
+                        </div>
                     </div>
+                </div>
             </details>
         </div>
 
-        <div class="text-center my-8">
-            <button id="spin-btn" class="bg-indigo-600 text-white font-bold py-4 px-10 rounded-full text-2xl transform hover:scale-105 transition-transform"><i class="fas fa-dice-d20 mr-3"></i>Spin!</button>
-            <div class="spinner-container mt-8 h-40 flex justify-center items-center"><div id="spinner" class="spinner"></div></div>
+        <div class="text-center my-2">
+            <button id="spin-btn" class="bg-indigo-600 text-white font-bold py-3 px-8 rounded-full text-xl transform hover:scale-105 transition-transform"><i class="fas fa-dice-d20 mr-2"></i>Spin!</button>
+            <div class="spinner-container mt-2 h-20 flex justify-center items-center"><div id="spinner" class="spinner"></div></div>
         </div>
 
         <div id="movie-result" class="movie-card rounded-lg overflow-hidden shadow-2xl max-w-3xl mx-auto"></div>
         
-        <div class="mt-12 max-w-3xl mx-auto">
+        <div class="mt-8 max-w-3xl mx-auto">
             <div class="flex border-b border-gray-700">
                 <div id="tab-favorites" class="tab py-2 px-6 font-semibold active">Favorites</div>
                 <div id="tab-history" class="tab text-gray-400 py-2 px-6 font-semibold">History</div>
@@ -105,6 +120,10 @@
             const historyContent = document.getElementById('history-content');
             let currentContent = null;
 
+            const ratingSelect = document.getElementById('rating-select');
+            const ratingLabel = document.getElementById('rating-label');
+            const regionSelect = document.getElementById('region-select');
+
             async function fetchWithAuth(url, options = {}) {
                 const response = await fetch(url, options);
                 if (response.status === 403) {
@@ -119,24 +138,31 @@
                 spinBtn.disabled = true;
 
                 const contentType = contentTypeToggle.checked ? 'movie' : 'tv';
+                const region = regionSelect.value;
                 const genre = genreSelect.value;
-                const platform = platformSelect.value;
+                
+                const selectedPlatforms = Array.from(platformSelect.querySelectorAll('input[name="platform"]:checked'))
+                                             .map(cb => cb.value)
+                                             .join('|');
+                
                 const year = yearSelect.value;
-                const url = `{% url 'roulette:get_random_content' %}?content_type=${contentType}&genre=${genre}&with_watch_providers=${platform}&primary_release_date.gte=${year}`;
+                const rating = ratingSelect.value;
+
+                const url = `{% url 'roulette:get_random_content' %}?content_type=${contentType}&watch_region=${region}&genre=${genre}&with_watch_providers=${selectedPlatforms}&primary_release_date.gte=${year}&vote_average_gte=${rating}`;
 
                 try {
                     const response = await fetchWithAuth(url);
-                    if (!response.ok) throw new Error('Failed to fetch content.');
-                    const data = await response.json();
-                    if (data.error) {
-                        throw new Error(data.error);
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error || 'Failed to fetch content.');
                     }
+                    const data = await response.json();
                     currentContent = data;
                     displayContent(data);
-                    updateUserLists(); // This now handles everything
+                    updateUserLists();
                 } catch (error) {
                     console.error(error);
-                    movieResult.innerHTML = `<div class="p-8 text-center text-red-400">${error.message || 'Could not find content with these filters. Please try again!'}</div>`;
+                    movieResult.innerHTML = `<div class="p-8 text-center text-red-400">${error.message}</div>`;
                     movieResult.classList.add('show');
                 } finally {
                     spinner.classList.remove('spinning');
@@ -154,9 +180,7 @@
                 } catch (error) { console.error("Failed to fetch genres:", error); }
             }
             
-            // --- UPDATED AND SIMPLIFIED updateUserLists ---
             async function updateUserLists() {
-                // Get the ID and type of the currently displayed movie, if any
                 const tmdbId = currentContent ? currentContent.id : null;
                 const contentType = currentContent ? currentContent.content_type : null;
 
@@ -168,7 +192,6 @@
                 renderList(data.favorites, favoritesContent, true);
                 renderList(data.history, historyContent, false);
                 
-                // Always check and update the main like button if a movie is displayed
                 if (currentContent) {
                     updateLikeButton(data.is_favorite);
                 }
@@ -182,7 +205,9 @@
 
                 const posterUrl = content.poster_path ? `https://image.tmdb.org/t/p/w500${content.poster_path}` : 'https://placehold.co/500x750/1f2937/374151?text=No+Poster';
                 const trailer = content.videos?.results?.find(v => v.site === 'YouTube' && v.type === 'Trailer');
-                const providers = content['watch/providers']?.results?.US?.flatrate?.map(p => `<img src="https://image.tmdb.org/t/p/w92${p.logo_path}" title="${p.provider_name}" class="w-10 h-10 rounded-md">`).join('') || '<p class="text-sm text-gray-500">Not available for streaming.</p>';
+                
+                const region = regionSelect.value;
+                const providers = content['watch/providers']?.results?.[region]?.flatrate?.map(p => `<img src="https://image.tmdb.org/t/p/w92${p.logo_path}" title="${p.provider_name}" class="w-10 h-10 rounded-md">`).join('') || `<p class="text-sm text-gray-500">Not available for streaming in ${region}.</p>`;
                 
                 movieResult.innerHTML = `
                     <div class="md:flex">
@@ -198,7 +223,7 @@
                                 <p class="text-gray-300 mb-4">${content.overview}</p>
                             </div>
                             <div>
-                                <p class="text-sm font-semibold text-gray-400 mb-2">Where to Watch (US):</p>
+                                <p class="text-sm font-semibold text-gray-400 mb-2">Where to Watch (${region}):</p>
                                 <div class="flex items-center space-x-3 mb-6">${providers}</div>
                                 <div class="flex items-center space-x-4">
                                     <a href="${trailer ? `https://www.youtube.com/watch?v=${trailer.key}` : '#'}" target="_blank" class="flex-1 bg-red-600 text-white text-center font-bold py-3 px-4 rounded-lg ${!trailer && 'opacity-50 cursor-not-allowed'}"><i class="fab fa-youtube mr-2"></i>Watch Trailer</a>
@@ -272,7 +297,6 @@
                 if (response.ok) {
                     const data = await response.json();
                     if (data.success) {
-                        // This single function call now handles all UI updates correctly.
                         updateUserLists();
                     }
                 }
@@ -306,6 +330,10 @@
             }
             
             yearSelect.addEventListener('input', () => yearLabel.textContent = `After ${yearSelect.value}`);
+            ratingSelect.addEventListener('input', () => {
+                ratingLabel.textContent = ratingSelect.value > 0 ? `At least ${ratingSelect.value} / 10` : 'Any Rating';
+            });
+
             spinBtn.addEventListener('click', spinRoulette);
             tabFavorites.addEventListener('click', () => switchTab('favorites'));
             tabHistory.addEventListener('click', () => switchTab('history'));
