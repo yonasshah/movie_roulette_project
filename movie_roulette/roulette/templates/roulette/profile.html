@@ -1,49 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ profile_user.username }}'s Profile - Content Roulette</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Poppins', sans-serif; background-color: #111827; color: #f3f4f6; }
-        .list-item { transition: background-color 0.2s; }
-    </style>
-</head>
-<body class="min-h-screen flex flex-col items-center p-4 md:p-8">
+{% extends 'roulette/base.html' %}
 
-    <nav class="fixed top-0 left-0 right-0 z-50 bg-gray-900 border-b border-indigo-700 shadow-lg py-4 px-8">
-        <div class="max-w-6xl mx-auto flex justify-between items-center">
-            
-            <a href="{% url 'roulette:roulette_view' %}" class="text-2xl font-bold text-white hover:text-indigo-400 transition-colors">
-                🎲 Roulette
-            </a>
-            
-            <div class="flex items-center space-x-6 text-sm font-semibold">
-                
-                {% if user.is_authenticated %}
-                    
-                    <a href="{% url 'roulette:user_profile' username=user.username %}" class="text-gray-300 hover:text-white transition-colors flex items-center">
-                        <i class="fas fa-user mr-2"></i>My Profile
-                    </a>
-                    
-                    <form action="{% url 'users:logout' %}" method="post" class="inline">
-                        {% csrf_token %}
-                        <button type="submit" class="text-indigo-400 hover:text-white transition-colors bg-transparent border-none cursor-pointer">
-                            <i class="fas fa-sign-out-alt mr-1"></i>Logout
-                        </button>
-                    </form>
-                    
-                {% else %}
-                    <a href="{% url 'users:login' %}" class="text-gray-300 hover:text-white transition-colors">Log In</a>
-                    <a href="{% url 'users:signup' %}" class="bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors">Sign Up</a>
-                {% endif %}
-            </div>
-        </div>
-    </nav>
-    <main class="w-full max-w-4xl bg-gray-800 p-8 rounded-lg shadow-2xl pt-20 mt-10"> 
+{% block title %}{{ profile_user.username }}'s Profile - Content Roulette{% endblock %}
+
+{% block content %}
+    <main class="w-full max-w-4xl bg-gray-800 p-8 rounded-lg shadow-2xl pt-20"> 
         
         <div class="flex items-start justify-between border-b border-gray-700 pb-6 mb-6">
             
@@ -74,7 +34,14 @@
         <h3 class="text-2xl font-bold mb-4 text-indigo-400"><i class="fas fa-star mr-2"></i>Favorite Movies & Shows</h3>
         
         <div id="favorite-list-content" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            </div>
+        
+        {% if is_private %}
+        <div class="text-center p-8 bg-gray-700 rounded-lg">
+            <i class="fas fa-lock text-4xl text-gray-400 mb-2"></i>
+            <p class="text-gray-400">This user's favorites are private.</p>
         </div>
+        {% endif %}
         
         <div class="mt-10 grid grid-cols-1 md:grid-cols-2 gap-8">
         
@@ -106,21 +73,21 @@
                 </div>
             </div>
         </div>
-        </main>
-    
+    </main>
+{% endblock %}
+
+{% block scripts %}
+    {{ favorite_list|json_script:"favorite-data" }}
+
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const followBtn = document.getElementById('follow-btn');
             const followMessage = document.getElementById('follow-message');
-            const favoriteListContent = document.getElementById('favorite-list-content');
-            // Ensure the CSRF token is available
             const csrfToken = '{{ csrf_token }}'; 
             
-            // --- FOLLOW LOGIC ---
             if (followBtn) {
                 followBtn.addEventListener('click', function() {
-                    const targetUserId = this.dataset.userId;
-                    toggleFollowStatus(targetUserId);
+                    toggleFollowStatus(this.dataset.userId);
                 });
             }
 
@@ -131,9 +98,7 @@
                 try {
                     const response = await fetch('{% url "roulette:toggle_follow" %}', {
                         method: 'POST',
-                        headers: { 
-                            'X-CSRFToken': csrfToken,
-                        },
+                        headers: { 'X-CSRFToken': csrfToken },
                         body: formData,
                     });
                     
@@ -145,7 +110,6 @@
                     const data = await response.json();
 
                     if (data.success) {
-                        // 1. Update the button text and style
                         if (data.is_following) {
                             followBtn.textContent = 'Unfollow';
                             followBtn.className = 'font-semibold py-2 px-5 rounded-full transition-colors bg-gray-600 hover:bg-red-500';
@@ -153,19 +117,13 @@
                             followBtn.textContent = 'Follow';
                             followBtn.className = 'font-semibold py-2 px-5 rounded-full transition-colors bg-indigo-600 hover:bg-indigo-700';
                         }
-                        
-                        // 2. Display success message
                         followMessage.textContent = data.message;
                         followMessage.className = 'text-sm mt-2 text-green-500';
-                        
-                        // 3. Simple Page Reload to Update Counts 
                         setTimeout(() => window.location.reload(), 500); 
-
                     } else {
                         followMessage.textContent = data.error || "An unknown error occurred.";
                         followMessage.className = 'text-sm mt-2 text-red-500';
                     }
-
                 } catch (error) {
                     console.error("API Request Failed:", error);
                     followMessage.textContent = "Network error or API failure.";
@@ -173,17 +131,23 @@
                 }
             }
 
-            // --- LIST RENDERING LOGIC (Adapted from roulette.html) ---
+            // --- CORRECTED LIST RENDERING LOGIC ---
             function renderFavoriteList() {
-                // Ensure you have passed the favorite_list with |safe in the view
-                const items = JSON.parse('{{ favorite_list|safe }}');
+                const favoriteListContent = document.getElementById('favorite-list-content');
+                // Stop the function if the list is private
+                if ({{ is_private|yesno:"true,false" }}) {
+                    return;
+                }
+                
+                // Safely parse the data from the json_script tag
+                const items = JSON.parse(document.getElementById('favorite-data').textContent);
                 
                 if (!items || items.length === 0) {
                     favoriteListContent.innerHTML = `<p class="text-center text-gray-500 col-span-2">This user hasn't added any favorites yet.</p>`;
                     return;
                 }
                 
-                favoriteListContent.innerHTML = ''; // Clear previous content
+                favoriteListContent.innerHTML = ''; 
 
                 items.forEach(item => {
                     const el = document.createElement('div');
@@ -191,7 +155,7 @@
                     el.innerHTML = `
                         <img src="${item.poster_path ? 'https://image.tmdb.org/t/p/w92' + item.poster_path : 'https://placehold.co/92x138?text=N/A'}" class="w-12 h-20 object-cover rounded-md mr-4">
                         <div class="flex-grow">
-                            <p class="font-semibold text-white">${item.title}</p>
+                            <a href="/content/${item.content_type.toLowerCase()}/${item.tmdb_id}/" class="font-semibold text-white hover:underline">${item.title}</a>
                             <p class="text-sm text-gray-400">${item.release_year} | ${item.content_type === 'MOVIE' ? 'Movie' : 'TV Show'}</p>
                         </div>
                     `;
@@ -199,9 +163,7 @@
                 });
             }
             
-            // Initial render
             renderFavoriteList();
         });
     </script>
-</body>
-</html>
+{% endblock %}

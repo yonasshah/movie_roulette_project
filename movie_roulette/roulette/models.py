@@ -1,5 +1,7 @@
 from django.db import models
 from django.conf import settings
+from django.dispatch import receiver
+from django.db.models.signals import post_save
 
 # The model has been renamed from UserMovie to UserContent to reflect that it now handles both.
 class UserContent(models.Model):

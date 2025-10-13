@@ -1,0 +1,58 @@
+{% extends 'roulette/base.html' %}
+
+{% block title %}Search Results for "{{ query }}"{% endblock %}
+
+{% block content %}
+<div class="bg-gray-800 p-8 rounded-lg shadow-2xl space-y-8">
+    
+    <div>
+        <h2 class="text-2xl font-bold text-white mb-4 border-b border-gray-700 pb-2">
+            Users matching "<span class="text-indigo-400">{{ query }}</span>"
+        </h2>
+        <div class="space-y-3">
+            {% for user in user_results %}
+                <a href="{% url 'roulette:user_profile' username=user.username %}" class="flex items-center p-3 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors">
+                    <i class="fas fa-user-circle mr-3 text-indigo-400 text-xl"></i>
+                    <div>
+                        <p class="font-semibold">@{{ user.username }}</p>
+                        <p class="text-sm text-gray-400">{{ user.followers.count }} Followers</p>
+                    </div>
+                </a>
+            {% empty %}
+                <p class="text-gray-400">No users found.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div>
+        <h2 class="text-2xl font-bold text-white mb-4 border-b border-gray-700 pb-2">
+            Movies & TV Shows matching "<span class="text-indigo-400">{{ query }}</span>"
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for item in content_results %}
+                <a href="{% url 'roulette:content_detail' content_type=item.media_type tmdb_id=item.id %}" class="bg-gray-700 rounded-lg overflow-hidden shadow-lg hover:ring-2 hover:ring-indigo-500 transition-all">
+                    {% if item.poster_path %}
+                        <img src="https://image.tmdb.org/t/p/w500{{ item.poster_path }}" alt="Poster" class="w-full h-auto object-cover">
+                    {% else %}
+                        <div class="w-full h-auto bg-gray-900 flex items-center justify-center" style="aspect-ratio: 2/3;">
+                             <span class="text-gray-500">No Poster</span>
+                        </div>
+                    {% endif %}
+                    <div class="p-4">
+                        {% if item.media_type == 'movie' %}
+                            <h3 class="font-bold text-lg">{{ item.title }}</h3>
+                            <p class="text-sm text-gray-400">Movie ({{ item.release_date|slice:":4" }})</p>
+                        {% elif item.media_type == 'tv' %}
+                            <h3 class="font-bold text-lg">{{ item.name }}</h3>
+                            <p class="text-sm text-gray-400">TV Show ({{ item.first_air_date|slice:":4" }})</p>
+                        {% endif %}
+                    </div>
+                </a>
+            {% empty %}
+                <p class="text-gray-400 md:col-span-2 lg:col-span-3">No movies or TV shows found.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+</div>
+{% endblock %}

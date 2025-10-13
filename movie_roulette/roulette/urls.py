@@ -11,4 +11,6 @@ urlpatterns = [
     path('api/toggle-follow/', views.toggle_follow, name='toggle_follow'),
     path('user/<str:username>/', views.user_profile_view, name='user_profile'),
     path('api/toggle-follow/', views.toggle_follow, name='toggle_follow'),
+    path('search/', views.search_view, name='search_results'),
+    path('content/<str:content_type>/<int:tmdb_id>/', views.content_detail_view, name='content_detail'),
 ]

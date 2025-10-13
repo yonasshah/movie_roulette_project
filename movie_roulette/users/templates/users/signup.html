@@ -21,20 +21,26 @@
         <form class="mt-8 space-y-6" method="POST">
             {% csrf_token %}
             
-            <!-- Loop through each form field to apply custom styling -->
+            {% if form.non_field_errors %}
+                <div class="bg-red-900 border border-red-700 text-red-300 px-4 py-3 rounded-md" role="alert">
+                    {% for error in form.non_field_errors %}
+                        <p>{{ error }}</p>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
             {% for field in form %}
                 <div class="mb-4">
                     <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-gray-300">{{ field.label }}</label>
                     <input name="{{ field.name }}" id="{{ field.id_for_label }}" type="{{ field.field.widget.input_type }}" required 
                            class="mt-1 block w-full px-3 py-2 border border-gray-700 bg-gray-900 rounded-md placeholder-gray-500 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
                     
-                    <!-- Display help text and errors with proper styling -->
-                    {% if field.help_text %}
-                        <p class="mt-2 text-xs text-gray-400">{{ field.help_text|safe }}</p>
-                    {% endif %}
                     {% for error in field.errors %}
                         <p class="mt-2 text-xs text-red-400">{{ error }}</p>
                     {% endfor %}
+                    {% if field.help_text %}
+                        <p class="mt-2 text-xs text-gray-400">{{ field.help_text|safe }}</p>
+                    {% endif %}
                 </div>
             {% endfor %}
 
@@ -54,4 +60,3 @@
 
 </body>
 </html>
-
