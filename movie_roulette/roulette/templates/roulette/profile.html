@@ -77,6 +77,7 @@
 {% endblock %}
 
 {% block scripts %}
+{{ block.super }}
     {{ favorite_list|json_script:"favorite-data" }}
 
     <script>
