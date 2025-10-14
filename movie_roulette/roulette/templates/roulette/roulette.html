@@ -83,7 +83,7 @@
             </details>
         </div>
 
-        <div class="text-center my-2">
+        <div class="text-center my-4">
             <button id="spin-btn" class="bg-indigo-600 text-white font-bold py-3 px-8 rounded-full text-xl transform hover:scale-105 transition-transform"><i class="fas fa-dice-d20 mr-2"></i>Spin!</button>
             <div class="spinner-container mt-2 h-20 flex justify-center items-center"><div id="spinner" class="spinner"></div></div>
         </div>
@@ -101,6 +101,7 @@
 {% endblock %}
     
 {% block scripts %}
+    {{ block.super }} {# This is the important line that includes the parent's script #}
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const csrfToken = '{{ csrf_token }}';
