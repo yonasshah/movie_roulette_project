@@ -16,48 +16,69 @@
 </head>
 <body class="min-h-screen flex flex-col items-center p-4 md:p-8">
 
-    <nav class="fixed top-0 left-0 right-0 z-50 bg-gray-900 border-b border-indigo-700 shadow-lg py-4 px-8">
-        <div class="max-w-6xl mx-auto flex justify-between items-center">
-            
-            <div class="flex items-center space-x-8">
-                <a href="{% url 'roulette:roulette_view' %}" class="text-2xl font-bold text-white hover:text-indigo-400 transition-colors">
-                    🎲 Roulette
-                </a>
-                
-                <div class="hidden md:flex items-center space-x-6 text-sm font-semibold">
-                    <a href="{% url 'roulette:discover' %}" class="text-gray-300 hover:text-white transition-colors">Discover</a>
-                    
+    <nav class="fixed top-0 left-0 right-0 z-50 bg-gray-900 border-b border-indigo-700 shadow-lg">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex-shrink-0">
+                    <a href="{% url 'roulette:roulette_view' %}" class="text-2xl font-bold text-white hover:text-indigo-400 transition-colors">
+                        🎲 Roulette
+                    </a>
+                </div>
+
+                <div class="hidden md:flex items-center space-x-6">
+                    <a href="{% url 'roulette:discover' %}" class="text-gray-300 hover:text-white transition-colors text-sm font-semibold">Discover</a>
                     <form action="{% url 'roulette:search_results' %}" method="GET" class="relative">
-                        <input type="text" name="q" placeholder="Search movies, shows, users..." class="bg-gray-800 border border-gray-700 rounded-full py-1 pl-4 pr-10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-64">
+                        <input type="text" name="q" placeholder="Search..." class="bg-gray-800 border border-gray-700 rounded-full py-1 pl-4 pr-10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-48">
                         <button type="submit" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500">
                             <i class="fas fa-search"></i>
                         </button>
                     </form>
+                    {% if user.is_authenticated %}
+                        <a href="{% url 'users:settings' %}" class="text-gray-300 hover:text-white transition-colors flex items-center text-sm font-semibold">
+                            <i class="fas fa-cog mr-2"></i>Settings
+                        </a>
+                        <a href="{% url 'roulette:user_profile' username=user.username %}" class="text-gray-300 hover:text-white transition-colors flex items-center text-sm font-semibold">
+                            <i class="fas fa-user mr-2"></i>My Profile
+                        </a>
+                        <form action="{% url 'users:logout' %}" method="post" class="inline">
+                            {% csrf_token %}
+                            <button type="submit" class="text-indigo-400 hover:text-white transition-colors bg-transparent border-none cursor-pointer text-sm font-semibold">
+                                <i class="fas fa-sign-out-alt mr-1"></i>Logout
+                            </button>
+                        </form>
+                    {% else %}
+                        <a href="{% url 'users:login' %}" class="text-gray-300 hover:text-white transition-colors text-sm font-semibold">Log In</a>
+                        <a href="{% url 'users:signup' %}" class="bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors text-sm font-semibold">Sign Up</a>
+                    {% endif %}
+                </div>
+
+                <div class="md:hidden flex items-center">
+                    <button id="mobile-menu-button" class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 focus:outline-none">
+                        <i class="fas fa-bars text-2xl"></i>
+                    </button>
                 </div>
             </div>
-            
-            <div class="flex items-center space-x-6 text-sm font-semibold">
-                
-                {% if user.is_authenticated %}
-                    
-                    <a href="{% url 'users:settings' %}" class="text-gray-300 hover:text-white transition-colors flex items-center">
-                        <i class="fas fa-cog mr-2"></i>Settings
-                    </a>
+        </div>
 
-                    <a href="{% url 'roulette:user_profile' username=user.username %}" class="text-gray-300 hover:text-white transition-colors flex items-center">
-                        <i class="fas fa-user mr-2"></i>My Profile
-                    </a>
-                    
-                    <form action="{% url 'users:logout' %}" method="post" class="inline">
+        <div id="mobile-menu" class="hidden md:hidden">
+            <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+                <form action="{% url 'roulette:search_results' %}" method="GET" class="relative mb-2 px-2">
+                    <input type="text" name="q" placeholder="Search movies, shows, users..." class="bg-gray-800 border border-gray-700 rounded-full w-full py-2 pl-4 pr-10 text-white placeholder-gray-500">
+                    <button type="submit" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </form>
+                <a href="{% url 'roulette:discover' %}" class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium">Discover</a>
+                {% if user.is_authenticated %}
+                    <a href="{% url 'roulette:user_profile' username=user.username %}" class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium">My Profile</a>
+                    <a href="{% url 'users:settings' %}" class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium">Settings</a>
+                    <form action="{% url 'users:logout' %}" method="post">
                         {% csrf_token %}
-                        <button type="submit" class="text-indigo-400 hover:text-white transition-colors bg-transparent border-none cursor-pointer">
-                            <i class="fas fa-sign-out-alt mr-1"></i>Logout
-                        </button>
+                        <button type="submit" class="text-gray-300 hover:bg-gray-700 hover:text-white block w-full text-left px-3 py-2 rounded-md text-base font-medium">Logout</button>
                     </form>
-                    
                 {% else %}
-                    <a href="{% url 'users:login' %}" class="text-gray-300 hover:text-white transition-colors">Log In</a>
-                    <a href="{% url 'users:signup' %}" class="bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors">Sign Up</a>
+                    <a href="{% url 'users:login' %}" class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium">Log In</a>
+                    <a href="{% url 'users:signup' %}" class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium">Sign Up</a>
                 {% endif %}
             </div>
         </div>
@@ -69,6 +90,15 @@
     </main>
     
     {% block scripts %}
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                const menuButton = document.getElementById('mobile-menu-button');
+                const mobileMenu = document.getElementById('mobile-menu');
+
+                menuButton.addEventListener('click', function() {
+                    mobileMenu.classList.toggle('hidden');
+                });
+            });
+        </script>
     {% endblock %}
-</body>
 </html>
