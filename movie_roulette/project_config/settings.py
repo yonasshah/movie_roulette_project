@@ -5,7 +5,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = 'django-insecure-^!&9ghoo6lnps&!uootmq#5adx9^lbn6%#xtxy%vk_^=bq_=_9'
 DEBUG = True
-ALLOWED_HOSTS = ['https://movie-roulette-project.onrender.com/', '127.0.0.1']
+ALLOWED_HOSTS = ['movie-roulette-project.onrender.com/', '127.0.0.1']
 
 INSTALLED_APPS = [
     'django.contrib.admin',
