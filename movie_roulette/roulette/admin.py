@@ -1,12 +1,8 @@
 from django.contrib import admin
 
 from .models import UserContent, UserFollow
-from movie_roulette.users.models import Profile
 
 # Register your models here.
-
-admin.site.register(Profile)
-
 @admin.register(UserContent)
 class UserContentAdmin(admin.ModelAdmin):
     list_display = ('user', 'title', 'list_type', 'content_type', 'timestamp')
