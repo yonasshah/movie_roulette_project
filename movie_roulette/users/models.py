@@ -6,6 +6,7 @@ from django.dispatch import receiver
 class Profile(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     is_favorites_private = models.BooleanField(default=False)
+    bio = models.TextField(max_length=500, blank=True)
 
     def __str__(self):
         return f'{self.user.username} Profile'

@@ -81,3 +81,5 @@ TMDB_API_KEY = "4547cf64feadcde0dac8544e88aec9ee"
 # Redirects for login/logout
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'
+
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'

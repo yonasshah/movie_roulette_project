@@ -12,7 +12,11 @@ class SignUpForm(UserCreationForm):
 class ProfileUpdateForm(forms.ModelForm):
     class Meta:
         model = Profile
-        fields = ['is_favorites_private']
+        fields = ['is_favorites_private', 'bio'] # --- ADD 'bio' HERE ---
         labels = {
-            'is_favorites_private': 'Make Favorites List Private'
+            'is_favorites_private': 'Make Favorites List Private',
+            'bio': 'About Me' # --- ADD THIS LABEL ---
+        }
+        widgets = {
+            'bio': forms.Textarea(attrs={'rows': 3}) # --- ADD THIS WIDGET ---
         }

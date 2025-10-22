@@ -18,7 +18,12 @@
 
     <form method="POST">
         {% csrf_token %}
-        <div class="space-y-4">
+        <div class="space-y-6"> <div>
+                <label for="{{ form.bio.id_for_label }}" class="block font-semibold text-lg mb-2">{{ form.bio.label }}</label>
+                {{ form.bio }}
+                <p class="text-sm text-gray-400 mt-1">Write a short bio (up to 500 characters).</p>
+            </div>
+
             <div class="flex items-center p-4 bg-gray-700 rounded-lg">
                 <div class="flex-grow">
                     <label for="{{ form.is_favorites_private.id_for_label }}" class="font-semibold text-lg">{{ form.is_favorites_private.label }}</label>
@@ -29,8 +34,7 @@
                 </label>
             </div>
         </div>
-        <div class="mt-6">
-            <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg">
+        <div class="mt-8"> <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg">
                 Save Settings
             </button>
         </div>
