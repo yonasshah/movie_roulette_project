@@ -249,21 +249,31 @@ def get_random_content(request):
 def get_user_lists(request):
     favorites = UserContent.objects.filter(user=request.user, list_type=UserContent.ListType.FAVORITE)
     history = UserContent.objects.filter(user=request.user, list_type=UserContent.ListType.HISTORY)
-    watchlist = UserContent.objects.filter(user=request.user, list_type=UserContent.ListType.WATCHLIST) # <-- ADD THIS
-    
+    watchlist = UserContent.objects.filter(user=request.user, list_type=UserContent.ListType.WATCHLIST)
+
     tmdb_id = request.GET.get('tmdb_id')
     content_type_str = request.GET.get('content_type')
-    
+
     is_favorite = False
-    is_watchlist = False
+    is_watchlist = False # Initialize here
     if tmdb_id and content_type_str:
-        model_content_type = UserContent.ContentType.MOVIE if content_type_str == 'movie' else UserContent.ContentType.TV
-        is_favorite = favorites.filter(tmdb_id=tmdb_id, content_type=model_content_type).exists()
+        try:
+            tmdb_id_int = int(tmdb_id)
+            model_content_type = UserContent.ContentType.MOVIE if content_type_str == 'movie' else UserContent.ContentType.TV
+            is_favorite = favorites.filter(tmdb_id=tmdb_id_int, content_type=model_content_type).exists()
+            # This check is crucial for both issues:
+            is_watchlist = watchlist.filter(tmdb_id=tmdb_id_int, content_type=model_content_type).exists()
+        except ValueError:
+            pass # Ignore if tmdb_id is not a number
 
     return JsonResponse({
         'favorites': list(favorites.values('tmdb_id', 'title', 'poster_path', 'release_year', 'content_type')),
         'history': list(history.values('tmdb_id', 'title', 'poster_path', 'release_year', 'content_type')),
+        # Ensure watchlist data is returned:
+        'watchlist': list(watchlist.values('tmdb_id', 'title', 'poster_path', 'release_year', 'content_type')),
         'is_favorite': is_favorite,
+        # Ensure watchlist status is returned:
+        'is_watchlist': is_watchlist,
     })
 
 # --- FIXED toggle_favorite VIEW ---
