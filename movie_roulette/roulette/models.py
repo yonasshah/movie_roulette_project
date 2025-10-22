@@ -5,10 +5,11 @@ from django.db.models.signals import post_save
 
 # The model has been renamed from UserMovie to UserContent to reflect that it now handles both.
 class UserContent(models.Model):
-    # This class defines the types of lists a user can have (Favorites or History).
+    # This class defines the types of lists a user can have
     class ListType(models.TextChoices):
         FAVORITE = 'FAVORITE', 'Favorite'
         HISTORY = 'HISTORY', 'History'
+        WATCHLIST = 'WATCHLIST', 'Watchlist' # --- ADD THIS LINE ---
 
     # This NEW class distinguishes between Movies and TV Shows.
     class ContentType(models.TextChoices):
@@ -17,7 +18,6 @@ class UserContent(models.Model):
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     
-    # The 'movie_id' field has been renamed to 'tmdb_id' to be more generic.
     tmdb_id = models.IntegerField() 
     
     title = models.CharField(max_length=255)
@@ -25,19 +25,16 @@ class UserContent(models.Model):
     release_year = models.CharField(max_length=4, blank=True, null=True)
     list_type = models.CharField(max_length=10, choices=ListType.choices)
     
-    # This NEW field stores whether the item is a movie or a TV show.
     content_type = models.CharField(max_length=10, choices=ContentType.choices, default=ContentType.MOVIE)
     
     timestamp = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        # The 'unique_together' constraint has been updated to include the new 'content_type' field.
-        # This ensures a user can't have the same movie and TV show in the same list.
+        # The 'unique_together' constraint has been updated
         unique_together = ('user', 'tmdb_id', 'list_type', 'content_type')
         ordering = ['-timestamp']
 
     def __str__(self):
-        # The string representation is updated to work with the new model name.
         return f"{self.user.username} - {self.title} ({self.get_list_type_display()})"
     
 class UserFollow(models.Model):

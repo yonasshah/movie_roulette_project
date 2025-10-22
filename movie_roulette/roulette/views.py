@@ -28,6 +28,7 @@ def user_profile_view(request, username):
         is_following = UserFollow.objects.filter(follower=request.user, followed=profile_user).exists()
 
     favorite_list = []
+    watchlist_list = []
     # Check if the profile is private AND if the current user is not the owner
     is_private = profile_user.profile.is_favorites_private and request.user != profile_user
     
@@ -37,6 +38,11 @@ def user_profile_view(request, username):
             list_type=UserContent.ListType.FAVORITE
         ).order_by('-timestamp').values('tmdb_id', 'title', 'poster_path', 'release_year', 'content_type'))
 
+    watchlist_list = list(UserContent.objects.filter(
+            user=profile_user,
+            list_type=UserContent.ListType.WATCHLIST
+        ).order_by('-timestamp').values('tmdb_id', 'title', 'poster_path', 'release_year', 'content_type'))
+    
     followers_list = profile_user.followers.select_related('follower').values('follower__username', 'follower__id')
     following_list = profile_user.following.select_related('followed').values('followed__username', 'followed__id')
     
@@ -47,6 +53,7 @@ def user_profile_view(request, username):
         'profile_user': profile_user,
         'is_following': is_following,
         'favorite_list': favorite_list,
+        'watchlist_list': watchlist_list,
         'is_private': is_private, # Pass the privacy status to the template
         'is_owner': request.user == profile_user,
         'settings': settings,
@@ -110,6 +117,11 @@ def content_detail_view(request, content_type, tmdb_id):
 
         is_favorite = UserContent.objects.filter(
             user=request.user, tmdb_id=tmdb_id, list_type=UserContent.ListType.FAVORITE,
+            content_type=UserContent.ContentType.MOVIE if content_type == 'movie' else UserContent.ContentType.TV
+        ).exists()
+        
+        is_watchlist = UserContent.objects.filter(
+            user=request.user, tmdb_id=tmdb_id, list_type=UserContent.ListType.WATCHLIST,
             content_type=UserContent.ContentType.MOVIE if content_type == 'movie' else UserContent.ContentType.TV
         ).exists()
 
@@ -233,11 +245,13 @@ def get_random_content(request):
 def get_user_lists(request):
     favorites = UserContent.objects.filter(user=request.user, list_type=UserContent.ListType.FAVORITE)
     history = UserContent.objects.filter(user=request.user, list_type=UserContent.ListType.HISTORY)
+    watchlist = UserContent.objects.filter(user=request.user, list_type=UserContent.ListType.WATCHLIST) # <-- ADD THIS
     
     tmdb_id = request.GET.get('tmdb_id')
     content_type_str = request.GET.get('content_type')
     
     is_favorite = False
+    is_watchlist = False
     if tmdb_id and content_type_str:
         model_content_type = UserContent.ContentType.MOVIE if content_type_str == 'movie' else UserContent.ContentType.TV
         is_favorite = favorites.filter(tmdb_id=tmdb_id, content_type=model_content_type).exists()
@@ -295,6 +309,50 @@ def toggle_favorite(request):
         is_favorite = True
 
     return JsonResponse({'success': True, 'is_favorite': is_favorite})
+
+
+@login_required
+@require_POST
+def toggle_watchlist(request):
+    tmdb_id = request.POST.get('tmdb_id')
+    content_type_str = request.POST.get('content_type')
+
+    if not tmdb_id or not content_type_str:
+         return JsonResponse({'success': False, 'error': 'Missing content ID or type.'}, status=400)
+
+    model_content_type = UserContent.ContentType.MOVIE if content_type_str == 'movie' else UserContent.ContentType.TV
+
+    try:
+        watchlist_instance = UserContent.objects.get(
+            user=request.user,
+            tmdb_id=tmdb_id,
+            list_type=UserContent.ListType.WATCHLIST,
+            content_type=model_content_type
+        )
+        # If it exists, delete it.
+        watchlist_instance.delete()
+        is_watchlist = False
+    except UserContent.DoesNotExist:
+        # If it does not exist, create it.
+        title = request.POST.get('title')
+        poster_path = request.POST.get('poster_path', '')
+        release_year = request.POST.get('release_year')
+
+        if not title or not release_year:
+            return JsonResponse({'success': False, 'error': 'Missing title or year for new item.'}, status=400)
+
+        UserContent.objects.create(
+            user=request.user,
+            tmdb_id=tmdb_id,
+            list_type=UserContent.ListType.WATCHLIST,
+            content_type=model_content_type,
+            title=title,
+            poster_path=poster_path,
+            release_year=release_year
+        )
+        is_watchlist = True
+
+    return JsonResponse({'success': True, 'is_watchlist': is_watchlist})
 
 @login_required
 def search_view(request):

@@ -10,6 +10,7 @@ urlpatterns = [
     path('api/get-user-lists/', views.get_user_lists, name='get_user_lists'),
     path('api/toggle-favorite/', views.toggle_favorite, name='toggle_favorite'),
     path('api/toggle-follow/', views.toggle_follow, name='toggle_follow'),
+    path('api/toggle-watchlist/', views.toggle_watchlist, name='toggle_watchlist'),
     path('user/<str:username>/', views.user_profile_view, name='user_profile'),
     path('search/', views.search_view, name='search_results'),
     path('content/<str:content_type>/<int:tmdb_id>/', views.content_detail_view, name='content_detail'),

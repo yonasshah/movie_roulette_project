@@ -54,6 +54,11 @@
                     <a href="{% if trailer_key %}https://www.youtube.com/watch?v={{ trailer_key }}{% else %}'#'{% endif %}" target="_blank" class="flex-1 bg-red-600 text-white text-center font-bold py-3 px-4 rounded-lg {% if not trailer_key %}opacity-50 cursor-not-allowed{% endif %}">
                         <i class="fab fa-youtube mr-2"></i>Watch Trailer
                     </a>
+                    
+                    <button id="watchlist-btn" class="text-3xl hover:text-indigo-400 transition-colors {% if is_watchlist %}text-indigo-400{% else %}text-gray-400{% endif %}">
+                        <i class="fas fa-bookmark"></i>
+                    </button>
+
                     <button id="like-btn" class="text-3xl hover:text-red-500 transition-colors {% if is_favorite %}text-red-500{% else %}text-gray-400{% endif %}">
                         <i class="fas fa-heart"></i>
                     </button>
@@ -69,9 +74,11 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const likeBtn = document.getElementById('like-btn');
+    const watchlistBtn = document.getElementById('watchlist-btn'); // <-- ADDED
     const csrfToken = '{{ csrf_token }}';
 
-    async function toggleLike() {
+    // This function now handles both lists
+    async function toggleList(listType) {
         const formData = new FormData();
         formData.append('tmdb_id', '{{ content.id }}');
         formData.append('content_type', '{{ content_type }}');
@@ -79,7 +86,14 @@ document.addEventListener('DOMContentLoaded', function() {
         formData.append('poster_path', '{{ content.poster_path }}');
         formData.append('release_year', `{% if content_type == 'movie' %}{{ content.release_date|slice:":4" }}{% else %}{{ content.first_air_date|slice:":4" }}{% endif %}`);
 
-        const response = await fetch(`{% url 'roulette:toggle_favorite' %}`, {
+        let url = '';
+        if (listType === 'favorite') {
+            url = `{% url 'roulette:toggle_favorite' %}`;
+        } else {
+            url = `{% url 'roulette:toggle_watchlist' %}`;
+        }
+
+        const response = await fetch(url, {
             method: 'POST',
             headers: { 'X-CSRFToken': csrfToken },
             body: formData,
@@ -88,14 +102,24 @@ document.addEventListener('DOMContentLoaded', function() {
         if (response.ok) {
             const data = await response.json();
             if (data.success) {
-                likeBtn.classList.toggle('text-red-500', data.is_favorite);
-                likeBtn.classList.toggle('text-gray-400', !data.is_favorite);
+                // Check which button to update
+                if (data.hasOwnProperty('is_favorite')) {
+                    likeBtn.classList.toggle('text-red-500', data.is_favorite);
+                    likeBtn.classList.toggle('text-gray-400', !data.is_favorite);
+                }
+                if (data.hasOwnProperty('is_watchlist')) {
+                    watchlistBtn.classList.toggle('text-indigo-400', data.is_watchlist);
+                    watchlistBtn.classList.toggle('text-gray-400', !data.is_watchlist);
+                }
             }
         }
     }
 
     if (likeBtn) {
-        likeBtn.addEventListener('click', toggleLike);
+        likeBtn.addEventListener('click', () => toggleList('favorite')); // <-- UPDATED
+    }
+    if (watchlistBtn) {
+        watchlistBtn.addEventListener('click', () => toggleList('watchlist')); // <-- ADDED
     }
 });
 </script>

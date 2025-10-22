@@ -39,7 +39,7 @@
                     <p class="text-gray-300">{{ profile_user.profile.bio }}</p>
                 </div>
             {% endif %}
-            </div>
+        </div>
 
         <h3 class="text-2xl font-bold mb-4 text-indigo-400"><i class="fas fa-star mr-2"></i>Favorite Movies & Shows</h3>
         
@@ -47,12 +47,57 @@
             </div>
         
         {% if is_private %}
-        <div class="text-center p-8 bg-gray-700 rounded-lg">
-            <i class="fas fa-lock text-4xl text-gray-400 mb-2"></i>
-            <p class="text-gray-400">This user's favorites are private.</p>
-        </div>
+            <div class="text-center p-8 bg-gray-700 rounded-lg">
+                <i class="fas fa-lock text-4xl text-gray-400 mb-2"></i>
+                <p class="text-gray-400">This user's favorites are private.</p>
+            </div>
         {% endif %}
         
+        <h3 class="text-2xl font-bold mt-10 mb-4 text-indigo-400"><i class="fas fa-bookmark mr-2"></i> Watchlist</h3>
+        
+        <div id="watchlist-list-content" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
+            {% if is_private %}
+                <div class="text-center p-8 bg-gray-700 rounded-lg col-span-full">
+                    <i class="fas fa-lock text-4xl text-gray-400 mb-2"></i>
+                    <p class="text-gray-400">This user's watchlist is private.</p>
+                </div>
+            {% else %}
+                {% for item in watchlist_list %}
+                    <div class="bg-gray-700 rounded-lg shadow-lg overflow-hidden transform hover:scale-105 transition-transform duration-200">
+                        <a href="{% url 'roulette:content_detail' content_type=item.content_type|lower tmdb_id=item.tmdb_id %}">
+                            {% if item.poster_path %}
+                                <img src="https://image.tmdb.org/t/p/w342{{ item.poster_path }}" alt="Poster for {{ item.title }}" class="w-full object-cover" style="aspect-ratio: 2/3;">
+                            {% else %}
+                                <div class="w-full h-full bg-gray-900 flex items-center justify-center" style="aspect-ratio: 2/3;">
+                                    <span class="text-gray-500 text-xs text-center p-2">{{ item.title }}</span>
+                                </div>
+                            {% endif %}
+                        </a>
+                    </div>
+                {% empty %}
+                    <p class="text-center text-gray-500 col-span-full">This user hasn't added any items to their watchlist yet.</p>
+                {% endfor %}
+            {% endif %}
+        </div>
+        <h3 class="text-2xl font-bold mt-10 mb-4 text-indigo-400"><i class="fas fa-history mr-2"></i> Spin History</h3>
+        
+        <div id="history-list-content" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
+            {% for item in history_list %}
+                <div class="bg-gray-700 rounded-lg shadow-lg overflow-hidden transform hover:scale-105 transition-transform duration-200">
+                    <a href="{% url 'roulette:content_detail' content_type=item.content_type|lower tmdb_id=item.tmdb_id %}">
+                        {% if item.poster_path %}
+                            <img src="https://image.tmdb.org/t/p/w342{{ item.poster_path }}" alt="Poster for {{ item.title }}" class="w-full object-cover" style="aspect-ratio: 2/3;">
+                        {% else %}
+                             <div class="w-full h-full bg-gray-900 flex items-center justify-center" style="aspect-ratio: 2/3;">
+                                 <span class="text-gray-500 text-xs text-center p-2">{{ item.title }}</span>
+                            </div>
+                        {% endif %}
+                    </a>
+                </div>
+            {% empty %}
+                <p class="text-center text-gray-500 col-span-full">This user has no spin history yet.</p>
+            {% endfor %}
+        </div>
         <div class="mt-10 grid grid-cols-1 md:grid-cols-2 gap-8">
         
             <div>
@@ -143,11 +188,12 @@
                 }
             }
 
-            // --- UPDATED LIST RENDERING LOGIC for a Poster Grid ---
+            // --- RENDER FAVORITES (using the logic from your provided file) ---
             function renderFavoriteList() {
                 const favoriteListContent = document.getElementById('favorite-list-content');
                 if ({{ is_private|yesno:"true,false" }}) {
-                    return;
+                    // If private, don't render anything (the template handles the message)
+                    return; 
                 }
                 
                 const items = JSON.parse(document.getElementById('favorite-data').textContent);
@@ -157,7 +203,7 @@
                     return;
                 }
                 
-                favoriteListContent.innerHTML = ''; 
+                favoriteListContent.innerHTML = ''; // Clear previous items
 
                 items.forEach(item => {
                     const posterUrl = item.poster_path ? `https://image.tmdb.org/t/p/w342${item.poster_path}` : 'https://placehold.co/342x513?text=N/A';
@@ -174,7 +220,11 @@
                 });
             }
             
+            // Call the function to render favorites
             renderFavoriteList();
+            
+            // Note: The Watchlist and History sections are now rendered server-side using Django template tags,
+            // so we don't need additional JavaScript for them here unless you want dynamic updates.
         });
     </script>
 {% endblock %}

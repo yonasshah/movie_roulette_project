@@ -25,7 +25,15 @@
 {% endblock %}
 
 {% block content %}
-        <div class="bg-gray-800 p-6 rounded-lg mb-6">
+        <div class="bg-gray-800 p-6 rounded-lg mb-6"
+             id="roulette-config"
+             data-csrf-token="{{ csrf_token }}"
+             data-get-random-content-url="{% url 'roulette:get_random_content' %}"
+             data-get-user-lists-url="{% url 'roulette:get_user_lists' %}"
+             data-toggle-favorite-url="{% url 'roulette:toggle_favorite' %}"
+             data-toggle-watchlist-url="{% url 'roulette:toggle_watchlist' %}"
+             data-get-genres-url="{% url 'roulette:get_genres' %}"
+             data-login-url="{% url 'users:login' %}?next={{ request.path }}">
             
             <div class="flex items-center justify-center mb-6">
                 <label class="toggle-label">
@@ -93,19 +101,34 @@
         <div class="mt-8 max-w-3xl mx-auto">
             <div class="flex border-b border-gray-700">
                 <div id="tab-favorites" class="tab py-2 px-6 font-semibold active">Favorites</div>
+                <div id="tab-watchlist" class="tab text-gray-400 py-2 px-6 font-semibold">Watchlist</div>
                 <div id="tab-history" class="tab text-gray-400 py-2 px-6 font-semibold">History</div>
             </div>
             <div id="favorites-content" class="py-4"></div>
+            <div id="watchlist-content" class="py-4 hidden"></div>
             <div id="history-content" class="py-4 hidden"></div>
         </div>
-{% endblock %}
+        {% endblock %}
     
 {% block scripts %}
     {{ block.super }} {# This is the important line that includes the parent's script #}
+    
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const csrfToken = '{{ csrf_token }}';
-            const tmdbApiKey = '{{ settings.TMDB_API_KEY }}';
+            // --- Read data from our new config div ---
+            const configElement = document.getElementById('roulette-config');
+            const csrfToken = configElement.dataset.csrfToken;
+            const urls = {
+                getRandomContent: configElement.dataset.getRandomContentUrl,
+                getUserLists: configElement.dataset.getUserListsUrl,
+                toggleFavorite: configElement.dataset.toggleFavoriteUrl,
+                toggleWatchlist: configElement.dataset.toggleWatchlistUrl,
+                getGenres: configElement.dataset.getGenresUrl,
+                login: configElement.dataset.loginUrl
+            };
+            
+            // --- REMOVED: const csrfToken = '{{ csrf_token }}';
+            // --- REMOVED: const tmdbApiKey = '{{ settings.TMDB_API_KEY }}';
 
             const spinBtn = document.getElementById('spin-btn');
             const spinner = document.getElementById('spinner');
@@ -116,8 +139,10 @@
             const yearSelect = document.getElementById('year-select');
             const yearLabel = document.getElementById('year-label');
             const tabFavorites = document.getElementById('tab-favorites');
+            const tabWatchlist = document.getElementById('tab-watchlist'); // <-- ADDED
             const tabHistory = document.getElementById('tab-history');
             const favoritesContent = document.getElementById('favorites-content');
+            const watchlistContent = document.getElementById('watchlist-content'); // <-- ADDED
             const historyContent = document.getElementById('history-content');
             let currentContent = null;
 
@@ -128,7 +153,7 @@
             async function fetchWithAuth(url, options = {}) {
                 const response = await fetch(url, options);
                 if (response.status === 403) {
-                    window.location.href = "{% url 'users:login' %}?next={{ request.path }}";
+                    window.location.href = urls.login; // <-- USE VARIABLE
                 }
                 return response;
             }
@@ -149,7 +174,8 @@
                 const year = yearSelect.value;
                 const rating = ratingSelect.value;
 
-                const url = `{% url 'roulette:get_random_content' %}?content_type=${contentType}&watch_region=${region}&genre=${genre}&with_watch_providers=${selectedPlatforms}&primary_release_date.gte=${year}&vote_average_gte=${rating}`;
+                // --- USE VARIABLE FOR URL ---
+                const url = `${urls.getRandomContent}?content_type=${contentType}&watch_region=${region}&genre=${genre}&with_watch_providers=${selectedPlatforms}&primary_release_date.gte=${year}&vote_average_gte=${rating}`;
 
                 try {
                     const response = await fetchWithAuth(url);
@@ -174,30 +200,36 @@
             async function fetchGenres() {
                 const contentType = contentTypeToggle.checked ? 'movie' : 'tv';
                 try {
-                    const response = await fetch(`https://api.themoviedb.org/3/genre/${contentType}/list?api_key=${tmdbApiKey}&language=en-US`);
+                    // --- USE VARIABLE FOR URL (This is from the *previous* update) ---
+                    const response = await fetch(`${urls.getGenres}?content_type=${contentType}`);
                     const data = await response.json();
                     genreSelect.innerHTML = '<option value="">Any Genre</option>';
                     data.genres.forEach(genre => genreSelect.innerHTML += `<option value="${genre.id}">${genre.name}</option>`);
                 } catch (error) { console.error("Failed to fetch genres:", error); }
             }
             
+            // --- UPDATED FUNCTION ---
             async function updateUserLists() {
                 const tmdbId = currentContent ? currentContent.id : null;
                 const contentType = currentContent ? currentContent.content_type : null;
-
-                const url = `{% url 'roulette:get_user_lists' %}?tmdb_id=${tmdbId || ''}&content_type=${contentType || ''}`;
+                
+                // --- USE VARIABLE FOR URL ---
+                const url = `${urls.getUserLists}?tmdb_id=${tmdbId || ''}&content_type=${contentType || ''}`;
                 const response = await fetchWithAuth(url);
                 if (!response.ok) return;
 
                 const data = await response.json();
-                renderList(data.favorites, favoritesContent, true);
-                renderList(data.history, historyContent, false);
+                renderList(data.favorites, favoritesContent, 'favorite'); // <-- Updated
+                renderList(data.watchlist, watchlistContent, 'watchlist'); // <-- ADDED
+                renderList(data.history, historyContent, false); // <-- Updated
                 
                 if (currentContent) {
                     updateLikeButton(data.is_favorite);
+                    updateWatchlistButton(data.is_watchlist); // <-- ADDED
                 }
             }
 
+            // --- UPDATED FUNCTION ---
             function displayContent(content) {
                 const isMovie = content.content_type === 'movie';
                 const title = isMovie ? content.title : content.name;
@@ -228,6 +260,7 @@
                                 <div class="flex items-center space-x-3 mb-6">${providers}</div>
                                 <div class="flex items-center space-x-4">
                                     <a href="${trailer ? `https://www.youtube.com/watch?v=${trailer.key}` : '#'}" target="_blank" class="flex-1 bg-red-600 text-white text-center font-bold py-3 px-4 rounded-lg ${!trailer && 'opacity-50 cursor-not-allowed'}"><i class="fab fa-youtube mr-2"></i>Watch Trailer</a>
+                                    <button id="watchlist-btn" class="text-2xl text-gray-400 hover:text-indigo-400"><i class="fas fa-bookmark"></i></button>
                                     <button id="like-btn" class="text-2xl text-gray-400 hover:text-red-500"><i class="fas fa-heart"></i></button>
                                     <button id="spin-again-btn" class="text-2xl text-gray-400 hover:text-indigo-400"><i class="fas fa-redo"></i></button>
                                 </div>
@@ -237,12 +270,18 @@
                 
                 movieResult.classList.add('show');
                 document.getElementById('spin-again-btn').addEventListener('click', spinRoulette);
-                document.getElementById('like-btn').addEventListener('click', () => toggleLike(false));
+                document.getElementById('like-btn').addEventListener('click', () => toggleList('favorite', false)); // <-- UPDATED
+                document.getElementById('watchlist-btn').addEventListener('click', () => toggleList('watchlist', false)); // <-- ADDED
             }
 
-            function renderList(items, container, isFavorite) {
+            // --- UPDATED FUNCTION ---
+            function renderList(items, container, listType) { // listType can be 'favorite', 'watchlist', or false
+                let emptyMessage = 'No spin history yet.';
+                if (listType === 'favorite') emptyMessage = 'No favorites yet.';
+                if (listType === 'watchlist') emptyMessage = 'No items in watchlist yet.';
+
                 if (!items || items.length === 0) {
-                    container.innerHTML = `<p class="text-center text-gray-500">${isFavorite ? 'No favorites yet.' : 'No spin history yet.'}</p>`;
+                    container.innerHTML = `<p class="text-center text-gray-500">${emptyMessage}</p>`;
                     return;
                 }
 
@@ -250,13 +289,22 @@
                 items.forEach(item => {
                     const el = document.createElement('div');
                     el.className = 'flex items-center p-2 rounded-lg hover:bg-gray-800';
+                    
+                    let removeButton = '';
+                    if (listType === 'favorite') {
+                        removeButton = `<button data-tmdb-id="${item.tmdb_id}" data-content-type="${item.content_type}" class="remove-favorite-btn text-red-500 text-lg"><i class="fas fa-trash"></i></button>`;
+                    }
+                    if (listType === 'watchlist') {
+                        removeButton = `<button data-tmdb-id="${item.tmdb_id}" data-content-type="${item.content_type}" class="remove-watchlist-btn text-indigo-400 text-lg"><i class="fas fa-trash"></i></button>`;
+                    }
+
                     el.innerHTML = `
                         <img src="${item.poster_path ? `https://image.tmdb.org/t/p/w92${item.poster_path}` : 'https://placehold.co/92x138?text=N/A'}" class="w-10 h-16 object-cover rounded-md mr-4">
                         <div class="flex-grow">
                             <a href="/content/${item.content_type.toLowerCase()}/${item.tmdb_id}/" class="font-semibold hover:underline">${item.title}</a>
                             <p class="text-sm text-gray-400">${item.release_year}</p>
                         </div>
-                        ${isFavorite ? `<button data-tmdb-id="${item.tmdb_id}" data-content-type="${item.content_type}" class="remove-favorite-btn text-red-500 text-lg"><i class="fas fa-trash"></i></button>` : ''}
+                        ${removeButton}
                     `;
                     container.appendChild(el);
                 });
@@ -269,14 +317,26 @@
                     likeBtnIcon.parentElement.classList.toggle('text-gray-400', !isFavorite);
                 }
             }
+
+            // --- ADDED NEW FUNCTION ---
+            function updateWatchlistButton(isWatchlist) {
+                const watchlistBtnIcon = document.querySelector('#watchlist-btn i');
+                if (watchlistBtnIcon) {
+                    watchlistBtnIcon.parentElement.classList.toggle('text-indigo-400', isWatchlist);
+                    watchlistBtnIcon.parentElement.classList.toggle('text-gray-400', !isWatchlist);
+                }
+            }
             
-            async function toggleLike(isRemove = false, tmdbId = null, contentType = null) {
+            // --- RENAMED AND UPDATED FUNCTION ---
+            async function toggleList(listType, isRemove = false, tmdbId = null, contentType = null) {
                 const idToToggle = isRemove ? tmdbId : currentContent?.id;
                 if (!idToToggle) return;
 
                 const formData = new FormData();
                 formData.append('tmdb_id', idToToggle);
                 
+                let url = '';
+
                 if (isRemove) {
                     formData.append('content_type', contentType.toLowerCase());
                 } else {
@@ -289,7 +349,13 @@
                     formData.append('release_year', releaseDate ? new Date(releaseDate).getFullYear() : 'N/A');
                 }
                 
-                const response = await fetchWithAuth(`{% url 'roulette:toggle_favorite' %}`, {
+                if (listType === 'favorite') {
+                    url = urls.toggleFavorite; // <-- USE VARIABLE
+                } else {
+                    url = urls.toggleWatchlist; // <-- USE VARIABLE
+                }
+
+                const response = await fetchWithAuth(url, {
                     method: 'POST',
                     headers: { 'X-CSRFToken': csrfToken },
                     body: formData,
@@ -303,29 +369,49 @@
                 }
             }
             
+            // --- UPDATED FUNCTION ---
             document.body.addEventListener('click', function(event) {
-                const removeBtn = event.target.closest('.remove-favorite-btn');
-                if (removeBtn) {
-                    const tmdbId = removeBtn.dataset.tmdbId;
-                    const contentType = removeBtn.dataset.contentType;
-                    toggleLike(true, tmdbId, contentType);
+                const removeFavBtn = event.target.closest('.remove-favorite-btn');
+                if (removeFavBtn) {
+                    const tmdbId = removeFavBtn.dataset.tmdbId;
+                    const contentType = removeFavBtn.dataset.contentType;
+                    toggleList('favorite', true, tmdbId, contentType); // <-- Updated
                 }
+
+                // --- ADDED THIS BLOCK ---
+                const removeWatchBtn = event.target.closest('.remove-watchlist-btn');
+                if (removeWatchBtn) {
+                    const tmdbId = removeWatchBtn.dataset.tmdbId;
+                    const contentType = removeWatchBtn.dataset.contentType;
+                    toggleList('watchlist', true, tmdbId, contentType);
+                }
+                // --- END ADDED BLOCK ---
             });
 
+            // --- UPDATED FUNCTION ---
             function switchTab(tabName) {
+                // Deactivate all
+                tabFavorites.classList.remove('active', 'text-white');
+                tabFavorites.classList.add('text-gray-400');
+                tabWatchlist.classList.remove('active', 'text-white');
+What's next?
+                tabWatchlist.classList.add('text-gray-400');
+                tabHistory.classList.remove('active', 'text-white');
+                tabHistory.classList.add('text-gray-400');
+
+                favoritesContent.classList.add('hidden');
+                watchlistContent.classList.add('hidden');
+                historyContent.classList.add('hidden');
+
+                // Activate the selected one
                 if (tabName === 'favorites') {
-                    tabFavorites.classList.add('active', 'text-white'); 
-                    tabFavorites.classList.remove('text-gray-400');
-                    tabHistory.classList.remove('active', 'text-white');
-                    tabHistory.classList.add('text-gray-400');
-                    favoritesContent.classList.remove('hidden'); 
-                    historyContent.classList.add('hidden');
-                } else {
-                    tabFavorites.classList.remove('active', 'text-white');
-                    tabFavorites.classList.add('text-gray-400');
-                    tabHistory.classList.add('active', 'text-white'); 
-                    tabHistory.classList.remove('text-gray-400');
-                    favoritesContent.classList.add('hidden'); 
+                    tabFavorites.classList.add('active', 'text-white');
+                    favoritesContent.classList.remove('hidden');
+                } else if (tabName === 'watchlist') {
+                    tabWatchlist.classList.add('active', 'text-white');
+                    watchlistContent.classList.remove('hidden');
+                } else { // history
+                    tabHistory.classList.add('active', 'text-white');
                     historyContent.classList.remove('hidden');
                 }
             }
@@ -337,6 +423,7 @@
 
             spinBtn.addEventListener('click', spinRoulette);
             tabFavorites.addEventListener('click', () => switchTab('favorites'));
+            tabWatchlist.addEventListener('click', () => switchTab('watchlist')); // <-- ADDED
             tabHistory.addEventListener('click', () => switchTab('history'));
             contentTypeToggle.addEventListener('change', fetchGenres);
 
