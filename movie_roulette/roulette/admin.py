@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from movie_roulette.roulette.models import UserContent, UserFollow
+from .models import UserContent, UserFollow
 from movie_roulette.users.models import Profile
 
 # Register your models here.
