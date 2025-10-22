@@ -93,7 +93,7 @@ def discover_view(request):
     return render(request, 'roulette/discover.html', context)
 
 # --- NEW CONTENT DETAIL VIEW ---
-@login_required
+# --- Inside content_detail_view function ---
 @login_required
 def content_detail_view(request, content_type, tmdb_id):
     BASE_URL = "https://api.themoviedb.org/3"
@@ -124,6 +124,7 @@ def content_detail_view(request, content_type, tmdb_id):
             content_type=UserContent.ContentType.MOVIE if content_type == 'movie' else UserContent.ContentType.TV
         ).exists()
         
+        # This calculation is already here:
         is_watchlist = UserContent.objects.filter(
             user=request.user, tmdb_id=tmdb_id, list_type=UserContent.ListType.WATCHLIST,
             content_type=UserContent.ContentType.MOVIE if content_type == 'movie' else UserContent.ContentType.TV
@@ -133,9 +134,12 @@ def content_detail_view(request, content_type, tmdb_id):
             'content': content_details,
             'content_type': content_type,
             'is_favorite': is_favorite,
-            'streaming_providers': streaming_providers, # Pass cleaned data
-            'trailer_key': trailer_key, # Pass just the key
-            'settings': settings,
+            # --- ADD THIS LINE ---
+            'is_watchlist': is_watchlist, 
+            # --- END ADD ---
+            'streaming_providers': streaming_providers, 
+            'trailer_key': trailer_key, 
+            # 'settings': settings, # You can optionally remove this, it's not used in content_detail.html
         }
         return render(request, 'roulette/content_detail.html', context)
         
