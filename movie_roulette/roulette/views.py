@@ -22,47 +22,51 @@ def roulette_view(request):
 def user_profile_view(request, username):
     User = get_user_model()
     profile_user = get_object_or_404(User, username=username)
-    
+
     is_following = False
     if request.user.is_authenticated and request.user != profile_user:
         is_following = UserFollow.objects.filter(follower=request.user, followed=profile_user).exists()
 
     favorite_list = []
-    watchlist_list = []
-    # Check if the profile is private AND if the current user is not the owner
+    watchlist_list = [] 
+    # REMOVED: history_list = [] 
+
     is_private = profile_user.profile.is_favorites_private and request.user != profile_user
-    
+
     if not is_private:
         favorite_list = list(UserContent.objects.filter(
             user=profile_user,
             list_type=UserContent.ListType.FAVORITE
         ).order_by('-timestamp').values('tmdb_id', 'title', 'poster_path', 'release_year', 'content_type'))
 
-    watchlist_list = list(UserContent.objects.filter(
+        watchlist_list = list(UserContent.objects.filter(
             user=profile_user,
             list_type=UserContent.ListType.WATCHLIST
         ).order_by('-timestamp').values('tmdb_id', 'title', 'poster_path', 'release_year', 'content_type'))
-    
+
+    # REMOVED: History query block
+
     followers_list = profile_user.followers.select_related('follower').values('follower__username', 'follower__id')
     following_list = profile_user.following.select_related('followed').values('followed__username', 'followed__id')
-    
+
     followers_count = followers_list.count()
     following_count = following_list.count()
-    
+
     context = {
         'profile_user': profile_user,
         'is_following': is_following,
         'favorite_list': favorite_list,
-        'watchlist_list': watchlist_list,
-        'is_private': is_private, # Pass the privacy status to the template
+        'watchlist_list': watchlist_list, 
+        # REMOVED: 'history_list': history_list,
+        'is_private': is_private,
         'is_owner': request.user == profile_user,
-        'settings': settings,
         'followers_list': list(followers_list),
         'following_list': list(following_list),
         'followers_count': followers_count,
         'following_count': following_count,
+        # REMOVED: 'settings': settings # (settings wasn't used here anyway)
     }
-    
+
     return render(request, 'roulette/profile.html', context)
 
 # Helper function to reduce repeated API call code
