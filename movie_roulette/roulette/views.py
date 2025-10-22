@@ -7,7 +7,7 @@ import requests
 import random
 from .models import UserContent, UserFollow
 from django.contrib.auth import get_user_model
-from django.db.models import Q
+from django.db.models import Q, Count
 
 # This view is responsible for showing the main page of your app.
 @login_required
@@ -303,7 +303,11 @@ def search_view(request):
     content_results = []
 
     if query:
-        user_results = get_user_model().objects.filter(Q(username__icontains=query))
+        user_results = get_user_model().objects.filter(
+            Q(username__icontains=query)
+        ).annotate(
+            follower_count=Count('followers') # Creates a new field 'follower_count'
+        )
         try:
             search_url = "https://api.themoviedb.org/3/search/multi"
             params = {
