@@ -225,20 +225,8 @@ def get_random_content(request):
 
     except requests.exceptions.RequestException as e:
         return JsonResponse({'error': f"API request failed: {e}"}, status=500)
-
-        UserContent.objects.update_or_create(
-            user=request.user, tmdb_id=content_id, list_type=UserContent.ListType.HISTORY,
-            content_type=model_content_type,
-            defaults={
-                'title': content_details.get(title_key, 'N/A'),
-                'poster_path': content_details.get('poster_path', ''),
-                'release_year': content_details.get(date_key, '----')[:4],
-            }
-        )
-        return JsonResponse(content_details)
-
-    except requests.exceptions.RequestException as e:
-        return JsonResponse({'error': f"API request failed: {e}"}, status=500)
+    
+    # The duplicate code block has been removed from here
 
 # --- FIXED get_user_lists VIEW ---
 @login_required
