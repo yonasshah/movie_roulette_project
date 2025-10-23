@@ -4,6 +4,7 @@ from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
 from django.http import JsonResponse, HttpResponseForbidden
 from django.views.decorators.http import require_POST
+from django.template.loader import render_to_string
 from django.contrib.auth.decorators import login_required
 from django.conf import settings
 import requests
@@ -25,7 +26,7 @@ from operator import attrgetter
 # --- UPDATED VIEW FOR SOCIAL FEED ---
 @login_required
 def feed_view(request):
-    """Displays a chronological feed with comments and likes, excluding history.""" # Updated docstring
+    """Displays a chronological feed with comments and likes, excluding history and follows.""" # Updated docstring
 
     followed_user_ids = list(request.user.following.values_list('followed_id', flat=True))
     user_ids_to_include = followed_user_ids + [request.user.id]
@@ -38,17 +39,17 @@ def feed_view(request):
         user_id__in=user_ids_to_include
     ).select_related('user', 'user__profile')
 
-    # --- MODIFIED QUERY FOR list_items ---
     list_items = UserContent.objects.filter(
         user_id__in=user_ids_to_include
-    ).exclude( # Add this exclude filter
+    ).exclude(
         list_type=UserContent.ListType.HISTORY
     ).select_related('user', 'user__profile', 'custom_list')
-    # --- END MODIFICATION ---
 
-    follows = UserFollow.objects.filter(
-        follower_id__in=user_ids_to_include
-    ).select_related('follower', 'follower__profile', 'followed', 'followed__profile')
+    # --- REMOVE OR COMMENT OUT THESE LINES ---
+    # follows = UserFollow.objects.filter(
+    #     follower_id__in=user_ids_to_include
+    # ).select_related('follower', 'follower__profile', 'followed', 'followed__profile')
+    # --- END REMOVAL ---
 
     # Combine and add type/generic relation info
     raw_feed_items = []
@@ -58,72 +59,88 @@ def feed_view(request):
         item.obj_id = item.id
         raw_feed_items.append(item)
 
-    # Now, history items are already excluded before this loop
     for item in list_items:
         item.type = 'list_item'
         item.ctype_id = usercontent_ct.id
         item.obj_id = item.id
         raw_feed_items.append(item)
 
-    for item in follows:
-        item.type = 'follow'
-        item.ctype_id = None
-        item.obj_id = None
-        raw_feed_items.append(item)
+    # --- REMOVE OR COMMENT OUT THIS LOOP ---
+    # for item in follows:
+    #     item.type = 'follow'
+    #     item.ctype_id = None # Follows don't link to Comment/Like directly
+    #     item.obj_id = None
+    #     raw_feed_items.append(item)
+    # --- END REMOVAL ---
 
     raw_feed_items.sort(key=attrgetter('timestamp'), reverse=True)
-    feed_items_limited = raw_feed_items[:50]
+    feed_items_limited = raw_feed_items[:50] # Limit to 50 most recent combined items
 
-    # --- Pre-fetch comments and likes logic remains the same ---
+    # Pre-fetch comments and likes logic remains the same
     item_lookup = {}
     content_type_ids = set()
     object_ids_by_ctype = {}
 
     for item in feed_items_limited:
+        # --- ADDED CHECK: Ensure item has ctype_id and obj_id before processing for comments/likes ---
         if item.ctype_id and item.obj_id:
-            item_lookup[item.obj_id] = item
+            item_lookup[item.obj_id] = item # Use obj_id as key since it's unique within its type
             content_type_ids.add(item.ctype_id)
             if item.ctype_id not in object_ids_by_ctype:
                 object_ids_by_ctype[item.ctype_id] = set()
             object_ids_by_ctype[item.ctype_id].add(item.obj_id)
-            item.comments = []
-            item.like_count = 0
-            item.user_liked = False
+            item.comments = [] # Initialize comments list
+            item.like_count = 0 # Initialize like count
+            item.user_liked = False # Initialize user liked status
+    # --- END CHECK ---
 
+    # --- Fetching comments based on the filtered items ---
     comments_qs = Comment.objects.filter(
-        content_type_id__in=content_type_ids
+        content_type_id__in=content_type_ids # Use the collected content type IDs
     ).select_related('user', 'user__profile')
+
     all_comments = []
     for ct_id, obj_ids in object_ids_by_ctype.items():
+         # Fetch comments only for the object IDs relevant to this content type
         all_comments.extend(list(comments_qs.filter(content_type_id=ct_id, object_id__in=obj_ids)))
 
+    # --- Assign comments to their respective items ---
     for comment in all_comments:
+         # Use obj_id for lookup
         if comment.object_id in item_lookup and hasattr(item_lookup[comment.object_id], 'comments'):
              item_lookup[comment.object_id].comments.append(comment)
 
 
+    # --- Fetching likes based on the filtered items ---
     likes_qs = Like.objects.filter(
-        content_type_id__in=content_type_ids
+        content_type_id__in=content_type_ids # Use the collected content type IDs
     )
     all_likes = []
     for ct_id, obj_ids in object_ids_by_ctype.items():
+        # Fetch likes only for the object IDs relevant to this content type
         all_likes.extend(list(likes_qs.filter(content_type_id=ct_id, object_id__in=obj_ids)))
 
-    likes_by_item = {}
-    user_liked_items = set()
+
+    # --- Calculate like counts and user liked status ---
+    likes_by_item = {} # Key: obj_id, Value: count
+    user_liked_items = set() # Set of obj_ids liked by the current user
 
     for like in all_likes:
+         # Use obj_id for lookup
          if like.object_id in item_lookup:
             likes_by_item[like.object_id] = likes_by_item.get(like.object_id, 0) + 1
             if like.user_id == request.user.id:
                 user_liked_items.add(like.object_id)
 
+
+    # --- Assign like data to feed items ---
     for obj_id, item in item_lookup.items():
          if hasattr(item, 'like_count'): # Check if attribute exists before assigning
             item.like_count = likes_by_item.get(obj_id, 0)
             item.user_liked = obj_id in user_liked_items
 
     # --- End pre-fetching logic ---
+
 
     comment_form = CommentForm()
 
@@ -741,6 +758,8 @@ def remove_from_custom_list_view(request):
 @login_required
 @require_POST
 def add_comment_view(request):
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest' # Check if AJAX
+
     form = CommentForm(request.POST)
     content_type_id = request.POST.get('content_type_id')
     object_id = request.POST.get('object_id')
@@ -748,33 +767,61 @@ def add_comment_view(request):
     if form.is_valid() and content_type_id and object_id:
         try:
             content_type = ContentType.objects.get_for_id(content_type_id)
-            # Optional: Check if the content_type is one we allow comments on
-            # target_model = content_type.model_class()
-            # if target_model not in [UserReview, UserContent]:
-            #     raise ValueError("Invalid content type for comments")
+            # Optional content type checking here...
 
             comment = form.save(commit=False)
             comment.user = request.user
             comment.content_type = content_type
             comment.object_id = object_id
             comment.save()
-            messages.success(request, "Comment added.")
+
+            if is_ajax:
+                # Render the single comment template fragment
+                comment_html = render_to_string(
+                    'roulette/_comment.html',
+                    {'comment': comment, 'request': request} # Pass request for user check in fragment
+                )
+                return JsonResponse({'success': True, 'comment_html': comment_html})
+            else:
+                messages.success(request, "Comment added.")
+                # Non-AJAX fallback redirect
+                return redirect(request.POST.get('next', 'roulette:feed')) # Use 'next' if provided, else feed
+
         except (ContentType.DoesNotExist, ValueError) as e:
-            messages.error(request, f"Could not add comment: Invalid target. {e}")
+            error_msg = f"Could not add comment: Invalid target. {e}"
+            if is_ajax:
+                return JsonResponse({'success': False, 'error': error_msg}, status=400)
+            else:
+                messages.error(request, error_msg)
         except Exception as e:
-            messages.error(request, f"An unexpected error occurred: {e}")
+            error_msg = f"An unexpected error occurred: {e}"
+            if is_ajax:
+                return JsonResponse({'success': False, 'error': error_msg}, status=500)
+            else:
+                messages.error(request, error_msg)
     else:
-        # Collect errors if any (though basic validation is above)
+        # Form is invalid or missing IDs
         error_msg = "Could not add comment."
         if not content_type_id or not object_id:
-            error_msg = "Could not add comment: Missing target information."
+            error_msg = "Missing target information."
         elif form.errors:
-             error_msg = f"Could not add comment: {form.errors.as_text()}"
-        messages.error(request, error_msg)
+             # Make form errors JSON serializable for AJAX response
+             form_errors = {field: [e for e in errors] for field, errors in form.errors.items()}
+             error_msg = f"Please correct the errors below."
 
+        if is_ajax:
+            return JsonResponse({
+                'success': False,
+                'error': error_msg,
+                'form_errors': form.errors if form.errors else None # Send specific field errors
+            }, status=400)
+        else:
+            messages.error(request, error_msg)
+            # You might want to re-render the feed page with the invalid form here for non-AJAX
+            # This part is slightly trickier without AJAX, often just redirecting is simpler.
 
-    # Redirect back to the feed (or potentially the referring page if needed)
-    return redirect('roulette:feed')
+    # Default fallback redirect for non-AJAX errors
+    return redirect(request.POST.get('next', 'roulette:feed'))
 
 # --- NEW VIEW FOR TOGGLING LIKES (AJAX) ---
 @login_required
@@ -823,18 +870,32 @@ def toggle_like_view(request):
 @login_required
 @require_POST # Ensure only POST requests can delete
 def delete_comment_view(request, comment_id):
-    """Deletes a comment if the logged-in user is the author."""
+    """Deletes a comment if the logged-in user is the author. Handles AJAX."""
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
     comment = get_object_or_404(Comment, id=comment_id)
 
-    # Check if the current user is the author of the comment
     if request.user != comment.user:
-        messages.error(request, "You are not authorized to delete this comment.")
-        return HttpResponseForbidden("You are not authorized to delete this comment.") # Or redirect with message
+        error_msg = "You are not authorized to delete this comment."
+        if is_ajax:
+            return JsonResponse({'success': False, 'error': error_msg}, status=403)
+        else:
+            messages.error(request, error_msg)
+            # Consider redirecting to feed or previous page for non-AJAX forbidden
+            return redirect('roulette:feed') # Or HttpResponseForbidden(...)
 
-    # Delete the comment
-    comment.delete()
-    messages.success(request, "Comment deleted successfully.")
-
-    # Redirect back to the feed page (or potentially the content detail page if comments are there too)
-    # You might want to pass a 'next' parameter in the form for more dynamic redirects
-    return redirect('roulette:feed')
+    try:
+        comment.delete()
+        if is_ajax:
+            return JsonResponse({'success': True})
+        else:
+            messages.success(request, "Comment deleted successfully.")
+            # Redirect back for non-AJAX
+            return redirect(request.POST.get('next', 'roulette:feed'))
+    except Exception as e:
+        # Catch potential deletion errors
+        error_msg = f"An error occurred while deleting: {e}"
+        if is_ajax:
+            return JsonResponse({'success': False, 'error': error_msg}, status=500)
+        else:
+            messages.error(request, error_msg)
+            return redirect(request.POST.get('next', 'roulette:feed'))

@@ -1,0 +1,26 @@
+{% comment %} Renders a single comment item {% endcomment %}
+<div class="comment-item flex space-x-3 text-sm" data-comment-id="{{ comment.id }}"> {# Keep data-comment-id #}
+    <a href="{% url 'roulette:user_profile' username=comment.user.username %}">
+        <img src="{{ comment.user.profile.image.url }}" class="w-8 h-8 rounded-full object-cover flex-shrink-0" alt="{{ comment.user.username }}'s profile picture">
+    </a>
+    <div class="flex-1 bg-gray-600 rounded-lg p-2">
+        <div class="flex justify-between items-start">
+            <div>
+                <a href="{% url 'roulette:user_profile' username=comment.user.username %}" class="font-semibold text-white hover:underline">@{{ comment.user.username }}</a>
+                <p class="text-gray-300">{{ comment.text|linebreaksbr }}</p>
+            </div>
+            {# --- Modified Delete Button/Form --- #}
+            {% if comment.user == request.user %}
+            {# Removed the form tag, using a button with data attributes #}
+            <button type="button" class="delete-comment-btn text-red-500 hover:text-red-400 text-xs ml-2"
+                    data-comment-id="{{ comment.id }}"
+                    data-delete-url="{% url 'roulette:delete_comment' comment_id=comment.id %}"
+                    title="Delete Comment">
+                <i class="fas fa-trash"></i>
+            </button>
+            {% endif %}
+            {# --- End Modification --- #}
+        </div>
+        <p class="text-xs text-gray-500 mt-1">{{ comment.timestamp|timesince }} ago</p>
+    </div>
+</div>
