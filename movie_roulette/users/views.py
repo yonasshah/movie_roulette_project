@@ -4,6 +4,7 @@ from django.contrib.auth.decorators import login_required
 from .forms import SignUpForm, ProfileUpdateForm
 from django.contrib import messages
 
+
 def signup_view(request):
     if request.method == 'POST':
         form = SignUpForm(request.POST)
@@ -18,15 +19,19 @@ def signup_view(request):
     return render(request, 'users/signup.html', {'form': form})
 
 @login_required
-def settings_view(request):
+def profile_settings_view(request): # Renamed from settings_view
     if request.method == 'POST':
-        # --- ADD request.FILES ---
         form = ProfileUpdateForm(request.POST, request.FILES, instance=request.user.profile)
         if form.is_valid():
             form.save()
-            messages.success(request, 'Your settings have been updated!')
-            return redirect('users:settings')
+            messages.success(request, 'Your profile settings have been updated!')
+            return redirect('users:profile_settings') # Update redirect
     else:
         form = ProfileUpdateForm(instance=request.user.profile)
-    
-    return render(request, 'users/settings.html', {'form': form})
+
+    return render(request, 'users/profile_settings.html', {'form': form}) # Update template name
+
+@login_required
+def account_settings_view(request):
+    """Displays links to account management pages."""
+    return render(request, 'users/account_settings.html')

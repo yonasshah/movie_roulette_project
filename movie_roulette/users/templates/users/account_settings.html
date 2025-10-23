@@ -1,0 +1,55 @@
+{% extends 'roulette/base.html' %}
+
+{% block title %}Account Settings{% endblock %}
+
+{% block content %}
+<div class="bg-gray-800 p-8 rounded-lg shadow-2xl max-w-2xl mx-auto">
+    <h2 class="text-3xl font-extrabold text-white mb-6 border-b border-gray-700 pb-4">
+        Account Settings
+    </h2>
+
+    <div class="space-y-6">
+        {# --- Username (Display Only) --- #}
+        <div>
+            <h3 class="font-semibold text-lg mb-1 text-gray-300">Username</h3>
+            <p class="p-3 bg-gray-700 rounded-md text-gray-400">@{{ user.username }}</p>
+            <p class="text-xs text-gray-500 mt-1">Username cannot be changed.</p>
+        </div>
+
+        {# --- Email (Display Only - Can add change later if needed) --- #}
+        <div>
+            <h3 class="font-semibold text-lg mb-1 text-gray-300">Email</h3>
+            <p class="p-3 bg-gray-700 rounded-md text-gray-400">{{ user.email }}</p>
+            {# Add link/form for email change here if you implement it #}
+        </div>
+
+         {# --- Password Change --- #}
+        <div>
+             <h3 class="font-semibold text-lg mb-1 text-gray-300">Password</h3>
+             <a href="{% url 'users:password_change' %}" class="inline-block bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg text-sm">
+                 Change Password
+             </a>
+        </div>
+
+        {# --- Link to Profile Settings --- #}
+         <div>
+             <h3 class="font-semibold text-lg mb-1 text-gray-300">Profile</h3>
+             <a href="{% url 'users:profile_settings' %}" class="inline-block bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg text-sm">
+                 Edit Profile Settings (Picture, Bio, Privacy)
+             </a>
+        </div>
+
+        {# --- Delete Account (Optional - Add later if needed) --- #}
+        
+        <div class="pt-4 border-t border-gray-700">
+            <h3 class="font-semibold text-lg mb-1 text-red-400">Delete Account</h3>
+            <p class="text-sm text-gray-400 mb-2">Permanently delete your account and all associated data. This action cannot be undone.</p>
+            <button type="button" class="bg-red-700 hover:bg-red-800 text-white font-bold py-2 px-4 rounded-lg text-sm">
+                Delete Account
+            </button>
+        </div>
+        
+
+    </div>
+</div>
+{% endblock %}

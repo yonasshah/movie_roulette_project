@@ -1,0 +1,70 @@
+{% extends 'roulette/base.html' %}
+
+{% block title %}Notifications{% endblock %}
+
+{% block content %}
+<div class="bg-gray-800 p-6 md:p-8 rounded-lg shadow-2xl max-w-3xl mx-auto">
+    <h2 class="text-3xl font-extrabold text-white mb-6 border-b border-gray-700 pb-4">
+        <i class="fas fa-bell mr-3 text-indigo-400"></i>Notifications
+    </h2>
+
+    <div class="space-y-4">
+        {% for notification in notifications %}
+            <div class="p-4 rounded-lg flex items-start space-x-3 {% if not notification.read %}bg-gray-700 border-l-4 border-indigo-500{% else %}bg-gray-700 opacity-70{% endif %}">
+                {# Actor's Profile Picture (if actor exists) #}
+                {% if notification.actor %}
+                    <a href="{% url 'roulette:user_profile' username=notification.actor.username %}">
+                        <img src="{{ notification.actor.profile.image.url }}" class="w-10 h-10 rounded-full object-cover flex-shrink-0" alt="{{ notification.actor.username }}'s profile picture">
+                    </a>
+                {% else %}
+                    <div class="w-10 h-10 flex-shrink-0"></div> {# Placeholder #}
+                {% endif %}
+
+                {# Notification Text #}
+                <div class="flex-grow text-sm">
+                    {% if notification.actor %}
+                        <a href="{% url 'roulette:user_profile' username=notification.actor.username %}" class="font-semibold text-white hover:underline">@{{ notification.actor.username }}</a>
+                    {% endif %}
+
+                    {{ notification.verb }} {# e.g., "liked", "commented on", "followed you" #}
+
+                    {# Link to Target Object (if it exists) #}
+                    {% if notification.target %}
+                        {% with target=notification.target %}
+                            {# Determine URL based on target type #}
+                            {% if notification.target_content_type.model == 'userreview' %}
+                                <a href="{% url 'roulette:content_detail' content_type=target.content_type|lower tmdb_id=target.tmdb_id %}" class="font-semibold text-indigo-300 hover:underline">your review for {{ target.title }}</a>.
+                            {% elif notification.target_content_type.model == 'usercontent' %}
+                                {# Handle different list types if needed, or just link to content #}
+                                {% if target.list_type == 'FAVORITE' %}
+                                    <a href="{% url 'roulette:content_detail' content_type=target.content_type|lower tmdb_id=target.tmdb_id %}" class="font-semibold text-indigo-300 hover:underline">your favorite: {{ target.title }}</a>.
+                                {% elif target.list_type == 'WATCHLIST' %}
+                                     <a href="{% url 'roulette:content_detail' content_type=target.content_type|lower tmdb_id=target.tmdb_id %}" class="font-semibold text-indigo-300 hover:underline">your watchlist item: {{ target.title }}</a>.
+                                {% elif target.list_type == 'CUSTOM' and target.custom_list %}
+                                     <a href="{% url 'roulette:list_detail' list_id=target.custom_list.id %}" class="font-semibold text-indigo-300 hover:underline">item in your list "{{ target.custom_list.name }}": {{ target.title }}</a>.
+                                {% else %}
+                                    <a href="{% url 'roulette:content_detail' content_type=target.content_type|lower tmdb_id=target.tmdb_id %}" class="font-semibold text-indigo-300 hover:underline">"{{ target.title }}"</a>.
+                                {% endif %}
+                            {% else %}
+                                {# Fallback if target type is unknown #}
+                                (an item).
+                            {% endif %}
+                        {% endwith %}
+                    {% else %}
+                        {# If no target (like a follow) #}
+                        .
+                    {% endif %}
+
+                    {# Timestamp #}
+                    <p class="text-xs text-gray-400 mt-1">{{ notification.timestamp|timesince }} ago</p>
+                </div>
+
+                {# Optional: Add a "Mark as Read" button here later #}
+
+            </div>
+        {% empty %}
+            <p class="text-center text-gray-500 py-8">You have no notifications yet.</p>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

@@ -8,8 +8,8 @@
         <i class="fas fa-list-ul mr-3 text-indigo-400"></i>My Custom Lists
     </h2>
 
-    {# --- ADDED ID for messages --- #}
     <div id="message-container" class="mb-6 space-y-2">
+        {% comment %} Messages displayed via JS or initial load {% endcomment %}
         {% if messages %}
             {% for message in messages %}
                 <div class="p-3 rounded-md text-center text-sm font-medium
@@ -22,14 +22,13 @@
         {% endif %}
     </div>
 
-    {# --- ADDED ID to form --- #}
     <div class="mb-8 p-6 bg-gray-700 rounded-lg">
         <h3 class="text-xl font-semibold text-white mb-4">Create a New List</h3>
         <form id="create-list-form" action="{% url 'roulette:list_create' %}" method="POST" class="flex items-center space-x-3">
             {% csrf_token %}
             <div class="flex-grow">
-                {{ form.name }} {# Keep using the Django form field initially #}
-                <div id="form-name-errors" class="text-xs text-red-400 mt-1"></div> {# Div for JS errors #}
+                {{ form.name }}
+                <div id="form-name-errors" class="text-xs text-red-400 mt-1"></div>
             </div>
             <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-5 rounded-md">
                 <i class="fas fa-plus mr-1"></i> Create
@@ -39,20 +38,21 @@
 
     <div>
         <h3 class="text-xl font-semibold text-white mb-4">Your Lists</h3>
-        {# --- ADDED ID to list container --- #}
         <div id="user-lists-container" class="space-y-3">
             {% for list in lists %}
                 <div class="user-list-item flex items-center justify-between p-4 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors" data-list-id="{{ list.id }}">
                     <a href="{% url 'roulette:list_detail' list_id=list.id %}" class="font-semibold text-lg text-indigo-300 hover:text-indigo-100 flex-grow mr-4 list-name">
                         {{ list.name }}
                     </a>
-                    {# --- MODIFIED Delete form --- #}
-                    <form class="delete-list-form" action="{% url 'roulette:list_delete' list_id=list.id %}" method="POST" onsubmit="return confirm('Are you sure you want to delete the list \'{{ list.name|escapejs }}\'? This action cannot be undone.');">
-                        {% csrf_token %}
-                        <button type="submit" class="text-red-500 hover:text-red-400 text-lg" title="Delete List">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </form>
+                    {# --- MODIFIED Delete Button --- #}
+                    <button type="button" class="delete-list-btn text-red-500 hover:text-red-400 text-lg"
+                            data-list-id="{{ list.id }}"
+                            data-list-name="{{ list.name|escapejs }}"
+                            data-delete-url="{% url 'roulette:list_delete' list_id=list.id %}"
+                            title="Delete List">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                    {# --- END MODIFICATION --- #}
                 </div>
             {% empty %}
                 <p id="no-lists-message" class="text-gray-400 text-center py-4">You haven't created any custom lists yet.</p>
@@ -68,26 +68,23 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const createListForm = document.getElementById('create-list-form');
-    const nameInput = createListForm.querySelector('input[name="name"]'); // Get input by name
+    const nameInput = createListForm.querySelector('input[name="name"]');
     const nameErrorsDiv = document.getElementById('form-name-errors');
     const messageContainer = document.getElementById('message-container');
     const listsContainer = document.getElementById('user-lists-container');
-    const noListsMessage = document.getElementById('no-lists-message');
+    let noListsMessage = document.getElementById('no-lists-message'); // Use let
     const csrfToken = '{{ csrf_token }}';
 
-    // Function to display messages (success/error)
-    function displayMessage(message, type) {
+    // --- Function to display messages (success/error/info) ---
+    function displayMessage(message, type = 'error') {
         const messageDiv = document.createElement('div');
         messageDiv.textContent = message;
-        let bgColor = 'bg-red-600'; // Default error
+        let bgColor = 'bg-red-600';
         if (type === 'success') bgColor = 'bg-green-600';
         if (type === 'info') bgColor = 'bg-blue-600';
         messageDiv.className = `p-3 rounded-md text-center text-sm font-medium ${bgColor} text-white`;
-
-        messageContainer.innerHTML = ''; // Clear previous messages
+        messageContainer.innerHTML = '';
         messageContainer.appendChild(messageDiv);
-
-        // Auto-remove message after 3 seconds
         setTimeout(() => {
             messageDiv.style.transition = 'opacity 0.5s ease';
             messageDiv.style.opacity = '0';
@@ -95,74 +92,134 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 3000);
     }
 
-    // Function to add a new list item to the page
+    // --- Function to add a new list item to the page ---
     function addListToPage(listData) {
-        // Remove the "no lists yet" message if it exists
+        noListsMessage = document.getElementById('no-lists-message'); // Re-check if it exists
         if (noListsMessage) {
             noListsMessage.remove();
+            noListsMessage = null; // Ensure it's nullified
         }
 
         const listItemDiv = document.createElement('div');
         listItemDiv.className = 'user-list-item flex items-center justify-between p-4 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors';
         listItemDiv.dataset.listId = listData.id;
 
-        // Construct detail URL (needs careful escaping if name has special chars, but usually okay)
-        const detailUrl = `/list/${listData.id}/`; // Simpler than reverse engineering Django's url tag here
+        const detailUrl = `/list/${listData.id}/`;
         const deleteUrl = `/list/${listData.id}/delete/`;
+        // Escape the list name properly for JS confirm dialog and HTML attribute
+        const escapedListName = listData.name.replace(/'/g, "\\'").replace(/"/g, "&quot;");
+
 
         listItemDiv.innerHTML = `
             <a href="${detailUrl}" class="font-semibold text-lg text-indigo-300 hover:text-indigo-100 flex-grow mr-4 list-name">
-                ${ listData.name } {# Use textContent or proper escaping if names can contain HTML #}
+                ${ listData.name } {# Display raw name here #}
             </a>
-            <form class="delete-list-form" action="${deleteUrl}" method="POST" onsubmit="return confirm('Are you sure you want to delete the list \\'${listData.name.replace(/'/g, "\\'")}\\'? This action cannot be undone.');">
-                <input type="hidden" name="csrfmiddlewaretoken" value="${csrfToken}">
-                <button type="submit" class="text-red-500 hover:text-red-400 text-lg" title="Delete List">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </form>
+            <button type="button" class="delete-list-btn text-red-500 hover:text-red-400 text-lg"
+                    data-list-id="${listData.id}"
+                    data-list-name="${escapedListName}"
+                    data-delete-url="${deleteUrl}"
+                    title="Delete List">
+                <i class="fas fa-trash"></i>
+            </button>
         `;
-        listsContainer.appendChild(listItemDiv); // Add to the container
+        listsContainer.appendChild(listItemDiv);
+
+        // --- Attach listener to the new delete button ---
+        const newDeleteBtn = listItemDiv.querySelector('.delete-list-btn');
+        if (newDeleteBtn) {
+            newDeleteBtn.addEventListener('click', handleDeleteListClick);
+        }
     }
 
-    // Handle the create list form submission
+    // --- Handler for creating a new list (AJAX) ---
     createListForm.addEventListener('submit', async function(event) {
-        event.preventDefault(); // Stop default browser submission
-        nameErrorsDiv.textContent = ''; // Clear previous errors
-        messageContainer.innerHTML = ''; // Clear previous messages
-
+        event.preventDefault();
+        nameErrorsDiv.textContent = '';
+        messageContainer.innerHTML = '';
         const formData = new FormData(createListForm);
 
         try {
             const response = await fetch(createListForm.action, {
                 method: 'POST',
+                headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
+                body: formData
+            });
+            const data = await response.json();
+            if (response.ok && data.success) {
+                displayMessage(data.message, 'success');
+                addListToPage(data.list); // Add visually
+                nameInput.value = '';
+            } else {
+                displayMessage(data.error || 'Could not create list.', 'error');
+                if (data.error && data.error.includes("name")) {
+                     nameErrorsDiv.textContent = data.error;
+                }
+            }
+        } catch (error) {
+            displayMessage('An unexpected error occurred.', 'error');
+        }
+    });
+
+    // --- NEW: Handler for deleting a list (AJAX) ---
+    async function handleListDelete(buttonElement) {
+        const listId = buttonElement.dataset.listId;
+        const listName = buttonElement.dataset.listName; // Use the escaped name for confirm
+        const deleteUrl = buttonElement.dataset.deleteUrl;
+
+        if (!listId || !deleteUrl) return;
+
+        // Use the potentially escaped listName in the confirm dialog
+        if (!confirm(`Are you sure you want to delete the list '${listName}'? This action cannot be undone.`)) {
+            return;
+        }
+
+        try {
+            const response = await fetch(deleteUrl, {
+                method: 'POST', // Still POST for deletion via URL pattern
                 headers: {
                     'X-CSRFToken': csrfToken,
-                    'X-Requested-With': 'XMLHttpRequest' // Often helpful for Django views
-                },
-                body: formData
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+                // No body needed if ID is in URL
             });
 
             const data = await response.json();
 
             if (response.ok && data.success) {
-                displayMessage(data.message, 'success');
-                addListToPage(data.list); // Add the new list visually
-                nameInput.value = ''; // Clear the input field
-            } else {
-                // Display error from JSON response
-                displayMessage(data.error || 'Could not create list.', 'error');
-                // Optionally highlight the input field or show specific field error
-                if (data.error && data.error.includes("name")) { // Basic check
-                     nameErrorsDiv.textContent = data.error;
+                const listItemElement = buttonElement.closest('.user-list-item');
+                if (listItemElement) {
+                    listItemElement.remove(); // Remove visually
+                    displayMessage(data.message || 'List deleted successfully.', 'success');
+
+                    // Check if the container is now empty
+                    noListsMessage = document.getElementById('no-lists-message'); // Re-check
+                    if (!listsContainer.querySelector('.user-list-item') && !noListsMessage) {
+                        const p = document.createElement('p');
+                        p.id = 'no-lists-message';
+                        p.className = 'text-gray-400 text-center py-4';
+                        p.textContent = "You haven't created any custom lists yet.";
+                        listsContainer.appendChild(p);
+                    }
                 }
+            } else {
+                 displayMessage(data.error || 'Failed to delete list.', 'error');
             }
         } catch (error) {
-            console.error("Form submission error:", error);
-            displayMessage('An unexpected error occurred.', 'error');
+            console.error("List deletion error:", error);
+            displayMessage('An network error occurred while deleting.', 'error');
         }
+    }
+
+    // --- Helper function to attach listener ---
+    function handleDeleteListClick() {
+        handleListDelete(this); // 'this' is the button clicked
+    }
+
+    // --- Attach listeners to initial delete buttons ---
+    listsContainer.querySelectorAll('.delete-list-btn').forEach(button => {
+        button.addEventListener('click', handleDeleteListClick);
     });
 
-    // Note: The delete forms still use standard browser submission, which is fine for deletion.
 });
 </script>
 {% endblock %}

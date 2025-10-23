@@ -41,6 +41,11 @@
         }
         /* --- END ADDED --- */
 
+        /* --- ADDED FOR DROPDOWN --- */
+        .dropdown-menu { display: none; }
+        .dropdown.open .dropdown-menu { display: block; }
+        /* --- END ADDED --- */
+
         {% block style %}{% endblock %}
     </style>
 </head>
@@ -49,13 +54,13 @@
     <nav class="fixed top-0 left-0 right-0 z-50 bg-gray-900 border-b border-indigo-700 shadow-lg">
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16">
-                
+
+                {# --- Left Side: Logo, Feed, Discover --- #}
                 <div class="flex items-center space-x-8">
                     <a href="{% url 'roulette:roulette_view' %}" class="text-2xl font-bold text-white hover:text-indigo-400 transition-colors">
                         🎲 Roulette
                     </a>
                     <div class="hidden md:flex items-center space-x-6">
-                        <!-- --- ADDED FEED LINK --- -->
                         <a href="{% url 'roulette:feed' %}" class="text-gray-300 hover:text-white transition-colors text-sm font-semibold">
                             <i class="fas fa-users mr-1"></i> Feed
                         </a>
@@ -65,37 +70,56 @@
                     </div>
                 </div>
 
-                <div class="hidden md:flex items-center space-x-6">
+                {# --- Right Side: Search, User Actions/Auth --- #}
+                <div class="hidden md:flex items-center space-x-4"> {# Reduced spacing #}
                     <form action="{% url 'roulette:search_results' %}" method="GET" class="relative">
                         <input type="text" name="q" placeholder="Search..." class="bg-gray-800 border border-gray-700 rounded-full py-1 pl-4 pr-10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-48">
                         <button type="submit" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500">
                             <i class="fas fa-search"></i>
                         </button>
                     </form>
+
                     {% if user.is_authenticated %}
-                        <a href="{% url 'roulette:list_all' %}" class="text-gray-300 hover:text-white transition-colors flex items-center text-sm font-semibold">
-                        <i class="fas fa-list-ul mr-2"></i>My Lists
-                    </a>
-                        <a href="{% url 'roulette:user_profile' username=user.username %}" class="text-gray-300 hover:text-white transition-colors flex items-center text-sm font-semibold">
-                            <!-- --- ADDED PROFILE PIC --- -->
-                            <img src="{{ user.profile.image.url }}" class="w-6 h-6 rounded-full mr-2 object-cover">
-                            My Profile
+                        {# --- Notifications Icon with Badge --- #}
+                         <a href="{% url 'roulette:notifications' %}" class="relative text-gray-300 hover:text-white transition-colors text-lg" title="Notifications">
+                            <i class="fas fa-bell"></i>
+                            {% if unread_notifications_count > 0 %}
+                            <span class="absolute -top-1 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-xs font-bold text-white">
+                                {{ unread_notifications_count }}
+                            </span>
+                            {% endif %}
                         </a>
-                        <a href="{% url 'users:settings' %}" class="text-gray-300 hover:text-white transition-colors flex items-center text-sm font-semibold">
-                            <i class="fas fa-cog mr-2"></i>Settings
-                        </a>
-                        <form action="{% url 'users:logout' %}" method="post" class="inline">
-                            {% csrf_token %}
-                            <button type="submit" class="text-indigo-400 hover:text-white transition-colors bg-transparent border-none cursor-pointer text-sm font-semibold">
-                                <i class="fas fa-sign-out-alt mr-1"></i>Logout
+                        {# --- End Notifications Icon --- #}
+
+                        {# --- User Dropdown --- #}
+                        <div class="relative dropdown">
+                            <button id="user-menu-button" type="button" class="flex items-center text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-indigo-500" aria-expanded="false" aria-haspopup="true">
+                                <span class="sr-only">Open user menu</span>
+                                <img src="{{ user.profile.image.url }}" class="w-8 h-8 rounded-full object-cover">
                             </button>
-                        </form>
+
+                            <div id="user-menu" class="dropdown-menu origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-gray-800 ring-1 ring-black ring-opacity-5 focus:outline-none" role="menu" aria-orientation="vertical" aria-labelledby="user-menu-button" tabindex="-1">
+                                <a href="{% url 'roulette:user_profile' username=user.username %}" class="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white" role="menuitem" tabindex="-1">My Profile</a>
+                                <a href="{% url 'roulette:list_all' %}" class="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white" role="menuitem" tabindex="-1">My Lists</a>
+                                <a href="{% url 'users:account_settings' %}" class="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white" role="menuitem" tabindex="-1">Account Settings</a>
+                                <form action="{% url 'users:logout' %}" method="post" class="inline">
+                                    {% csrf_token %}
+                                    <button type="submit" class="block w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white" role="menuitem" tabindex="-1">
+                                        Logout
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                        {# --- End User Dropdown --- #}
+
                     {% else %}
+                        {# --- Auth Links --- #}
                         <a href="{% url 'users:login' %}" class="text-gray-300 hover:text-white transition-colors text-sm font-semibold">Log In</a>
                         <a href="{% url 'users:signup' %}" class="bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors text-sm font-semibold">Sign Up</a>
                     {% endif %}
                 </div>
 
+                {# --- Mobile Menu Button --- #}
                 <div class="md:hidden flex items-center">
                     <button id="mobile-menu-button" class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 focus:outline-none">
                         <i class="fas fa-bars text-2xl"></i>
@@ -104,37 +128,34 @@
             </div>
         </div>
 
+        {# --- Mobile Menu --- #}
         <div id="mobile-menu" class="hidden md:hidden">
             <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
                 <form action="{% url 'roulette:search_results' %}" method="GET" class="relative mb-2 px-2">
-                    <input type="text" name="q" placeholder="Search movies, shows, users..." class="bg-gray-800 border border-gray-700 rounded-full w-full py-2 pl-4 pr-10 text-white placeholder-gray-500">
+                    <input type="text" name="q" placeholder="Search..." class="bg-gray-800 border border-gray-700 rounded-full w-full py-2 pl-4 pr-10 text-white placeholder-gray-500">
                     <button type="submit" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500">
                         <i class="fas fa-search"></i>
                     </button>
                 </form>
-                <!-- --- ADDED FEED LINK (Mobile) --- -->
-                <a href="{% url 'roulette:feed' %}" class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium">
-                    <i class="fas fa-users mr-2"></i> Feed
-                </a>
-                <a href="{% url 'roulette:discover' %}" class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium">
-                    <i class="fas fa-search mr-2"></i> Discover
-                </a>
+                <a href="{% url 'roulette:feed' %}" class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium"><i class="fas fa-users mr-2"></i> Feed</a>
+                <a href="{% url 'roulette:discover' %}" class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium"><i class="fas fa-search mr-2"></i> Discover</a>
                 {% if user.is_authenticated %}
-                    <a href="{% url 'roulette:list_all' %}" class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium">
-                        <i class="fas fa-list-ul mr-2"></i>My Lists
+                    {# --- Mobile Notifications Link with Badge --- #}
+                    <a href="{% url 'roulette:notifications' %}" class="relative text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium">
+                        <i class="fas fa-bell mr-2"></i>Notifications
+                        {% if unread_notifications_count > 0 %}
+                        <span class="absolute top-1 right-2 ml-2 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 bg-red-600 rounded-full">
+                             {{ unread_notifications_count }}
+                        </span>
+                        {% endif %}
                     </a>
-                    <a href="{% url 'roulette:user_profile' username=user.username %}" class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium">
-                        <img src="{{ user.profile.image.url }}" class="w-6 h-6 rounded-full mr-2 object-cover inline-block">
-                        My Profile
-                    </a>
-                    <a href="{% url 'users:settings' %}" class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium">
-                        <i class="fas fa-cog mr-2"></i> Settings
-                    </a>
+                    {# --- End Mobile Notifications Link --- #}
+                    <a href="{% url 'roulette:list_all' %}" class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium"><i class="fas fa-list-ul mr-2"></i>My Lists</a>
+                    <a href="{% url 'roulette:user_profile' username=user.username %}" class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium"><img src="{{ user.profile.image.url }}" class="w-6 h-6 rounded-full mr-2 object-cover inline-block">My Profile</a>
+                    <a href="{% url 'users:account_settings' %}" class="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white" role="menuitem" tabindex="-1">Account Settings</a>
                     <form action="{% url 'users:logout' %}" method="post">
                         {% csrf_token %}
-                        <button type="submit" class="text-gray-300 hover:bg-gray-700 hover:text-white block w-full text-left px-3 py-2 rounded-md text-base font-medium">
-                            <i class="fas fa-sign-out-alt mr-2"></i> Logout
-                        </button>
+                        <button type="submit" class="text-gray-300 hover:bg-gray-700 hover:text-white block w-full text-left px-3 py-2 rounded-md text-base font-medium"><i class="fas fa-sign-out-alt mr-2"></i> Logout</button>
                     </form>
                 {% else %}
                     <a href="{% url 'users:login' %}" class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium">Log In</a>
@@ -145,7 +166,6 @@
     </nav>
 
     <main class="w-full max-w-4xl pt-20">
-        <!-- --- ADDED MESSAGES FRAMEWORK --- -->
         {% if messages %}
             <div class="mb-6 space-y-2">
                 {% for message in messages %}
@@ -158,21 +178,49 @@
                 {% endfor %}
             </div>
         {% endif %}
-        <!-- --- END MESSAGES --- -->
-
         {% block content %}
         {% endblock %}
     </main>
-    
+
     {% block scripts %}
         <script>
             document.addEventListener('DOMContentLoaded', function() {
+                // --- Mobile Menu Toggle ---
                 const menuButton = document.getElementById('mobile-menu-button');
                 const mobileMenu = document.getElementById('mobile-menu');
+                if (menuButton && mobileMenu) {
+                    menuButton.addEventListener('click', function() {
+                        mobileMenu.classList.toggle('hidden');
+                    });
+                }
 
-                menuButton.addEventListener('click', function() {
-                    mobileMenu.classList.toggle('hidden');
-                });
+                // --- User Dropdown Toggle ---
+                const userMenuButton = document.getElementById('user-menu-button');
+                const userMenu = document.getElementById('user-menu');
+                const dropdownDiv = userMenuButton ? userMenuButton.closest('.dropdown') : null;
+
+                if (userMenuButton && userMenu && dropdownDiv) {
+                    userMenuButton.addEventListener('click', function(event) {
+                        event.stopPropagation();
+                        dropdownDiv.classList.toggle('open');
+                        const isExpanded = userMenuButton.getAttribute('aria-expanded') === 'true';
+                        userMenuButton.setAttribute('aria-expanded', !isExpanded);
+                    });
+
+                    document.addEventListener('click', function(event) {
+                        if (!dropdownDiv.contains(event.target) && dropdownDiv.classList.contains('open')) {
+                            dropdownDiv.classList.remove('open');
+                            userMenuButton.setAttribute('aria-expanded', 'false');
+                        }
+                    });
+
+                     document.addEventListener('keydown', function(event) {
+                         if (event.key === 'Escape' && dropdownDiv.classList.contains('open')) {
+                             dropdownDiv.classList.remove('open');
+                             userMenuButton.setAttribute('aria-expanded', 'false');
+                         }
+                    });
+                }
             });
         </script>
     {% endblock %}

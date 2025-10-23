@@ -10,7 +10,7 @@ from django.conf import settings
 import requests
 from django.contrib.contenttypes.models import ContentType
 from .forms import UserListForm, ReviewForm, CommentForm # Add CommentForm
-from .models import UserContent, UserFollow, UserList, UserReview, Comment, Like # Add Comment, Like
+from .models import Notification, UserContent, UserFollow, UserList, UserReview, Comment, Like # Add Comment, Like
 import random
 # --- Import ReviewForm and UserReview ---
 from django.contrib.auth import get_user_model
@@ -366,22 +366,44 @@ def toggle_follow(request):
     followed_user_id = request.POST.get('user_id')
     User = get_user_model()
     followed_user = get_object_or_404(User, id=followed_user_id)
+    follower_user = request.user # Clarify variable name
 
-    if request.user == followed_user:
+    if follower_user == followed_user:
         return JsonResponse({'success': False, 'error': 'Cannot follow yourself.'}, status=400)
 
-    try:
-        follow_instance = UserFollow.objects.get(follower=request.user, followed=followed_user)
+    follow_instance = UserFollow.objects.filter(follower=follower_user, followed=followed_user).first() # Use filter().first()
+
+    if follow_instance:
         follow_instance.delete()
-        # --- UPDATED: 'is_following' added ---
         message = f"Unfollowed {followed_user.username}."
         is_following = False
-    except UserFollow.DoesNotExist:
-        UserFollow.objects.create(follower=request.user, followed=followed_user)
+        # Optionally delete the follow notification if you want unfollows to remove it
+        Notification.objects.filter(recipient=followed_user, actor=follower_user, verb='followed you').delete()
+    else:
+        UserFollow.objects.create(follower=follower_user, followed=followed_user)
         message = f"Now following {followed_user.username}!"
         is_following = True
+        # --- Create Notification ---
+        if follower_user != followed_user: # Don't notify yourself
+            Notification.objects.create(
+                recipient=followed_user,
+                actor=follower_user,
+                verb='followed you'
+                # No target needed for a follow action
+            )
+        # --- End Notification ---
 
-    return JsonResponse({'success': True, 'message': message, 'is_following': is_following})
+    # Get updated counts (optional but good practice if needed by JS)
+    followers_count = followed_user.followers.count()
+    following_count = follower_user.following.count()
+
+    return JsonResponse({
+        'success': True,
+        'message': message,
+        'is_following': is_following,
+        'followers_count': followers_count, # Pass counts back
+        'following_count': following_count
+    })
 
 @login_required
 def get_random_content(request):
@@ -688,12 +710,26 @@ def list_detail_view(request, list_id):
 @login_required
 @require_POST # Use POST for deletion to prevent accidental deletion via GET
 def delete_list_view(request, list_id):
-    """Deletes a custom list."""
-    user_list = get_object_or_404(UserList, id=list_id, user=request.user) # Ensure user owns list
-    list_name = user_list.name
-    user_list.delete()
-    messages.success(request, f"List '{list_name}' deleted successfully.")
-    return redirect('roulette:list_all')
+    """Deletes a custom list. Handles AJAX."""
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+    user_list = get_object_or_404(UserList, id=list_id, user=request.user)
+    list_name = user_list.name # Get name before deleting
+
+    try:
+        user_list.delete()
+        success_message = f"List '{list_name}' deleted successfully."
+        if is_ajax:
+            return JsonResponse({'success': True, 'message': success_message})
+        else:
+            messages.success(request, success_message)
+            return redirect('roulette:list_all')
+    except Exception as e:
+        error_message = f"An error occurred while deleting list: {e}"
+        if is_ajax:
+            return JsonResponse({'success': False, 'error': error_message}, status=500)
+        else:
+            messages.error(request, error_message)
+            return redirect('roulette:list_all')
 
 @login_required
 @require_POST
@@ -758,7 +794,7 @@ def remove_from_custom_list_view(request):
 @login_required
 @require_POST
 def add_comment_view(request):
-    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest' # Check if AJAX
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
 
     form = CommentForm(request.POST)
     content_type_id = request.POST.get('content_type_id')
@@ -767,7 +803,7 @@ def add_comment_view(request):
     if form.is_valid() and content_type_id and object_id:
         try:
             content_type = ContentType.objects.get_for_id(content_type_id)
-            # Optional content type checking here...
+            target_object = content_type.get_object_for_this_type(pk=object_id) # Get the target
 
             comment = form.save(commit=False)
             comment.user = request.user
@@ -775,52 +811,56 @@ def add_comment_view(request):
             comment.object_id = object_id
             comment.save()
 
+            # --- Create Notification ---
+            recipient = None
+            if hasattr(target_object, 'user'):
+                recipient = target_object.user
+                if recipient != request.user: # Don't notify yourself
+                    Notification.objects.create(
+                        recipient=recipient,
+                        actor=request.user,
+                        verb='commented on',
+                        target_content_type=content_type,
+                        target_object_id=object_id
+                        # Optional: You could add the comment itself as an 'action_object'
+                        # using another GenericForeignKey on the Notification model if needed.
+                    )
+            # --- End Notification ---
+
             if is_ajax:
-                # Render the single comment template fragment
                 comment_html = render_to_string(
                     'roulette/_comment.html',
-                    {'comment': comment, 'request': request} # Pass request for user check in fragment
+                    {'comment': comment, 'request': request}
                 )
                 return JsonResponse({'success': True, 'comment_html': comment_html})
             else:
                 messages.success(request, "Comment added.")
-                # Non-AJAX fallback redirect
-                return redirect(request.POST.get('next', 'roulette:feed')) # Use 'next' if provided, else feed
+                return redirect(request.POST.get('next', 'roulette:feed'))
 
+        # ... (rest of the error handling remains the same) ...
         except (ContentType.DoesNotExist, ValueError) as e:
             error_msg = f"Could not add comment: Invalid target. {e}"
-            if is_ajax:
-                return JsonResponse({'success': False, 'error': error_msg}, status=400)
-            else:
-                messages.error(request, error_msg)
+            if is_ajax: return JsonResponse({'success': False, 'error': error_msg}, status=400)
+            else: messages.error(request, error_msg)
         except Exception as e:
-            error_msg = f"An unexpected error occurred: {e}"
-            if is_ajax:
-                return JsonResponse({'success': False, 'error': error_msg}, status=500)
-            else:
-                messages.error(request, error_msg)
+             # Try to get the target object's class name for better error logging
+             target_model_name = "Unknown"
+             try:
+                 target_model_name = content_type.model_class().__name__ if content_type else "Unknown ContentType"
+             except: pass # Ignore errors during error reporting
+             error_msg = f"An unexpected error occurred processing comment on {target_model_name} ID {object_id}: {e}"
+             print(f"ERROR in add_comment_view: {error_msg}") # Log detailed error
+             if is_ajax: return JsonResponse({'success': False, 'error': "An unexpected error occurred."}, status=500) # Generic error to user
+             else: messages.error(request, "An unexpected error occurred.")
+
+    # ... (rest of the non-valid form handling remains the same) ...
     else:
-        # Form is invalid or missing IDs
         error_msg = "Could not add comment."
-        if not content_type_id or not object_id:
-            error_msg = "Missing target information."
-        elif form.errors:
-             # Make form errors JSON serializable for AJAX response
-             form_errors = {field: [e for e in errors] for field, errors in form.errors.items()}
-             error_msg = f"Please correct the errors below."
+        if not content_type_id or not object_id: error_msg = "Missing target information."
+        elif form.errors: error_msg = f"Please correct the errors below."
+        if is_ajax: return JsonResponse({'success': False,'error': error_msg, 'form_errors': form.errors if form.errors else None}, status=400)
+        else: messages.error(request, error_msg)
 
-        if is_ajax:
-            return JsonResponse({
-                'success': False,
-                'error': error_msg,
-                'form_errors': form.errors if form.errors else None # Send specific field errors
-            }, status=400)
-        else:
-            messages.error(request, error_msg)
-            # You might want to re-render the feed page with the invalid form here for non-AJAX
-            # This part is slightly trickier without AJAX, often just redirecting is simpler.
-
-    # Default fallback redirect for non-AJAX errors
     return redirect(request.POST.get('next', 'roulette:feed'))
 
 # --- NEW VIEW FOR TOGGLING LIKES (AJAX) ---
@@ -835,10 +875,7 @@ def toggle_like_view(request):
 
     try:
         content_type = ContentType.objects.get_for_id(content_type_id)
-        # Optional: Check if the content_type is one we allow likes on
-        # target_model = content_type.model_class()
-        # if target_model not in [UserReview, UserContent]:
-        #     raise ValueError("Invalid content type for likes")
+        target_object = content_type.get_object_for_this_type(pk=object_id) # Get the actual object
 
         like_obj, created = Like.objects.get_or_create(
             user=request.user,
@@ -847,12 +884,35 @@ def toggle_like_view(request):
         )
 
         user_liked = True
+        recipient = None # Define recipient outside the if/else
+
         if not created:
-            # If get_or_create found an existing like, delete it (unlike)
+            # Unlike: Delete the like and potentially the notification
             like_obj.delete()
             user_liked = False
+            # Find and delete the corresponding notification
+            Notification.objects.filter(
+                # recipient should be the owner of the target_object
+                actor=request.user,
+                verb='liked',
+                target_content_type=content_type,
+                target_object_id=object_id
+            ).delete()
+        else:
+            # Like: Create the notification
+            user_liked = True
+            # Determine the recipient (owner of the review or list item)
+            if hasattr(target_object, 'user'):
+                recipient = target_object.user
+                if recipient != request.user: # Don't notify yourself
+                     Notification.objects.create(
+                        recipient=recipient,
+                        actor=request.user,
+                        verb='liked',
+                        target_content_type=content_type,
+                        target_object_id=object_id
+                    )
 
-        # Get the new total like count for this item
         like_count = Like.objects.filter(
             content_type=content_type,
             object_id=object_id
@@ -862,9 +922,7 @@ def toggle_like_view(request):
 
     except ContentType.DoesNotExist:
         return JsonResponse({'success': False, 'error': 'Invalid content type'}, status=400)
-    except ValueError:
-         return JsonResponse({'success': False, 'error': 'Invalid object ID'}, status=400)
-    except Exception as e:
+    except Exception as e: # Catch potential errors getting target_object
          return JsonResponse({'success': False, 'error': f'An error occurred: {e}'}, status=500)
      
 @login_required
@@ -899,3 +957,18 @@ def delete_comment_view(request, comment_id):
         else:
             messages.error(request, error_msg)
             return redirect(request.POST.get('next', 'roulette:feed'))
+        
+@login_required
+def notifications_view(request):
+    """Displays notifications for the logged-in user and marks them as read."""
+    # Fetch notifications first
+    notifications = request.user.notifications.all() # Or Notification.objects.filter(recipient=request.user)
+
+    # Mark unread notifications as read *after* fetching them for display
+    unread_notifications = notifications.filter(read=False)
+    unread_notifications.update(read=True) # Update the 'read' status in the database
+
+    context = {
+        'notifications': notifications # Pass the original queryset to the template
+    }
+    return render(request, 'roulette/notifications.html', context)

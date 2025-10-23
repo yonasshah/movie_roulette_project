@@ -6,6 +6,7 @@ from django.db.models.signals import post_save
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.core.validators import MinValueValidator, MaxValueValidator
+from django.utils import timezone
 
 
 class UserList(models.Model):
@@ -149,3 +150,30 @@ class Like(models.Model):
 
     def __str__(self):
         return f'Like by {self.user.username} on {self.content_object}'
+    
+class Notification(models.Model):
+    # User who should receive the notification
+    recipient = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='notifications', on_delete=models.CASCADE)
+    # User who performed the action (optional, e.g., system notifications might not have an actor)
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='actions', on_delete=models.CASCADE, null=True, blank=True)
+    # Verb describing the action (e.g., 'liked', 'commented on', 'followed')
+    verb = models.CharField(max_length=255)
+    # The object that was acted upon (optional, e.g., a review, a list item, or None for a follow)
+    target_content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, null=True, blank=True, related_name='target_notifications')
+    target_object_id = models.PositiveIntegerField(null=True, blank=True)
+    target = GenericForeignKey('target_content_type', 'target_object_id')
+    # Timestamp of the action
+    timestamp = models.DateTimeField(default=timezone.now) # Use timezone.now
+    # Read status
+    read = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ['-timestamp'] # Show newest first
+
+    def __str__(self):
+        if self.target:
+            return f'{self.actor} {self.verb} {self.target} ({self.recipient})'
+        elif self.actor:
+             return f'{self.actor} {self.verb} ({self.recipient})'
+        else:
+             return f'{self.verb} ({self.recipient})'
