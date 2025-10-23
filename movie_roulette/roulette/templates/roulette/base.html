@@ -141,6 +141,8 @@
                 <a href="{% url 'roulette:discover' %}" class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium"><i class="fas fa-search mr-2"></i> Discover</a>
                 {% if user.is_authenticated %}
                     {# --- Mobile Notifications Link with Badge --- #}
+                    {# --- End Mobile Notifications Link --- #}
+                    <a href="{% url 'roulette:list_all' %}" class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium"><i class="fas fa-list-ul mr-2"></i>My Lists</a>
                     <a href="{% url 'roulette:notifications' %}" class="relative text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium">
                         <i class="fas fa-bell mr-2"></i>Notifications
                         {% if unread_notifications_count > 0 %}
@@ -149,8 +151,6 @@
                         </span>
                         {% endif %}
                     </a>
-                    {# --- End Mobile Notifications Link --- #}
-                    <a href="{% url 'roulette:list_all' %}" class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium"><i class="fas fa-list-ul mr-2"></i>My Lists</a>
                     <a href="{% url 'roulette:user_profile' username=user.username %}" class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium"><img src="{{ user.profile.image.url }}" class="w-6 h-6 rounded-full mr-2 object-cover inline-block">My Profile</a>
                     <a href="{% url 'users:account_settings' %}" class="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white" role="menuitem" tabindex="-1">Account Settings</a>
                     <form action="{% url 'users:logout' %}" method="post">
