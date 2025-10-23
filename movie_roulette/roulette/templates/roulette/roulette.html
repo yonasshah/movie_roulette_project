@@ -27,7 +27,7 @@
 
 {% block content %}
         <div class="bg-gray-800 p-6 rounded-lg mb-6"> {% comment %} Removed data- attributes {% endcomment %}
-            
+
             <div class="flex items-center justify-center mb-6">
                 <label class="toggle-label">
                     <input type="checkbox" id="content-type-toggle" checked>
@@ -43,7 +43,7 @@
                     <i class="fas fa-filter mr-3 text-indigo-400"></i>
                     Filter Options
                 </summary>
-                
+
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4 p-2">
                     <div>
                         <label for="region-select" class="block text-sm font-medium text-gray-300 mb-1">Region</label>
@@ -90,22 +90,56 @@
         </div>
 
         <div id="movie-result" class="movie-card rounded-lg overflow-hidden shadow-2xl max-w-3xl mx-auto"></div>
-        
+
         <div class="mt-8 max-w-3xl mx-auto">
             <div class="flex border-b border-gray-700">
-                <div id="tab-favorites" class="tab py-2 px-6 font-semibold active">Favorites</div>
                 <div id="tab-watchlist" class="tab text-gray-400 py-2 px-6 font-semibold">Watchlist</div>
+                <div id="tab-favorites" class="tab py-2 px-6 font-semibold active">Favorites</div>
                 <div id="tab-history" class="tab text-gray-400 py-2 px-6 font-semibold">History</div>
             </div>
             <div id="favorites-content" class="py-4"></div>
-            <div id="watchlist-content" class="py-4 hidden"></div> 
+            <div id="watchlist-content" class="py-4 hidden"></div>
             <div id="history-content" class="py-4 hidden"></div>
         </div>
+
+        {# --- MODIFIED MODAL STRUCTURE --- #}
+        <div id="add-to-list-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden px-4">
+            <div class="bg-gray-800 p-6 rounded-lg shadow-xl max-w-sm w-full border border-gray-700">
+                <h3 class="text-xl font-semibold mb-5 text-white border-b border-gray-700 pb-3">Add to Custom List</h3>
+
+                {% comment %} Existing Lists Section {% endcomment %}
+                <div class="mb-5">
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Select an existing list:</label>
+                    <div id="custom-lists-container" class="custom-scrollbar space-y-2 max-h-40 overflow-y-auto border border-gray-600 bg-gray-900 rounded p-2">
+                        <p class="text-gray-400 text-sm p-2">Loading lists...</p>
+                    </div>
+                </div>
+
+                {% comment %} Create New List Section {% endcomment %}
+                <div class="mb-5 pt-5 border-t border-gray-700">
+                     <label for="new-list-name-input" class="block text-sm font-medium text-gray-300 mb-2">Or create a new list:</label>
+                     <div class="flex items-center space-x-2">
+                         <input type="text" id="new-list-name-input" placeholder="New list name..."
+                                class="flex-grow px-3 py-2 border border-gray-600 bg-gray-900 rounded-md placeholder-gray-500 text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                         <button id="create-and-add-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded text-sm whitespace-nowrap">
+                             Create & Add
+                         </button>
+                     </div>
+                </div>
+
+                {% comment %} Messages and Cancel Button {% endcomment %}
+                <div id="modal-message-container" class="mb-4 text-sm min-h-[20px]"></div>
+                <div class="flex justify-end pt-4 border-t border-gray-700">
+                    <button id="cancel-add-to-list" class="bg-transparent border border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white font-bold py-2 px-4 rounded text-sm transition-colors">Cancel</button>
+                </div>
+            </div>
+        </div>
+        {# --- END MODAL --- #}
 {% endblock %}
-    
+
 {% block scripts %}
     {{ block.super }} {# This includes the mobile menu script from base.html #}
-    
+
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             // Put all variables and functions back inside this script tag
@@ -121,21 +155,30 @@
             const yearSelect = document.getElementById('year-select');
             const yearLabel = document.getElementById('year-label');
             const tabFavorites = document.getElementById('tab-favorites');
-            const tabWatchlist = document.getElementById('tab-watchlist'); 
+            const tabWatchlist = document.getElementById('tab-watchlist');
             const tabHistory = document.getElementById('tab-history');
             const favoritesContent = document.getElementById('favorites-content');
-            const watchlistContent = document.getElementById('watchlist-content'); 
+            const watchlistContent = document.getElementById('watchlist-content');
             const historyContent = document.getElementById('history-content');
-            let currentContent = null;
+            let currentContent = null; // Holds the data for the currently displayed movie/show
 
             const ratingSelect = document.getElementById('rating-select');
             const ratingLabel = document.getElementById('rating-label');
             const regionSelect = document.getElementById('region-select');
 
+            // --- ADDED Modal variables ---
+            const modal = document.getElementById('add-to-list-modal');
+            const cancelBtn = document.getElementById('cancel-add-to-list');
+            const listsContainer = document.getElementById('custom-lists-container');
+            const modalMessageContainer = document.getElementById('modal-message-container');
+            const newListNameInput = document.getElementById('new-list-name-input'); // New input
+            const createAndAddBtn = document.getElementById('create-and-add-btn'); // New button
+            // --- END ADDED ---
+
             async function fetchWithAuth(url, options = {}) {
                 const response = await fetch(url, options);
                 if (response.status === 403) {
-                    window.location.href = "{% url 'users:login' %}?next={{ request.path }}"; 
+                    window.location.href = "{% url 'users:login' %}?next={{ request.path }}";
                 }
                 return response;
             }
@@ -148,11 +191,11 @@
                 const contentType = contentTypeToggle.checked ? 'movie' : 'tv';
                 const region = regionSelect.value;
                 const genre = genreSelect.value;
-                
+
                 const selectedPlatforms = Array.from(platformSelect.querySelectorAll('input[name="platform"]:checked'))
                                              .map(cb => cb.value)
                                              .join('|');
-                
+
                 const year = yearSelect.value;
                 const rating = ratingSelect.value;
 
@@ -165,7 +208,7 @@
                         throw new Error(errorData.error || 'Failed to fetch content.');
                     }
                     const data = await response.json();
-                    currentContent = data;
+                    currentContent = data; // Store the current content data globally
                     displayContent(data);
                     updateUserLists();
                 } catch (error) {
@@ -177,7 +220,7 @@
                     spinBtn.disabled = false;
                 }
             }
-            
+
             async function fetchGenres() { // Reverted fetchGenres
                 const contentType = contentTypeToggle.checked ? 'movie' : 'tv';
                 try {
@@ -191,8 +234,8 @@
                     }
                 } catch (error) { console.error("Failed to fetch genres:", error); }
             }
-            
-            async function updateUserLists() { // Updated for Watchlist
+
+            async function updateUserLists() { // Updated for Watchlist and Custom Lists
                 const tmdbId = currentContent ? currentContent.id : null;
                 const contentType = currentContent ? currentContent.content_type : null;
 
@@ -201,17 +244,17 @@
                 if (!response.ok) return;
 
                 const data = await response.json();
-                renderList(data.favorites, favoritesContent, 'favorite'); 
-                renderList(data.watchlist, watchlistContent, 'watchlist'); 
-                renderList(data.history, historyContent, false); 
-                
+                renderList(data.favorites, favoritesContent, 'favorite');
+                renderList(data.watchlist, watchlistContent, 'watchlist');
+                renderList(data.history, historyContent, false);
+
                 if (currentContent) {
                     updateLikeButton(data.is_favorite);
-                    updateWatchlistButton(data.is_watchlist); 
+                    updateWatchlistButton(data.is_watchlist);
                 }
             }
 
-            function displayContent(content) { // Updated for Watchlist button
+            function displayContent(content) { // Updated for Add to List button
                 const isMovie = content.content_type === 'movie';
                 const title = isMovie ? content.title : content.name;
                 const releaseDate = isMovie ? content.release_date : content.first_air_date;
@@ -219,10 +262,10 @@
 
                 const posterUrl = content.poster_path ? `https://image.tmdb.org/t/p/w500${content.poster_path}` : 'https://placehold.co/500x750/1f2937/374151?text=No+Poster';
                 const trailer = content.videos?.results?.find(v => v.site === 'YouTube' && v.type === 'Trailer');
-                
+
                 const region = regionSelect.value;
                 const providers = content['watch/providers']?.results?.[region]?.flatrate?.map(p => `<img src="https://image.tmdb.org/t/p/w92${p.logo_path}" title="${p.provider_name}" class="w-10 h-10 rounded-md">`).join('') || `<p class="text-sm text-gray-500">Not available for streaming in ${region}.</p>`;
-                
+
                 movieResult.innerHTML = `
                     <div class="md:flex">
                         <img class="w-full h-96 md:h-auto md:w-64 object-cover" src="${posterUrl}">
@@ -241,6 +284,10 @@
                                 <div class="flex items-center space-x-3 mb-6">${providers}</div>
                                 <div class="flex items-center space-x-4">
                                     <a href="${trailer ? `https://www.youtube.com/watch?v=${trailer.key}` : '#'}" target="_blank" class="flex-1 bg-red-600 text-white text-center font-bold py-3 px-4 rounded-lg ${!trailer && 'opacity-50 cursor-not-allowed'}"><i class="fab fa-youtube mr-2"></i>Watch Trailer</a>
+
+                                    {# --- ADDED "Add to List" button --- #}
+                                    <button id="add-to-list-btn" class="text-2xl text-gray-400 hover:text-green-500" title="Add to Custom List"><i class="fas fa-plus-circle"></i></button>
+
                                     <button id="watchlist-btn" class="text-2xl text-gray-400 hover:text-indigo-400"><i class="fas fa-bookmark"></i></button>
                                     <button id="like-btn" class="text-2xl text-gray-400 hover:text-red-500"><i class="fas fa-heart"></i></button>
                                     <button id="spin-again-btn" class="text-2xl text-gray-400 hover:text-indigo-400"><i class="fas fa-redo"></i></button>
@@ -248,14 +295,18 @@
                             </div>
                         </div>
                     </div>`;
-                
+
                 movieResult.classList.add('show');
+                // --- Added listener for add-to-list-btn ---
+                const addBtn = document.getElementById('add-to-list-btn');
+                if (addBtn) addBtn.addEventListener('click', openAddToListModal);
+                // --- End Added ---
                 document.getElementById('spin-again-btn').addEventListener('click', spinRoulette);
-                document.getElementById('like-btn').addEventListener('click', () => toggleList('favorite', false)); 
-                document.getElementById('watchlist-btn').addEventListener('click', () => toggleList('watchlist', false)) 
+                document.getElementById('like-btn').addEventListener('click', () => toggleList('favorite', false));
+                document.getElementById('watchlist-btn').addEventListener('click', () => toggleList('watchlist', false))
             }
 
-            function renderList(items, container, listType) { // Updated for Watchlist
+            function renderList(items, container, listType) { // Updated for Watchlist remove button
                 let emptyMessage = 'No spin history yet.';
                 if (listType === 'favorite') emptyMessage = 'No favorites yet.';
                 if (listType === 'watchlist') emptyMessage = 'No items in watchlist yet.';
@@ -269,7 +320,7 @@
                 items.forEach(item => {
                     const el = document.createElement('div');
                     el.className = 'flex items-center p-2 rounded-lg hover:bg-gray-800';
-                    
+
                     let removeButton = '';
                     if (listType === 'favorite') {
                         removeButton = `<button data-tmdb-id="${item.tmdb_id}" data-content-type="${item.content_type}" class="remove-favorite-btn text-red-500 text-lg"><i class="fas fa-trash"></i></button>`;
@@ -298,39 +349,44 @@
                 }
             }
 
-            function updateWatchlistButton(isWatchlist) { // Added for Watchlist
+            function updateWatchlistButton(isWatchlist) {
                 const watchlistBtnIcon = document.querySelector('#watchlist-btn i');
                 if (watchlistBtnIcon) {
                     watchlistBtnIcon.parentElement.classList.toggle('text-indigo-400', isWatchlist);
                     watchlistBtnIcon.parentElement.classList.toggle('text-gray-400', !isWatchlist);
                 }
             }
-            
+
             async function toggleList(listType, isRemove = false, tmdbId = null, contentType = null) { // Updated for Watchlist
                 const idToToggle = isRemove ? tmdbId : currentContent?.id;
                 if (!idToToggle) return;
 
                 const formData = new FormData();
                 formData.append('tmdb_id', idToToggle);
-                
+
                 let url = '';
 
+                // --- Use currentContent for adding, parameters for removing ---
                 if (isRemove) {
                     formData.append('content_type', contentType.toLowerCase());
-                } else {
+                } else if (currentContent) { // Ensure currentContent exists before accessing properties
                     const isMovie = currentContent.content_type === 'movie';
                     const releaseDate = isMovie ? currentContent.release_date : currentContent.first_air_date;
-                    
+
                     formData.append('content_type', currentContent.content_type);
                     formData.append('title', isMovie ? currentContent.title : currentContent.name);
                     formData.append('poster_path', currentContent.poster_path || '');
                     formData.append('release_year', releaseDate ? new Date(releaseDate).getFullYear() : 'N/A');
-                }
-                
-                if (listType === 'favorite') {
-                    url = `{% url 'roulette:toggle_favorite' %}`; 
                 } else {
-                    url = `{% url 'roulette:toggle_watchlist' %}`; 
+                    console.error("Cannot add to list: currentContent is not defined.");
+                    return; // Stop if there's no current content to add
+                }
+                // --- End logic change ---
+
+                if (listType === 'favorite') {
+                    url = `{% url 'roulette:toggle_favorite' %}`;
+                } else {
+                    url = `{% url 'roulette:toggle_watchlist' %}`;
                 }
 
                 const response = await fetchWithAuth(url, {
@@ -346,13 +402,151 @@
                     }
                 }
             }
-            
-            document.body.addEventListener('click', function(event) { // Updated for Watchlist
+
+            // --- ADDED FUNCTIONS FOR CUSTOM LIST MODAL ---
+            function openAddToListModal() {
+                if (!currentContent) { // Don't open if no movie is displayed
+                     alert("Please spin first to get a movie or show.");
+                     return;
+                }
+                newListNameInput.value = ''; // Clear input field
+                modal.classList.remove('hidden');
+                loadUserLists();
+            }
+
+            function closeAddToListModal() {
+                modal.classList.add('hidden');
+                listsContainer.innerHTML = '<p class="text-gray-400">Loading lists...</p>';
+                modalMessageContainer.innerHTML = '';
+            }
+
+            async function loadUserLists() {
+                 try {
+                    const response = await fetch("{% url 'roulette:get_user_lists' %}"); // Fetch lists
+                    if (!response.ok) throw new Error('Failed to fetch lists');
+                    const data = await response.json();
+                    const customLists = data.custom_lists || [];
+
+                    listsContainer.innerHTML = '';
+                    if (customLists.length === 0) {
+                        listsContainer.innerHTML = '<p class="text-gray-400">You have no custom lists. <a href="{% url "roulette:list_all" %}" class="text-indigo-400 hover:underline">Create one?</a></p>';
+                    } else {
+                        customLists.forEach(list => {
+                            const button = document.createElement('button');
+                            button.textContent = list.name;
+                            button.dataset.listId = list.id;
+                            button.className = 'w-full text-left p-2 rounded hover:bg-gray-700 transition-colors';
+                            button.addEventListener('click', () => addItemToCustomList(list.id, list.name));
+                            listsContainer.appendChild(button);
+                        });
+                    }
+                } catch (error) {
+                    console.error("Error loading lists:", error);
+                    listsContainer.innerHTML = '<p class="text-red-400">Could not load your lists.</p>';
+                }
+            }
+
+            async function addItemToCustomList(listId, listName) {
+                 if (!currentContent) {
+                     displayModalMessage('No movie/show selected.', false);
+                     return;
+                 }
+                const formData = new FormData();
+                formData.append('list_id', listId);
+                // --- Use global currentContent object ---
+                const isMovie = currentContent.content_type === 'movie';
+                const releaseDate = isMovie ? currentContent.release_date : currentContent.first_air_date;
+                const title = isMovie ? currentContent.title : currentContent.name; // Handle TV shows having 'name'
+
+                formData.append('tmdb_id', currentContent.id);
+                formData.append('content_type', currentContent.content_type);
+                formData.append('title', title); // Use correct title/name
+                formData.append('poster_path', currentContent.poster_path || '');
+                formData.append('release_year', releaseDate ? new Date(releaseDate).getFullYear() : 'N/A');
+                // --- End using global currentContent ---
+
+                try {
+                    displayModalMessage(`Adding '${title}' to '${listName}'...`, 'info'); // Show adding message
+
+                    const response = await fetch("{% url 'roulette:list_add_item' %}", { // Call the add item API
+                        method: 'POST',
+                        headers: { 'X-CSRFToken': csrfToken },
+                        body: formData,
+                    });
+                    const data = await response.json();
+                    displayModalMessage(data.message || data.error || 'An unknown error occurred.', data.success);
+                    if (data.success) {
+                        setTimeout(closeAddToListModal, 1500);
+                    }
+                } catch (error) {
+                    console.error("Error adding item:", error);
+                    displayModalMessage('A network error occurred while adding the item.', false);
+                }
+            }
+
+            // --- ADDED function to create list then add item ---
+            async function createNewListAndAdd() {
+                const newName = newListNameInput.value.trim();
+                if (!newName) {
+                    displayModalMessage('Please enter a name for the new list.', false);
+                    return;
+                }
+
+                // Check currentContent exists (should already be checked by openAddToListModal)
+                if (!currentContent) {
+                     displayModalMessage('Could not find content details to add.', false);
+                     return;
+                }
+
+                displayModalMessage('Creating list...', 'info');
+
+                const createFormData = new FormData();
+                createFormData.append('name', newName);
+
+                try {
+                    const createResponse = await fetch("{% url 'roulette:list_create' %}", {
+                        method: 'POST',
+                        headers: { 'X-CSRFToken': csrfToken },
+                        body: createFormData,
+                    });
+                    const createData = await createResponse.json();
+
+                    if (!createResponse.ok || !createData.success) {
+                        throw new Error(createData.error || 'Failed to create list.');
+                    }
+
+                    // If list created, add the item using the new list's ID
+                    displayModalMessage(createData.message + ' Now adding item...', 'success');
+                    await addItemToCustomList(createData.list.id, createData.list.name);
+
+                } catch (error) {
+                    console.error("Error creating list:", error);
+                    displayModalMessage(error.message || 'Could not create the list.', false);
+                }
+            }
+
+             // --- Updated displayModalMessage ---
+             function displayModalMessage(message, type) { // type can be 'success', 'error', or 'info'
+                modalMessageContainer.innerHTML = '';
+                const messageDiv = document.createElement('div');
+                messageDiv.textContent = message;
+                let bgColor = 'bg-red-600'; // Default error
+                if (type === 'success') {
+                    bgColor = 'bg-green-600';
+                } else if (type === 'info') {
+                    bgColor = 'bg-blue-600'; // Added info style
+                }
+                messageDiv.className = `p-2 rounded text-center text-sm ${bgColor} text-white`;
+                modalMessageContainer.appendChild(messageDiv);
+            }
+            // --- END ADDED FUNCTIONS ---
+
+            document.body.addEventListener('click', function(event) { // Updated for Watchlist remove
                 const removeFavBtn = event.target.closest('.remove-favorite-btn');
                 if (removeFavBtn) {
                     const tmdbId = removeFavBtn.dataset.tmdbId;
                     const contentType = removeFavBtn.dataset.contentType;
-                    toggleList('favorite', true, tmdbId, contentType); 
+                    toggleList('favorite', true, tmdbId, contentType);
                 }
 
                 const removeWatchBtn = event.target.closest('.remove-watchlist-btn');
@@ -388,7 +582,7 @@
                     historyContent.classList.remove('hidden');
                 }
             }
-            
+
             // --- Event Listeners ---
             yearSelect.addEventListener('input', () => yearLabel.textContent = `After ${yearSelect.value}`);
             ratingSelect.addEventListener('input', () => {
@@ -397,9 +591,27 @@
 
             spinBtn.addEventListener('click', spinRoulette);
             tabFavorites.addEventListener('click', () => switchTab('favorites'));
-            tabWatchlist.addEventListener('click', () => switchTab('watchlist')); // <-- Added
+            tabWatchlist.addEventListener('click', () => switchTab('watchlist'));
             tabHistory.addEventListener('click', () => switchTab('history'));
             contentTypeToggle.addEventListener('change', fetchGenres);
+
+            // --- ADDED Listeners for modal ---
+            if (cancelBtn) {
+                cancelBtn.addEventListener('click', closeAddToListModal);
+            }
+            // --- ADDED Listener for Create & Add button ---
+            if (createAndAddBtn) {
+                 createAndAddBtn.addEventListener('click', createNewListAndAdd);
+            }
+            // --- END ADDED ---
+            if (modal) {
+                modal.addEventListener('click', function(event) {
+                    if (event.target === modal) {
+                        closeAddToListModal();
+                    }
+                });
+            }
+            // --- END ADDED ---
 
             // --- Initial calls ---
             fetchGenres();

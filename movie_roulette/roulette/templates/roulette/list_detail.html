@@ -1,0 +1,129 @@
+{% extends 'roulette/base.html' %}
+
+{% block title %}{{ list.name }}{% endblock %}
+
+{% block content %}
+<div class="bg-gray-800 p-8 rounded-lg shadow-2xl max-w-5xl mx-auto">
+
+    <div class="flex items-center justify-between border-b border-gray-700 pb-4 mb-6">
+        <h2 class="text-3xl font-extrabold text-white">
+            <i class="fas fa-list-ul mr-3 text-indigo-400"></i>{{ list.name }}
+        </h2>
+        <a href="{% url 'roulette:list_all' %}" class="text-indigo-400 hover:text-indigo-300 text-sm font-semibold">
+            &larr; Back to All Lists
+        </a>
+    </div>
+
+    {% comment %} Display Messages (e.g., after removing an item) {% endcomment %}
+     <div id="message-container" class="mb-4 space-y-2">
+         {% comment %} JavaScript will insert messages here {% endcomment %}
+     </div>
+
+    {% comment %} Display List Items {% endcomment %}
+    <div id="list-items-container" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
+        {% for item in items %}
+            <div class="bg-gray-700 rounded-lg shadow-lg overflow-hidden group relative">
+                <a href="{% url 'roulette:content_detail' content_type=item.content_type|lower tmdb_id=item.tmdb_id %}">
+                    {% if item.poster_path %}
+                        <img src="https://image.tmdb.org/t/p/w342{{ item.poster_path }}" alt="Poster for {{ item.title }}" class="w-full object-cover transform group-hover:scale-105 transition-transform duration-200" style="aspect-ratio: 2/3;">
+                    {% else %}
+                        <div class="w-full h-full bg-gray-900 flex items-center justify-center transform group-hover:scale-105 transition-transform duration-200" style="aspect-ratio: 2/3;">
+                            <span class="text-gray-500 text-xs text-center p-2">{{ item.title }}</span>
+                        </div>
+                    {% endif %}
+                </a>
+                {% comment %} Remove Button - positioned over the poster {% endcomment %}
+                <button
+                    class="remove-item-btn absolute top-1 right-1 bg-red-600 bg-opacity-80 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:bg-opacity-100"
+                    data-item-id="{{ item.id }}"
+                    data-item-title="{{ item.title|escapejs }}"
+                    title="Remove from list">
+                    <i class="fas fa-times text-xs"></i>
+                </button>
+            </div>
+        {% empty %}
+            <p class="text-center text-gray-500 col-span-full py-8">This list is empty.</p>
+        {% endfor %}
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ block.super }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const csrfToken = '{{ csrf_token }}';
+    const itemsContainer = document.getElementById('list-items-container');
+    const messageContainer = document.getElementById('message-container');
+
+    async function removeItemFromList(itemId, itemTitle) {
+        if (!confirm(`Are you sure you want to remove '${itemTitle}' from this list?`)) {
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('item_id', itemId);
+
+        try {
+            const response = await fetch("{% url 'roulette:list_remove_item' %}", {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrfToken },
+                body: formData,
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                // Remove the item visually
+                const itemElement = document.querySelector(`.remove-item-btn[data-item-id="${itemId}"]`).closest('.group');
+                if (itemElement) {
+                    itemElement.remove();
+                }
+                 // Check if container is now empty
+                if (!itemsContainer.querySelector('.group')) {
+                    itemsContainer.innerHTML = '<p class="text-center text-gray-500 col-span-full py-8">This list is empty.</p>';
+                }
+                // Show success message
+                displayMessage(data.message, 'success');
+
+            } else {
+                // Show error message
+                 displayMessage(data.error || 'Failed to remove item.', 'error');
+            }
+        } catch (error) {
+            console.error("Error removing item:", error);
+            displayMessage('An network error occurred.', 'error');
+        }
+    }
+
+    function displayMessage(message, type) {
+        const messageDiv = document.createElement('div');
+        messageDiv.textContent = message;
+        messageDiv.className = `p-3 rounded-md text-center text-sm font-medium ${type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`;
+        
+        // Clear previous messages and add new one
+        messageContainer.innerHTML = '';
+        messageContainer.appendChild(messageDiv);
+
+        // Optional: fade out message after a few seconds
+        setTimeout(() => {
+            messageDiv.style.transition = 'opacity 0.5s ease';
+            messageDiv.style.opacity = '0';
+            setTimeout(() => messageDiv.remove(), 500);
+        }, 3000);
+    }
+
+    // Add event listener for remove buttons
+    itemsContainer.addEventListener('click', function(event) {
+        const removeButton = event.target.closest('.remove-item-btn');
+        if (removeButton) {
+            const itemId = removeButton.dataset.itemId;
+            const itemTitle = removeButton.dataset.itemTitle;
+            removeItemFromList(itemId, itemTitle);
+        }
+    });
+
+});
+</script>
+{% endblock %}

@@ -54,7 +54,11 @@
                     <a href="{% if trailer_key %}https://www.youtube.com/watch?v={{ trailer_key }}{% else %}'#'{% endif %}" target="_blank" class="flex-1 bg-red-600 text-white text-center font-bold py-3 px-4 rounded-lg {% if not trailer_key %}opacity-50 cursor-not-allowed{% endif %}">
                         <i class="fab fa-youtube mr-2"></i>Watch Trailer
                     </a>
-                    
+
+                    <button id="add-to-list-btn" class="text-3xl text-gray-400 hover:text-green-500 transition-colors" title="Add to Custom List">
+                        <i class="fas fa-plus-circle"></i>
+                    </button>
+
                     <button id="watchlist-btn" class="text-3xl hover:text-indigo-400 transition-colors {% if is_watchlist %}text-indigo-400{% else %}text-gray-400{% endif %}">
                         <i class="fas fa-bookmark"></i>
                     </button>
@@ -66,6 +70,41 @@
             </div>
         </div>
     </div>
+</div> {# End of main content div #}
+
+{# --- MODIFIED MODAL STRUCTURE --- #}
+<div id="add-to-list-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden px-4">
+    <div class="bg-gray-800 p-6 rounded-lg shadow-xl max-w-sm w-full border border-gray-700">
+        <h3 class="text-xl font-semibold mb-5 text-white border-b border-gray-700 pb-3">Add to Custom List</h3>
+
+        {% comment %} Existing Lists Section {% endcomment %}
+        <div class="mb-5">
+            <label class="block text-sm font-medium text-gray-300 mb-2">Select an existing list:</label>
+            {# --- Added custom-scrollbar class --- #}
+            <div id="custom-lists-container" class="custom-scrollbar space-y-2 max-h-40 overflow-y-auto border border-gray-600 bg-gray-900 rounded p-2">
+                <p class="text-gray-400 text-sm p-2">Loading lists...</p> {% comment %} Updated text style {% endcomment %}
+            </div>
+        </div>
+
+        {% comment %} Create New List Section {% endcomment %}
+        <div class="mb-5 pt-5 border-t border-gray-700">
+             <label for="new-list-name-input" class="block text-sm font-medium text-gray-300 mb-2">Or create a new list:</label>
+             <div class="flex items-center space-x-2">
+                 <input type="text" id="new-list-name-input" placeholder="New list name..."
+                        class="flex-grow px-3 py-2 border border-gray-600 bg-gray-900 rounded-md placeholder-gray-500 text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                 <button id="create-and-add-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded text-sm whitespace-nowrap">
+                     Create & Add
+                 </button>
+             </div>
+        </div>
+
+        {% comment %} Messages and Cancel Button {% endcomment %}
+        <div id="modal-message-container" class="mb-4 text-sm min-h-[20px]"></div> {# Added min-height #}
+        <div class="flex justify-end pt-4 border-t border-gray-700">
+            {# --- MODIFIED BUTTON --- #}
+            <button id="cancel-add-to-list" class="bg-transparent border border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white font-bold py-2 px-5 rounded text-sm transition-colors">Cancel</button>
+        </div>
+    </div>
 </div>
 {% endblock %}
 
@@ -74,17 +113,33 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const likeBtn = document.getElementById('like-btn');
-    const watchlistBtn = document.getElementById('watchlist-btn'); // <-- ADDED
-    const csrfToken = '{{ csrf_token }}';
+    const watchlistBtn = document.getElementById('watchlist-btn');
+    // --- ADDED THESE ---
+    const addToListBtn = document.getElementById('add-to-list-btn');
+    const modal = document.getElementById('add-to-list-modal');
+    const cancelBtn = document.getElementById('cancel-add-to-list');
+    const listsContainer = document.getElementById('custom-lists-container');
+    const modalMessageContainer = document.getElementById('modal-message-container');
+    const newListNameInput = document.getElementById('new-list-name-input'); // New input
+    const createAndAddBtn = document.getElementById('create-and-add-btn'); // New button
+    // --- END ADDED ---
 
-    // This function now handles both lists
+    const csrfToken = '{{ csrf_token }}';
+    const contentInfo = {
+        tmdb_id: '{{ content.id }}',
+        content_type: '{{ content_type }}',
+        title: `{% if content_type == 'movie' %}{{ content.title|escapejs }}{% else %}{{ content.name|escapejs }}{% endif %}`,
+        poster_path: '{{ content.poster_path }}',
+        release_year: `{% if content_type == 'movie' %}{{ content.release_date|slice:":4" }}{% else %}{{ content.first_air_date|slice:":4" }}{% endif %}`
+    };
+
     async function toggleList(listType) {
         const formData = new FormData();
-        formData.append('tmdb_id', '{{ content.id }}');
-        formData.append('content_type', '{{ content_type }}');
-        formData.append('title', `{% if content_type == 'movie' %}{{ content.title|escapejs }}{% else %}{{ content.name|escapejs }}{% endif %}`);
-        formData.append('poster_path', '{{ content.poster_path }}');
-        formData.append('release_year', `{% if content_type == 'movie' %}{{ content.release_date|slice:":4" }}{% else %}{{ content.first_air_date|slice:":4" }}{% endif %}`);
+        formData.append('tmdb_id', contentInfo.tmdb_id);
+        formData.append('content_type', contentInfo.content_type);
+        formData.append('title', contentInfo.title);
+        formData.append('poster_path', contentInfo.poster_path);
+        formData.append('release_year', contentInfo.release_year);
 
         let url = '';
         if (listType === 'favorite') {
@@ -102,7 +157,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (response.ok) {
             const data = await response.json();
             if (data.success) {
-                // Check which button to update
                 if (data.hasOwnProperty('is_favorite')) {
                     likeBtn.classList.toggle('text-red-500', data.is_favorite);
                     likeBtn.classList.toggle('text-gray-400', !data.is_favorite);
@@ -115,12 +169,150 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // --- ADDED FUNCTIONS FOR CUSTOM LIST MODAL ---
+    function openAddToListModal() {
+        newListNameInput.value = ''; // Clear input field
+        modal.classList.remove('hidden');
+        loadUserLists();
+    }
+
+    function closeAddToListModal() {
+        modal.classList.add('hidden');
+        listsContainer.innerHTML = '<p class="text-gray-400">Loading lists...</p>';
+        modalMessageContainer.innerHTML = '';
+    }
+
+    async function loadUserLists() {
+        try {
+            const response = await fetch("{% url 'roulette:get_user_lists' %}");
+            if (!response.ok) throw new Error('Failed to fetch lists');
+            const data = await response.json();
+            const customLists = data.custom_lists || [];
+
+            listsContainer.innerHTML = '';
+            if (customLists.length === 0) {
+                listsContainer.innerHTML = '<p class="text-gray-400">You have no custom lists yet.</p>'; // Removed link for simplicity in modal
+            } else {
+                customLists.forEach(list => {
+                    const button = document.createElement('button');
+                    button.textContent = list.name;
+                    button.dataset.listId = list.id;
+                    button.className = 'w-full text-left p-2 rounded hover:bg-gray-700 transition-colors';
+                    button.addEventListener('click', () => addItemToCustomList(list.id, list.name));
+                    listsContainer.appendChild(button);
+                });
+            }
+        } catch (error) {
+            console.error("Error loading lists:", error);
+            listsContainer.innerHTML = '<p class="text-red-400">Could not load your lists.</p>';
+        }
+    }
+
+    async function addItemToCustomList(listId, listName) {
+        const formData = new FormData();
+        formData.append('list_id', listId);
+        formData.append('tmdb_id', contentInfo.tmdb_id);
+        formData.append('content_type', contentInfo.content_type);
+        formData.append('title', contentInfo.title);
+        formData.append('poster_path', contentInfo.poster_path);
+        formData.append('release_year', contentInfo.release_year);
+
+        try {
+            displayModalMessage(`Adding '${contentInfo.title}' to '${listName}'...`, 'info'); // Show adding message
+
+            const response = await fetch("{% url 'roulette:list_add_item' %}", {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrfToken },
+                body: formData,
+            });
+            const data = await response.json();
+            displayModalMessage(data.message || data.error || 'An unknown error occurred.', data.success);
+            if (data.success) {
+                setTimeout(closeAddToListModal, 1500);
+            }
+        } catch (error) {
+            console.error("Error adding item:", error);
+            displayModalMessage('A network error occurred while adding the item.', false);
+        }
+    }
+
+    // --- ADDED function to create list then add item ---
+    async function createNewListAndAdd() {
+        const newName = newListNameInput.value.trim();
+        if (!newName) {
+            displayModalMessage('Please enter a name for the new list.', false);
+            return;
+        }
+
+        displayModalMessage('Creating list...', 'info');
+
+        const createFormData = new FormData();
+        createFormData.append('name', newName);
+
+        try {
+            const createResponse = await fetch("{% url 'roulette:list_create' %}", {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrfToken },
+                body: createFormData,
+            });
+            const createData = await createResponse.json();
+
+            if (!createResponse.ok || !createData.success) {
+                // Use error message from view if available
+                throw new Error(createData.error || 'Failed to create list.');
+            }
+
+            // If list created, add the item using the new list's ID
+            displayModalMessage(createData.message + ' Now adding item...', 'success');
+            await addItemToCustomList(createData.list.id, createData.list.name);
+
+        } catch (error) {
+            console.error("Error creating list:", error);
+            // Display specific error message (like duplicate name) or generic one
+            displayModalMessage(error.message || 'Could not create the list.', false);
+        }
+    }
+
+    // Updated displayModalMessage
+     function displayModalMessage(message, type) { // type can be 'success', 'error', or 'info'
+        modalMessageContainer.innerHTML = '';
+        const messageDiv = document.createElement('div');
+        messageDiv.textContent = message;
+        let bgColor = 'bg-red-600'; // Default error
+        if (type === 'success') {
+            bgColor = 'bg-green-600';
+        } else if (type === 'info') {
+            bgColor = 'bg-blue-600';
+        }
+        messageDiv.className = `p-2 rounded text-center text-sm ${bgColor} text-white`;
+        modalMessageContainer.appendChild(messageDiv);
+    }
+    // --- END ADDED FUNCTIONS ---
+
+    // --- ADDED LISTENERS ---
     if (likeBtn) {
-        likeBtn.addEventListener('click', () => toggleList('favorite')); // <-- UPDATED
+        likeBtn.addEventListener('click', () => toggleList('favorite'));
     }
     if (watchlistBtn) {
-        watchlistBtn.addEventListener('click', () => toggleList('watchlist')); // <-- ADDED
+        watchlistBtn.addEventListener('click', () => toggleList('watchlist'));
     }
+    if (addToListBtn) {
+        addToListBtn.addEventListener('click', openAddToListModal);
+    }
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', closeAddToListModal);
+    }
+    if (createAndAddBtn) { // Listener for the new button
+        createAndAddBtn.addEventListener('click', createNewListAndAdd);
+    }
+    if (modal) {
+        modal.addEventListener('click', function(event) {
+            if (event.target === modal) {
+                closeAddToListModal();
+            }
+        });
+    }
+    // --- END ADDED LISTENERS ---
 });
 </script>
 {% endblock %}

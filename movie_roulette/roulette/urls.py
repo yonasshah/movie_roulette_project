@@ -14,4 +14,10 @@ urlpatterns = [
     path('user/<str:username>/', views.user_profile_view, name='user_profile'),
     path('search/', views.search_view, name='search_results'),
     path('content/<str:content_type>/<int:tmdb_id>/', views.content_detail_view, name='content_detail'),
+    path('lists/', views.list_all_lists_view, name='list_all'),        # Page to view/create lists
+    path('lists/create/', views.create_list_view, name='list_create'),  # Handles list creation form POST
+    path('list/<int:list_id>/', views.list_detail_view, name='list_detail'), # View items in a specific list
+    path('list/<int:list_id>/delete/', views.delete_list_view, name='list_delete'), # Handles list deletion
+    path('list/add-item/', views.add_to_custom_list_view, name='list_add_item'), # API endpoint to add item
+    path('list/remove-item/', views.remove_from_custom_list_view, name='list_remove_item'), # API endpoint to remove item
 ]

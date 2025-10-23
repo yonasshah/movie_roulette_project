@@ -1,13 +1,17 @@
-from django.shortcuts import get_object_or_404, render
+from django.contrib import messages
+from django.shortcuts import get_object_or_404, redirect, render
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
 from django.conf import settings
 import requests
 import random
-from .models import UserContent, UserFollow
+from .forms import UserListForm
+from .models import UserContent, UserFollow, UserList
 from django.contrib.auth import get_user_model
 from django.db.models import Q, Count
+from django.db import IntegrityError # To handle duplicate list names
+from django.urls import reverse # For redirects
 
 # This view is responsible for showing the main page of your app.
 @login_required
@@ -254,30 +258,33 @@ def get_user_lists(request):
     favorites = UserContent.objects.filter(user=request.user, list_type=UserContent.ListType.FAVORITE)
     history = UserContent.objects.filter(user=request.user, list_type=UserContent.ListType.HISTORY)
     watchlist = UserContent.objects.filter(user=request.user, list_type=UserContent.ListType.WATCHLIST)
+    
+    # --- ADD THIS ---
+    custom_lists = UserList.objects.filter(user=request.user).values('id', 'name') # Get IDs and names
 
     tmdb_id = request.GET.get('tmdb_id')
     content_type_str = request.GET.get('content_type')
-
+    
     is_favorite = False
-    is_watchlist = False # Initialize here
+    is_watchlist = False 
     if tmdb_id and content_type_str:
-        try:
-            tmdb_id_int = int(tmdb_id)
+        try: 
+            tmdb_id_int = int(tmdb_id) 
             model_content_type = UserContent.ContentType.MOVIE if content_type_str == 'movie' else UserContent.ContentType.TV
             is_favorite = favorites.filter(tmdb_id=tmdb_id_int, content_type=model_content_type).exists()
-            # This check is crucial for both issues:
-            is_watchlist = watchlist.filter(tmdb_id=tmdb_id_int, content_type=model_content_type).exists()
+            is_watchlist = watchlist.filter(tmdb_id=tmdb_id_int, content_type=model_content_type).exists() 
         except ValueError:
-            pass # Ignore if tmdb_id is not a number
+            pass 
 
     return JsonResponse({
         'favorites': list(favorites.values('tmdb_id', 'title', 'poster_path', 'release_year', 'content_type')),
         'history': list(history.values('tmdb_id', 'title', 'poster_path', 'release_year', 'content_type')),
-        # Ensure watchlist data is returned:
-        'watchlist': list(watchlist.values('tmdb_id', 'title', 'poster_path', 'release_year', 'content_type')),
+        'watchlist': list(watchlist.values('tmdb_id', 'title', 'poster_path', 'release_year', 'content_type')), 
+        # --- ADD CUSTOM LISTS TO RESPONSE ---
+        'custom_lists': list(custom_lists), 
+        # --- END ADD ---
         'is_favorite': is_favorite,
-        # Ensure watchlist status is returned:
-        'is_watchlist': is_watchlist,
+        'is_watchlist': is_watchlist, 
     })
 
 # --- FIXED toggle_favorite VIEW ---
@@ -406,3 +413,130 @@ def search_view(request):
         'query': query,
     }
     return render(request, 'roulette/search_results.html', context)
+
+@login_required
+def list_all_lists_view(request):
+    """Displays all custom lists for the logged-in user and a form to create new lists."""
+    user_lists = UserList.objects.filter(user=request.user)
+    form = UserListForm()
+    context = {
+        'lists': user_lists,
+        'form': form,
+    }
+    return render(request, 'roulette/list_all.html', context)
+
+@login_required
+@require_POST # This view only handles form submission
+def create_list_view(request):
+    """Handles the creation of a new custom list. Returns JSON."""
+    form = UserListForm(request.POST)
+    if form.is_valid():
+        try:
+            new_list = form.save(commit=False)
+            new_list.user = request.user
+            new_list.save()
+            # Return success and the new list's info
+            return JsonResponse({
+                'success': True,
+                'message': f"List '{new_list.name}' created.",
+                'list': {'id': new_list.id, 'name': new_list.name} # Send back new list data
+            })
+        except IntegrityError:
+            # Return error for duplicate name
+            return JsonResponse({
+                'success': False,
+                'error': f"You already have a list named '{form.cleaned_data['name']}'."
+            }, status=400) # Use 400 Bad Request status
+    else:
+        # Return error for invalid form data
+        error_message = "Could not create list. "
+        for field, errors in form.errors.items():
+             error_message += f"{field}: {', '.join(errors)} "
+        return JsonResponse({'success': False, 'error': error_message.strip()}, status=400)
+
+@login_required
+def list_detail_view(request, list_id):
+    """Displays the items within a specific custom list."""
+    user_list = get_object_or_404(UserList, id=list_id, user=request.user) # Ensure user owns list
+
+    # Get items associated with this specific list
+    list_items = UserContent.objects.filter(
+        custom_list=user_list,
+        list_type=UserContent.ListType.CUSTOM 
+    ).order_by('-timestamp')
+
+    context = {
+        'list': user_list,
+        'items': list_items,
+    }
+    return render(request, 'roulette/list_detail.html', context)
+
+@login_required
+@require_POST # Use POST for deletion to prevent accidental deletion via GET
+def delete_list_view(request, list_id):
+    """Deletes a custom list."""
+    user_list = get_object_or_404(UserList, id=list_id, user=request.user) # Ensure user owns list
+    list_name = user_list.name
+    user_list.delete()
+    messages.success(request, f"List '{list_name}' deleted successfully.")
+    return redirect('roulette:list_all')
+
+@login_required
+@require_POST
+def add_to_custom_list_view(request):
+    """API endpoint to add a movie/show to a custom list."""
+    list_id = request.POST.get('list_id')
+    tmdb_id = request.POST.get('tmdb_id')
+    content_type_str = request.POST.get('content_type')
+    title = request.POST.get('title')
+    poster_path = request.POST.get('poster_path', '')
+    release_year = request.POST.get('release_year')
+
+    if not all([list_id, tmdb_id, content_type_str, title, release_year]):
+         return JsonResponse({'success': False, 'error': 'Missing required data.'}, status=400)
+
+    user_list = get_object_or_404(UserList, id=list_id, user=request.user)
+    model_content_type = UserContent.ContentType.MOVIE if content_type_str == 'movie' else UserContent.ContentType.TV
+
+    # Check if item already exists in this specific list
+    item_exists = UserContent.objects.filter(
+        user=request.user, 
+        tmdb_id=tmdb_id, 
+        content_type=model_content_type, 
+        list_type=UserContent.ListType.CUSTOM,
+        custom_list=user_list 
+    ).exists()
+
+    if item_exists:
+        return JsonResponse({'success': False, 'error': f"'{title}' is already in the list '{user_list.name}'."}, status=400)
+
+    # Create the item linked to the custom list
+    UserContent.objects.create(
+        user=request.user,
+        tmdb_id=tmdb_id,
+        list_type=UserContent.ListType.CUSTOM, # Set type to CUSTOM
+        custom_list=user_list, # Link to the UserList object
+        content_type=model_content_type,
+        title=title,
+        poster_path=poster_path,
+        release_year=release_year
+    )
+
+    return JsonResponse({'success': True, 'message': f"Added '{title}' to '{user_list.name}'."})
+
+@login_required
+@require_POST
+def remove_from_custom_list_view(request):
+    """API endpoint to remove an item from a custom list."""
+    item_id = request.POST.get('item_id') # We'll use the UserContent item's own ID
+
+    if not item_id:
+        return JsonResponse({'success': False, 'error': 'Missing item ID.'}, status=400)
+
+    list_item = get_object_or_404(UserContent, id=item_id, user=request.user, list_type=UserContent.ListType.CUSTOM)
+
+    list_name = list_item.custom_list.name # Get name before deleting
+    item_title = list_item.title
+    list_item.delete()
+
+    return JsonResponse({'success': True, 'message': f"Removed '{item_title}' from '{list_name}'."})

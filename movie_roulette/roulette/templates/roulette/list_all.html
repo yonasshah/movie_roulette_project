@@ -1,0 +1,168 @@
+{% extends 'roulette/base.html' %}
+
+{% block title %}My Custom Lists{% endblock %}
+
+{% block content %}
+<div class="bg-gray-800 p-8 rounded-lg shadow-2xl max-w-3xl mx-auto">
+    <h2 class="text-3xl font-extrabold text-white mb-6 border-b border-gray-700 pb-4">
+        <i class="fas fa-list-ul mr-3 text-indigo-400"></i>My Custom Lists
+    </h2>
+
+    {# --- ADDED ID for messages --- #}
+    <div id="message-container" class="mb-6 space-y-2">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="p-3 rounded-md text-center text-sm font-medium
+                            {% if message.tags == 'success' %}bg-green-600 text-white
+                            {% elif message.tags == 'error' %}bg-red-600 text-white
+                            {% else %}bg-blue-600 text-white{% endif %}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+
+    {# --- ADDED ID to form --- #}
+    <div class="mb-8 p-6 bg-gray-700 rounded-lg">
+        <h3 class="text-xl font-semibold text-white mb-4">Create a New List</h3>
+        <form id="create-list-form" action="{% url 'roulette:list_create' %}" method="POST" class="flex items-center space-x-3">
+            {% csrf_token %}
+            <div class="flex-grow">
+                {{ form.name }} {# Keep using the Django form field initially #}
+                <div id="form-name-errors" class="text-xs text-red-400 mt-1"></div> {# Div for JS errors #}
+            </div>
+            <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-5 rounded-md">
+                <i class="fas fa-plus mr-1"></i> Create
+            </button>
+        </form>
+    </div>
+
+    <div>
+        <h3 class="text-xl font-semibold text-white mb-4">Your Lists</h3>
+        {# --- ADDED ID to list container --- #}
+        <div id="user-lists-container" class="space-y-3">
+            {% for list in lists %}
+                <div class="user-list-item flex items-center justify-between p-4 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors" data-list-id="{{ list.id }}">
+                    <a href="{% url 'roulette:list_detail' list_id=list.id %}" class="font-semibold text-lg text-indigo-300 hover:text-indigo-100 flex-grow mr-4 list-name">
+                        {{ list.name }}
+                    </a>
+                    {# --- MODIFIED Delete form --- #}
+                    <form class="delete-list-form" action="{% url 'roulette:list_delete' list_id=list.id %}" method="POST" onsubmit="return confirm('Are you sure you want to delete the list \'{{ list.name|escapejs }}\'? This action cannot be undone.');">
+                        {% csrf_token %}
+                        <button type="submit" class="text-red-500 hover:text-red-400 text-lg" title="Delete List">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </form>
+                </div>
+            {% empty %}
+                <p id="no-lists-message" class="text-gray-400 text-center py-4">You haven't created any custom lists yet.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ block.super }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const createListForm = document.getElementById('create-list-form');
+    const nameInput = createListForm.querySelector('input[name="name"]'); // Get input by name
+    const nameErrorsDiv = document.getElementById('form-name-errors');
+    const messageContainer = document.getElementById('message-container');
+    const listsContainer = document.getElementById('user-lists-container');
+    const noListsMessage = document.getElementById('no-lists-message');
+    const csrfToken = '{{ csrf_token }}';
+
+    // Function to display messages (success/error)
+    function displayMessage(message, type) {
+        const messageDiv = document.createElement('div');
+        messageDiv.textContent = message;
+        let bgColor = 'bg-red-600'; // Default error
+        if (type === 'success') bgColor = 'bg-green-600';
+        if (type === 'info') bgColor = 'bg-blue-600';
+        messageDiv.className = `p-3 rounded-md text-center text-sm font-medium ${bgColor} text-white`;
+
+        messageContainer.innerHTML = ''; // Clear previous messages
+        messageContainer.appendChild(messageDiv);
+
+        // Auto-remove message after 3 seconds
+        setTimeout(() => {
+            messageDiv.style.transition = 'opacity 0.5s ease';
+            messageDiv.style.opacity = '0';
+            setTimeout(() => messageDiv.remove(), 500);
+        }, 3000);
+    }
+
+    // Function to add a new list item to the page
+    function addListToPage(listData) {
+        // Remove the "no lists yet" message if it exists
+        if (noListsMessage) {
+            noListsMessage.remove();
+        }
+
+        const listItemDiv = document.createElement('div');
+        listItemDiv.className = 'user-list-item flex items-center justify-between p-4 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors';
+        listItemDiv.dataset.listId = listData.id;
+
+        // Construct detail URL (needs careful escaping if name has special chars, but usually okay)
+        const detailUrl = `/list/${listData.id}/`; // Simpler than reverse engineering Django's url tag here
+        const deleteUrl = `/list/${listData.id}/delete/`;
+
+        listItemDiv.innerHTML = `
+            <a href="${detailUrl}" class="font-semibold text-lg text-indigo-300 hover:text-indigo-100 flex-grow mr-4 list-name">
+                ${ listData.name } {# Use textContent or proper escaping if names can contain HTML #}
+            </a>
+            <form class="delete-list-form" action="${deleteUrl}" method="POST" onsubmit="return confirm('Are you sure you want to delete the list \\'${listData.name.replace(/'/g, "\\'")}\\'? This action cannot be undone.');">
+                <input type="hidden" name="csrfmiddlewaretoken" value="${csrfToken}">
+                <button type="submit" class="text-red-500 hover:text-red-400 text-lg" title="Delete List">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </form>
+        `;
+        listsContainer.appendChild(listItemDiv); // Add to the container
+    }
+
+    // Handle the create list form submission
+    createListForm.addEventListener('submit', async function(event) {
+        event.preventDefault(); // Stop default browser submission
+        nameErrorsDiv.textContent = ''; // Clear previous errors
+        messageContainer.innerHTML = ''; // Clear previous messages
+
+        const formData = new FormData(createListForm);
+
+        try {
+            const response = await fetch(createListForm.action, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest' // Often helpful for Django views
+                },
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                displayMessage(data.message, 'success');
+                addListToPage(data.list); // Add the new list visually
+                nameInput.value = ''; // Clear the input field
+            } else {
+                // Display error from JSON response
+                displayMessage(data.error || 'Could not create list.', 'error');
+                // Optionally highlight the input field or show specific field error
+                if (data.error && data.error.includes("name")) { // Basic check
+                     nameErrorsDiv.textContent = data.error;
+                }
+            }
+        } catch (error) {
+            console.error("Form submission error:", error);
+            displayMessage('An unexpected error occurred.', 'error');
+        }
+    });
+
+    // Note: The delete forms still use standard browser submission, which is fine for deletion.
+});
+</script>
+{% endblock %}
