@@ -8,13 +8,19 @@
         <div class="border-b border-gray-700 pb-6 mb-6">
             <div class="flex items-start justify-between">
                 
-                <div class="flex flex-col space-y-2">
-                    <h2 class="text-4xl font-extrabold text-white">@{{ profile_user.username }}</h2>
-                    <div class="flex space-x-4 text-lg text-gray-400">
-                        <span id="followers-count" class="hover:text-white transition-colors cursor-default">{{ followers_count }} Followers</span>
-                        <span id="following-count" class="hover:text-white transition-colors cursor-default">{{ following_count }} Following</span>
+                <div class="flex items-start space-x-4">
+                    <!-- --- ADDED PROFILE PICTURE --- -->
+                    <img src="{{ profile_user.profile.image.url }}" class="w-24 h-24 rounded-full object-cover border-2 border-indigo-500" alt="{{ profile_user.username }}'s profile picture">
+                    
+                    <div class="flex flex-col space-y-2 pt-2">
+                        <h2 class="text-4xl font-extrabold text-white">@{{ profile_user.username }}</h2>
+                        <div class="flex space-x-4 text-lg text-gray-400">
+                            <span id="followers-count" class="hover:text-white transition-colors cursor-default">{{ followers_count }} Followers</span>
+                            <span id="following-count" class="hover:text-white transition-colors cursor-default">{{ following_count }} Following</span>
+                        </div>
                     </div>
                 </div>
+
                 {% if not is_owner %}
                     <div id="follow-container">
                         <button 
@@ -36,61 +42,102 @@
 
             {% if profile_user.profile.bio %}
                 <div class="mt-4 pt-4 border-t border-gray-700">
-                    <p class="text-gray-300">{{ profile_user.profile.bio }}</p>
+                    <p class="text-gray-300">{{ profile_user.profile.bio|linebreaksbr }}</p>
                 </div>
             {% endif %}
         </div>
 
-        <h3 class="text-2xl font-bold mb-4 text-indigo-400"><i class="fas fa-star mr-2"></i>Favorite Movies & Shows</h3>
-        
-        <div id="favorite-list-content" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
-            {% comment %} JavaScript will render favorites here using favorite-data {% endcomment %}
+        <!-- --- TABS FOR LISTS/REVIEWS --- -->
+        <div class="mb-6 border-b border-gray-700">
+            <nav class="flex space-x-6" aria-label="Tabs">
+                <button id="tab-favorites" class="tab-btn text-white border-b-2 border-indigo-500 py-3 px-1 text-lg font-medium">
+                    Favorites
+                </button>
+                <button id="tab-watchlist" class="tab-btn text-gray-400 border-b-2 border-transparent hover:border-gray-500 hover:text-gray-200 py-3 px-1 text-lg font-medium transition-colors">
+                    Watchlist
+                </button>
+                <button id="tab-reviews" class="tab-btn text-gray-400 border-b-2 border-transparent hover:border-gray-500 hover:text-gray-200 py-3 px-1 text-lg font-medium transition-colors">
+                    Reviews ({{ user_reviews.count }})
+                </button>
+            </nav>
         </div>
-        
-        {% if is_private %}
-            <div class="text-center p-8 bg-gray-700 rounded-lg">
-                <i class="fas fa-lock text-4xl text-gray-400 mb-2"></i>
-                <p class="text-gray-400">This user's favorites are private.</p>
+
+        <!-- --- FAVORITES CONTENT --- -->
+        <div id="content-favorites" class="tab-content">
+            <div id="favorite-list-content" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
+                {% comment %} JavaScript will render favorites here using favorite-data {% endcomment %}
             </div>
-        {% endif %}
-        
-        <h3 class="text-2xl font-bold mt-10 mb-4 text-indigo-400"><i class="fas fa-bookmark mr-2"></i> Watchlist</h3>
-        
-        <div id="watchlist-list-content" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
             {% if is_private %}
-                <div class="text-center p-8 bg-gray-700 rounded-lg col-span-full">
+                <div class="text-center p-8 bg-gray-700 rounded-lg">
                     <i class="fas fa-lock text-4xl text-gray-400 mb-2"></i>
-                    <p class="text-gray-400">This user's watchlist is private.</p>
+                    <p class="text-gray-400">This user's favorites are private.</p>
                 </div>
-            {% else %}
-                {% for item in watchlist_list %}
-                    <div class="bg-gray-700 rounded-lg shadow-lg overflow-hidden transform hover:scale-105 transition-transform duration-200">
-                        <a href="{% url 'roulette:content_detail' content_type=item.content_type|lower tmdb_id=item.tmdb_id %}">
-                            {% if item.poster_path %}
-                                <img src="https://image.tmdb.org/t/p/w342{{ item.poster_path }}" alt="Poster for {{ item.title }}" class="w-full object-cover" style="aspect-ratio: 2/3;">
-                            {% else %}
-                                <div class="w-full h-full bg-gray-900 flex items-center justify-center" style="aspect-ratio: 2/3;">
-                                    <span class="text-gray-500 text-xs text-center p-2">{{ item.title }}</span>
-                                </div>
-                            {% endif %}
+            {% endif %}
+        </div>
+
+        <!-- --- WATCHLIST CONTENT --- -->
+        <div id="content-watchlist" class="tab-content hidden">
+            <div id="watchlist-list-content" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
+                {% if is_private %}
+                    <div class="text-center p-8 bg-gray-700 rounded-lg col-span-full">
+                        <i class="fas fa-lock text-4xl text-gray-400 mb-2"></i>
+                        <p class="text-gray-400">This user's watchlist is private.</p>
+                    </div>
+                {% else %}
+                    {% for item in watchlist_list %}
+                        <div class="bg-gray-700 rounded-lg shadow-lg overflow-hidden transform hover:scale-105 transition-transform duration-200">
+                            <a href="{% url 'roulette:content_detail' content_type=item.content_type|lower tmdb_id=item.tmdb_id %}">
+                                {% if item.poster_path %}
+                                    <img src="https://image.tmdb.org/t/p/w342{{ item.poster_path }}" alt="Poster for {{ item.title }}" class="w-full object-cover" style="aspect-ratio: 2/3;">
+                                {% else %}
+                                    <div class="w-full h-full bg-gray-900 flex items-center justify-center" style="aspect-ratio: 2/3;">
+                                        <span class="text-gray-500 text-xs text-center p-2">{{ item.title }}</span>
+                                    </div>
+                                {% endif %}
+                            </a>
+                        </div>
+                    {% empty %}
+                        <p class="text-center text-gray-500 col-span-full">This user hasn't added any items to their watchlist yet.</p>
+                    {% endfor %}
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- --- REVIEWS CONTENT --- -->
+        <div id="content-reviews" class="tab-content hidden">
+            <div class="space-y-6">
+                {% for review in user_reviews %}
+                    <div class="flex space-x-4 p-4 bg-gray-700 rounded-lg">
+                        <a href="{% url 'roulette:content_detail' content_type=review.content_type|lower tmdb_id=review.tmdb_id %}">
+                            <img src="https://image.tmdb.org/t/p/w185/{{ review.poster_path }}" class="w-20 h-auto rounded-md object-cover flex-shrink-0" alt="{{ review.title }} poster">
                         </a>
+                        <div class="flex-1">
+                            <div class="flex items-center justify-between">
+                                <a href="{% url 'roulette:content_detail' content_type=review.content_type|lower tmdb_id=review.tmdb_id %}" class="text-lg font-semibold text-white hover:underline">{{ review.title }}</a>
+                                <span class="text-xl font-bold text-indigo-400">{{ review.rating }}/10</span>
+                            </div>
+                            <p class="text-gray-400 text-xs mb-2">{{ review.timestamp|timesince }} ago</p>
+                            {% if review.review_text %}
+                                <p class="text-gray-300">{{ review.review_text|linebreaksbr }}</p>
+                            {% else %}
+                                <p class="text-gray-500 italic">This user just left a rating.</p>
+                            {% endif %}
+                        </div>
                     </div>
                 {% empty %}
-                    <p class="text-center text-gray-500 col-span-full">This user hasn't added any items to their watchlist yet.</p>
+                    <p class="text-center text-gray-500 col-span-full">This user hasn't reviewed any content yet.</p>
                 {% endfor %}
-            {% endif %}
+            </div>
         </div>
-
-        {% comment %} --- HISTORY SECTION HAS BEEN REMOVED --- {% endcomment %}
-
+        
         <div class="mt-10 grid grid-cols-1 md:grid-cols-2 gap-8">
         
             <div>
                 <h4 class="text-xl font-semibold mb-3 text-gray-300">Followers ({{ followers_count }})</h4>
-                <div class="space-y-2 max-h-96 overflow-y-auto pr-2">
+                <div class="space-y-2 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
                     {% for follow in followers_list %}
                     <a href="{% url 'roulette:user_profile' username=follow.follower__username %}" class="flex items-center p-2 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors">
-                        <i class="fas fa-user-circle mr-3 text-indigo-400 text-lg"></i>
+                        <i class="fas fa-user-circle mr-3 text-indigo-400 text-lg"></i> <!-- TODO: Replace with follower's PFP -->
                         <span class="font-medium">@{{ follow.follower__username }}</span>
                     </a>
                     {% empty %}
@@ -101,10 +148,10 @@
 
             <div>
                 <h4 class="text-xl font-semibold mb-3 text-gray-300">Following ({{ following_count }})</h4>
-                <div class="space-y-2 max-h-96 overflow-y-auto pr-2">
+                <div class="space-y-2 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
                     {% for follow in following_list %}
                     <a href="{% url 'roulette:user_profile' username=follow.followed__username %}" class="flex items-center p-2 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors">
-                        <i class="fas fa-user-circle mr-3 text-indigo-400 text-lg"></i>
+                        <i class="fas fa-user-circle mr-3 text-indigo-400 text-lg"></i> <!-- TODO: Replace with followed's PFP -->
                         <span class="font-medium">@{{ follow.followed__username }}</span>
                     </a>
                     {% empty %}
@@ -160,6 +207,7 @@
                         }
                         followMessage.textContent = data.message;
                         followMessage.className = 'text-sm mt-2 text-green-500';
+                        // --- UPDATED: Reload page to update counts ---
                         setTimeout(() => window.location.reload(), 500); 
                     } else {
                         followMessage.textContent = data.error || "An unknown error occurred.";
@@ -203,6 +251,34 @@
             }
             
             renderFavoriteList();
+
+            // --- ADDED TAB SWITCHING LOGIC ---
+            const tabButtons = document.querySelectorAll('.tab-btn');
+            const tabContents = document.querySelectorAll('.tab-content');
+
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    // Deactivate all buttons
+                    tabButtons.forEach(btn => {
+                        btn.classList.remove('text-white', 'border-indigo-500');
+                        btn.classList.add('text-gray-400', 'border-transparent', 'hover:border-gray-500', 'hover:text-gray-200');
+                    });
+                    
+                    // Activate clicked button
+                    button.classList.add('text-white', 'border-indigo-500');
+                    button.classList.remove('text-gray-400', 'border-transparent', 'hover:border-gray-500', 'hover:text-gray-200');
+
+                    // Hide all content
+                    tabContents.forEach(content => {
+                        content.classList.add('hidden');
+                    });
+
+                    // Show target content
+                    const targetId = button.id.replace('tab-', 'content-');
+                    document.getElementById(targetId).classList.remove('hidden');
+                });
+            });
+            // --- END TAB LOGIC ---
         });
     </script>
 {% endblock %}

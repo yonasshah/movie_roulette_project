@@ -20,7 +20,8 @@ def signup_view(request):
 @login_required
 def settings_view(request):
     if request.method == 'POST':
-        form = ProfileUpdateForm(request.POST, instance=request.user.profile)
+        # --- ADD request.FILES ---
+        form = ProfileUpdateForm(request.POST, request.FILES, instance=request.user.profile)
         if form.is_valid():
             form.save()
             messages.success(request, 'Your settings have been updated!')

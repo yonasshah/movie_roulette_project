@@ -1,0 +1,42 @@
+{% comment %} Displays the main content text for a feed item {% endcomment %}
+
+{% if item.type == 'review' %}
+    <div class="text-gray-300">
+        <a href="{% url 'roulette:user_profile' username=item.user.username %}" class="font-semibold text-white hover:underline">@{{ item.user.username }}</a>
+        rated <a href="{% url 'roulette:content_detail' content_type=item.content_type|lower tmdb_id=item.tmdb_id %}" class="font-semibold text-indigo-300 hover:underline">{{ item.title }}</a>
+        <span class="text-lg font-bold text-indigo-400 ml-2">{{ item.rating }}/10</span>
+    </div>
+    <p class="text-gray-400 text-xs mb-2">{{ item.timestamp|timesince }} ago</p>
+    {% if item.review_text %}
+        <p class="text-gray-200 bg-gray-600 p-3 rounded-md">{{ item.review_text|linebreaksbr }}</p>
+    {% endif %}
+
+{% elif item.type == 'list_item' %}
+    <div class="text-gray-300">
+        <a href="{% url 'roulette:user_profile' username=item.user.username %}" class="font-semibold text-white hover:underline">@{{ item.user.username }}</a>
+
+        {% if item.list_type == 'FAVORITE' %}
+            added <a href="{% url 'roulette:content_detail' content_type=item.content_type|lower tmdb_id=item.tmdb_id %}" class="font-semibold text-indigo-300 hover:underline">{{ item.title }}</a> to Favorites
+            <i class="fas fa-heart text-red-500 ml-1"></i> {# Reduced margin #}
+        {% elif item.list_type == 'WATCHLIST' %}
+            added <a href="{% url 'roulette:content_detail' content_type=item.content_type|lower tmdb_id=item.tmdb_id %}" class="font-semibold text-indigo-300 hover:underline">{{ item.title }}</a> to their Watchlist
+            <i class="fas fa-bookmark text-indigo-400 ml-1"></i> {# Reduced margin #}
+        {% elif item.list_type == 'CUSTOM' and item.custom_list %}
+            added <a href="{% url 'roulette:content_detail' content_type=item.content_type|lower tmdb_id=item.tmdb_id %}" class="font-semibold text-indigo-300 hover:underline">{{ item.title }}</a>
+            to <a href="{% url 'roulette:list_detail' list_id=item.custom_list.id %}" class="font-semibold text-indigo-300 hover:underline">{{ item.custom_list.name }}</a>
+            <i class="fas fa-list-ul text-gray-400 ml-1"></i> {# Reduced margin #}
+        {% else %}
+             added <a href="{% url 'roulette:content_detail' content_type=item.content_type|lower tmdb_id=item.tmdb_id %}" class="font-semibold text-indigo-300 hover:underline">{{ item.title }}</a> (History) {# Fallback for history or unknown #}
+        {% endif %}
+    </div>
+    <p class="text-gray-400 text-xs">{{ item.timestamp|timesince }} ago</p>
+
+{% elif item.type == 'follow' %}
+    <div class="text-gray-300">
+        <a href="{% url 'roulette:user_profile' username=item.follower.username %}" class="font-semibold text-white hover:underline">@{{ item.follower.username }}</a>
+        started following
+        <a href="{% url 'roulette:user_profile' username=item.followed.username %}" class="font-semibold text-white hover:underline">@{{ item.followed.username }}</a>
+        <i class="fas fa-user-plus text-green-500 ml-1"></i> {# Reduced margin #}
+    </div>
+    <p class="text-gray-400 text-xs">{{ item.timestamp|timesince }} ago</p>
+{% endif %}

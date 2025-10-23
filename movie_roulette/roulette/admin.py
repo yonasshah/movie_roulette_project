@@ -1,6 +1,7 @@
 from django.contrib import admin
 
-from .models import UserContent, UserFollow
+# --- Import UserReview ---
+from .models import UserContent, UserFollow, UserReview
 
 # Register your models here.
 @admin.register(UserContent)
@@ -11,5 +12,13 @@ class UserContentAdmin(admin.ModelAdmin):
 
 @admin.register(UserFollow)
 class UserFollowAdmin(admin.ModelAdmin):
-    list_display = ('follower', 'followed')
+    # --- Add timestamp ---
+    list_display = ('follower', 'followed', 'timestamp')
     search_fields = ('follower__username', 'followed__username')
+
+# --- ADDED ---
+@admin.register(UserReview)
+class UserReviewAdmin(admin.ModelAdmin):
+    list_display = ('user', 'title', 'rating', 'content_type', 'timestamp')
+    list_filter = ('content_type', 'rating', 'user')
+    search_fields = ('title', 'user__username', 'review_text')

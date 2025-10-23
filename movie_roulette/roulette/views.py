@@ -1,17 +1,138 @@
+# movie_roulette/roulette/views.py
+
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponseForbidden
 from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
 from django.conf import settings
 import requests
+from django.contrib.contenttypes.models import ContentType
+from .forms import UserListForm, ReviewForm, CommentForm # Add CommentForm
+from .models import UserContent, UserFollow, UserList, UserReview, Comment, Like # Add Comment, Like
 import random
-from .forms import UserListForm
-from .models import UserContent, UserFollow, UserList
+# --- Import ReviewForm and UserReview ---
 from django.contrib.auth import get_user_model
-from django.db.models import Q, Count
+from django.db.models import Q, Count, Avg
 from django.db import IntegrityError # To handle duplicate list names
 from django.urls import reverse # For redirects
+
+# --- ADDED FOR SOCIAL FEED ---
+from itertools import chain
+from operator import attrgetter
+# --- END ADDED ---
+
+# --- UPDATED VIEW FOR SOCIAL FEED ---
+@login_required
+def feed_view(request):
+    """Displays a chronological feed with comments and likes, excluding history.""" # Updated docstring
+
+    followed_user_ids = list(request.user.following.values_list('followed_id', flat=True))
+    user_ids_to_include = followed_user_ids + [request.user.id]
+
+    review_ct = ContentType.objects.get_for_model(UserReview)
+    usercontent_ct = ContentType.objects.get_for_model(UserContent)
+
+    # Fetch main items
+    reviews = UserReview.objects.filter(
+        user_id__in=user_ids_to_include
+    ).select_related('user', 'user__profile')
+
+    # --- MODIFIED QUERY FOR list_items ---
+    list_items = UserContent.objects.filter(
+        user_id__in=user_ids_to_include
+    ).exclude( # Add this exclude filter
+        list_type=UserContent.ListType.HISTORY
+    ).select_related('user', 'user__profile', 'custom_list')
+    # --- END MODIFICATION ---
+
+    follows = UserFollow.objects.filter(
+        follower_id__in=user_ids_to_include
+    ).select_related('follower', 'follower__profile', 'followed', 'followed__profile')
+
+    # Combine and add type/generic relation info
+    raw_feed_items = []
+    for item in reviews:
+        item.type = 'review'
+        item.ctype_id = review_ct.id
+        item.obj_id = item.id
+        raw_feed_items.append(item)
+
+    # Now, history items are already excluded before this loop
+    for item in list_items:
+        item.type = 'list_item'
+        item.ctype_id = usercontent_ct.id
+        item.obj_id = item.id
+        raw_feed_items.append(item)
+
+    for item in follows:
+        item.type = 'follow'
+        item.ctype_id = None
+        item.obj_id = None
+        raw_feed_items.append(item)
+
+    raw_feed_items.sort(key=attrgetter('timestamp'), reverse=True)
+    feed_items_limited = raw_feed_items[:50]
+
+    # --- Pre-fetch comments and likes logic remains the same ---
+    item_lookup = {}
+    content_type_ids = set()
+    object_ids_by_ctype = {}
+
+    for item in feed_items_limited:
+        if item.ctype_id and item.obj_id:
+            item_lookup[item.obj_id] = item
+            content_type_ids.add(item.ctype_id)
+            if item.ctype_id not in object_ids_by_ctype:
+                object_ids_by_ctype[item.ctype_id] = set()
+            object_ids_by_ctype[item.ctype_id].add(item.obj_id)
+            item.comments = []
+            item.like_count = 0
+            item.user_liked = False
+
+    comments_qs = Comment.objects.filter(
+        content_type_id__in=content_type_ids
+    ).select_related('user', 'user__profile')
+    all_comments = []
+    for ct_id, obj_ids in object_ids_by_ctype.items():
+        all_comments.extend(list(comments_qs.filter(content_type_id=ct_id, object_id__in=obj_ids)))
+
+    for comment in all_comments:
+        if comment.object_id in item_lookup and hasattr(item_lookup[comment.object_id], 'comments'):
+             item_lookup[comment.object_id].comments.append(comment)
+
+
+    likes_qs = Like.objects.filter(
+        content_type_id__in=content_type_ids
+    )
+    all_likes = []
+    for ct_id, obj_ids in object_ids_by_ctype.items():
+        all_likes.extend(list(likes_qs.filter(content_type_id=ct_id, object_id__in=obj_ids)))
+
+    likes_by_item = {}
+    user_liked_items = set()
+
+    for like in all_likes:
+         if like.object_id in item_lookup:
+            likes_by_item[like.object_id] = likes_by_item.get(like.object_id, 0) + 1
+            if like.user_id == request.user.id:
+                user_liked_items.add(like.object_id)
+
+    for obj_id, item in item_lookup.items():
+         if hasattr(item, 'like_count'): # Check if attribute exists before assigning
+            item.like_count = likes_by_item.get(obj_id, 0)
+            item.user_liked = obj_id in user_liked_items
+
+    # --- End pre-fetching logic ---
+
+    comment_form = CommentForm()
+
+    context = {
+        'feed_items': feed_items_limited,
+        'comment_form': comment_form,
+    }
+    return render(request, 'roulette/feed.html', context)
+
 
 # This view is responsible for showing the main page of your app.
 @login_required
@@ -32,8 +153,7 @@ def user_profile_view(request, username):
         is_following = UserFollow.objects.filter(follower=request.user, followed=profile_user).exists()
 
     favorite_list = []
-    watchlist_list = [] 
-    # REMOVED: history_list = [] 
+    watchlist_list = []
 
     is_private = profile_user.profile.is_favorites_private and request.user != profile_user
 
@@ -48,27 +168,28 @@ def user_profile_view(request, username):
             list_type=UserContent.ListType.WATCHLIST
         ).order_by('-timestamp').values('tmdb_id', 'title', 'poster_path', 'release_year', 'content_type'))
 
-    # REMOVED: History query block
-
     followers_list = profile_user.followers.select_related('follower').values('follower__username', 'follower__id')
     following_list = profile_user.following.select_related('followed').values('followed__username', 'followed__id')
 
     followers_count = followers_list.count()
     following_count = following_list.count()
 
+    # --- ADDED: Get user's reviews ---
+    user_reviews = UserReview.objects.filter(user=profile_user)
+    # --- END ADDED ---
+
     context = {
         'profile_user': profile_user,
         'is_following': is_following,
         'favorite_list': favorite_list,
-        'watchlist_list': watchlist_list, 
-        # REMOVED: 'history_list': history_list,
+        'watchlist_list': watchlist_list,
         'is_private': is_private,
         'is_owner': request.user == profile_user,
         'followers_list': list(followers_list),
         'following_list': list(following_list),
         'followers_count': followers_count,
         'following_count': following_count,
-        # REMOVED: 'settings': settings # (settings wasn't used here anyway)
+        'user_reviews': user_reviews, # <-- Add to context
     }
 
     return render(request, 'roulette/profile.html', context)
@@ -96,13 +217,14 @@ def discover_view(request):
     }
     return render(request, 'roulette/discover.html', context)
 
-# --- NEW CONTENT DETAIL VIEW ---
-# --- Inside content_detail_view function ---
+
+# --- UPDATED CONTENT DETAIL VIEW ---
 @login_required
 def content_detail_view(request, content_type, tmdb_id):
     BASE_URL = "https://api.themoviedb.org/3"
     endpoint_type = 'movie' if content_type == 'movie' else 'tv'
-    
+    model_content_type = UserContent.ContentType.MOVIE if content_type == 'movie' else UserContent.ContentType.TV
+
     try:
         detail_params = {
             "api_key": settings.TMDB_API_KEY,
@@ -114,7 +236,7 @@ def content_detail_view(request, content_type, tmdb_id):
 
         # Safely access the nested provider data
         streaming_providers = content_details.get('watch/providers', {}).get('results', {}).get('US', {}).get('flatrate', [])
-        
+
         # Find the YouTube trailer key
         trailer_key = None
         videos = content_details.get('videos', {}).get('results', [])
@@ -125,57 +247,130 @@ def content_detail_view(request, content_type, tmdb_id):
 
         is_favorite = UserContent.objects.filter(
             user=request.user, tmdb_id=tmdb_id, list_type=UserContent.ListType.FAVORITE,
-            content_type=UserContent.ContentType.MOVIE if content_type == 'movie' else UserContent.ContentType.TV
+            content_type=model_content_type
         ).exists()
-        
-        # This calculation is already here:
+
         is_watchlist = UserContent.objects.filter(
             user=request.user, tmdb_id=tmdb_id, list_type=UserContent.ListType.WATCHLIST,
-            content_type=UserContent.ContentType.MOVIE if content_type == 'movie' else UserContent.ContentType.TV
+            content_type=model_content_type
         ).exists()
+
+        # --- ADDED FOR REVIEWS ---
+        all_reviews = UserReview.objects.filter(
+            tmdb_id=tmdb_id, content_type=model_content_type
+        ).select_related('user', 'user__profile').order_by('-timestamp')
+
+        user_review = all_reviews.filter(user=request.user).first()
+
+        # Calculate average rating
+        avg_rating_data = all_reviews.aggregate(Avg('rating'))
+        avg_rating = avg_rating_data['rating__avg']
+
+        if user_review:
+            # If user already has a review, pre-fill the form
+            review_form = ReviewForm(instance=user_review)
+        else:
+            review_form = ReviewForm()
+        # --- END ADDED ---
 
         context = {
             'content': content_details,
             'content_type': content_type,
             'is_favorite': is_favorite,
-            # --- ADD THIS LINE ---
-            'is_watchlist': is_watchlist, 
-            # --- END ADD ---
-            'streaming_providers': streaming_providers, 
-            'trailer_key': trailer_key, 
-            # 'settings': settings, # You can optionally remove this, it's not used in content_detail.html
+            'is_watchlist': is_watchlist,
+            'streaming_providers': streaming_providers,
+            'trailer_key': trailer_key,
+            # --- ADDED TO CONTEXT ---
+            'reviews': all_reviews,
+            'user_review': user_review,
+            'review_form': review_form,
+            'avg_rating': avg_rating,
+            'review_count': all_reviews.count(),
+            # --- END ADDED ---
         }
         return render(request, 'roulette/content_detail.html', context)
-        
+
     except requests.exceptions.RequestException as e:
         return JsonResponse({'error': f"API request failed: {e}"}, status=500)
+
+# --- NEW VIEW TO HANDLE REVIEW FORM ---
+@login_required
+@require_POST
+def add_review(request, content_type, tmdb_id):
+    model_content_type = UserContent.ContentType.MOVIE if content_type == 'movie' else UserContent.ContentType.TV
+
+    # Get existing review or None
+    user_review = UserReview.objects.filter(
+        user=request.user, tmdb_id=tmdb_id, content_type=model_content_type
+    ).first()
+
+    form = ReviewForm(request.POST, instance=user_review) # Pass instance to update if it exists
+
+    if form.is_valid():
+        review = form.save(commit=False)
+        review.user = request.user
+        review.tmdb_id = tmdb_id
+        review.content_type = model_content_type
+
+        # Get title/poster from hidden form fields (or request.POST)
+        review.title = request.POST.get('title', 'N/A')
+        review.poster_path = request.POST.get('poster_path', '')
+
+        review.save()
+        messages.success(request, 'Your review has been saved!')
+    else:
+        messages.error(request, 'There was an error with your rating.')
+
+    return redirect('roulette:content_detail', content_type=content_type, tmdb_id=tmdb_id)
+
+# --- NEW VIEW TO DELETE A REVIEW ---
+@login_required
+@require_POST
+def delete_review(request, review_id):
+    review = get_object_or_404(UserReview, id=review_id)
+
+    # Ensure the user deleting the review is the one who wrote it
+    if request.user != review.user:
+        return HttpResponseForbidden("You cannot delete another user's review.")
+
+    # Get content info before deleting to redirect back
+    content_type = review.content_type.lower()
+    tmdb_id = review.tmdb_id
+
+    review.delete()
+    messages.success(request, 'Your review has been deleted.')
+
+    return redirect('roulette:content_detail', content_type=content_type, tmdb_id=tmdb_id)
 
 
 @login_required
 @require_POST
 def toggle_follow(request):
-    followed_user_id = request.POST.get('user_id') 
+    followed_user_id = request.POST.get('user_id')
     User = get_user_model()
     followed_user = get_object_or_404(User, id=followed_user_id)
-    
+
     if request.user == followed_user:
         return JsonResponse({'success': False, 'error': 'Cannot follow yourself.'}, status=400)
 
     try:
         follow_instance = UserFollow.objects.get(follower=request.user, followed=followed_user)
         follow_instance.delete()
+        # --- UPDATED: 'is_following' added ---
         message = f"Unfollowed {followed_user.username}."
+        is_following = False
     except UserFollow.DoesNotExist:
         UserFollow.objects.create(follower=request.user, followed=followed_user)
         message = f"Now following {followed_user.username}!"
-        
-    return JsonResponse({'success': True, 'message': message})
+        is_following = True
+
+    return JsonResponse({'success': True, 'message': message, 'is_following': is_following})
 
 @login_required
 def get_random_content(request):
     BASE_URL = "https://api.themoviedb.org/3"
-    
-    content_type = request.GET.get('content_type', 'movie') 
+
+    content_type = request.GET.get('content_type', 'movie')
     watch_region = request.GET.get('watch_region', 'US')
     genre = request.GET.get('genre', '')
     platform = request.GET.get('with_watch_providers', '')
@@ -199,18 +394,18 @@ def get_random_content(request):
             "vote_count.gte": 100,
             "vote_average.gte": vote_average_gte
         }
-        
+
         discover_res = requests.get(f"{BASE_URL}/discover/{endpoint_type}", params=discover_params)
         discover_res.raise_for_status()
         total_pages = discover_res.json().get('total_pages', 1)
-        
+
         if total_pages == 0:
              return JsonResponse({'error': 'No content found with the selected filters.'}, status=404)
-        
+
         random_page = random.randint(1, min(total_pages, 500))
-        
+
         discover_params['page'] = random_page
-        movies_res = requests.get(f"{BASE_URL}/discover/{endpoint_type}", params=discover_params) 
+        movies_res = requests.get(f"{BASE_URL}/discover/{endpoint_type}", params=discover_params)
         movies_res.raise_for_status()
         results = movies_res.json().get('results', [])
 
@@ -227,7 +422,7 @@ def get_random_content(request):
         detail_res = requests.get(f"{BASE_URL}/{endpoint_type}/{content_id}", params=detail_params)
         detail_res.raise_for_status()
         content_details = detail_res.json()
-        
+
         content_details['content_type'] = content_type
 
         title_key = 'title' if content_type == 'movie' else 'name'
@@ -249,7 +444,7 @@ def get_random_content(request):
 
     except requests.exceptions.RequestException as e:
         return JsonResponse({'error': f"API request failed: {e}"}, status=500)
-    
+
     # The duplicate code block has been removed from here
 
 # --- FIXED get_user_lists VIEW ---
@@ -258,33 +453,33 @@ def get_user_lists(request):
     favorites = UserContent.objects.filter(user=request.user, list_type=UserContent.ListType.FAVORITE)
     history = UserContent.objects.filter(user=request.user, list_type=UserContent.ListType.HISTORY)
     watchlist = UserContent.objects.filter(user=request.user, list_type=UserContent.ListType.WATCHLIST)
-    
+
     # --- ADD THIS ---
     custom_lists = UserList.objects.filter(user=request.user).values('id', 'name') # Get IDs and names
 
     tmdb_id = request.GET.get('tmdb_id')
     content_type_str = request.GET.get('content_type')
-    
+
     is_favorite = False
-    is_watchlist = False 
+    is_watchlist = False
     if tmdb_id and content_type_str:
-        try: 
-            tmdb_id_int = int(tmdb_id) 
+        try:
+            tmdb_id_int = int(tmdb_id)
             model_content_type = UserContent.ContentType.MOVIE if content_type_str == 'movie' else UserContent.ContentType.TV
             is_favorite = favorites.filter(tmdb_id=tmdb_id_int, content_type=model_content_type).exists()
-            is_watchlist = watchlist.filter(tmdb_id=tmdb_id_int, content_type=model_content_type).exists() 
+            is_watchlist = watchlist.filter(tmdb_id=tmdb_id_int, content_type=model_content_type).exists()
         except ValueError:
-            pass 
+            pass
 
     return JsonResponse({
         'favorites': list(favorites.values('tmdb_id', 'title', 'poster_path', 'release_year', 'content_type')),
         'history': list(history.values('tmdb_id', 'title', 'poster_path', 'release_year', 'content_type')),
-        'watchlist': list(watchlist.values('tmdb_id', 'title', 'poster_path', 'release_year', 'content_type')), 
+        'watchlist': list(watchlist.values('tmdb_id', 'title', 'poster_path', 'release_year', 'content_type')),
         # --- ADD CUSTOM LISTS TO RESPONSE ---
-        'custom_lists': list(custom_lists), 
+        'custom_lists': list(custom_lists),
         # --- END ADD ---
         'is_favorite': is_favorite,
-        'is_watchlist': is_watchlist, 
+        'is_watchlist': is_watchlist,
     })
 
 # --- FIXED toggle_favorite VIEW ---
@@ -386,11 +581,13 @@ def search_view(request):
     content_results = []
 
     if query:
+        # --- ADDED: Prefetch profile for profile picture ---
         user_results = get_user_model().objects.filter(
             Q(username__icontains=query)
         ).annotate(
             follower_count=Count('followers') # Creates a new field 'follower_count'
-        )
+        ).select_related('profile') # --- ADDED
+
         try:
             search_url = "https://api.themoviedb.org/3/search/multi"
             params = {
@@ -462,7 +659,7 @@ def list_detail_view(request, list_id):
     # Get items associated with this specific list
     list_items = UserContent.objects.filter(
         custom_list=user_list,
-        list_type=UserContent.ListType.CUSTOM 
+        list_type=UserContent.ListType.CUSTOM
     ).order_by('-timestamp')
 
     context = {
@@ -500,11 +697,11 @@ def add_to_custom_list_view(request):
 
     # Check if item already exists in this specific list
     item_exists = UserContent.objects.filter(
-        user=request.user, 
-        tmdb_id=tmdb_id, 
-        content_type=model_content_type, 
+        user=request.user,
+        tmdb_id=tmdb_id,
+        content_type=model_content_type,
         list_type=UserContent.ListType.CUSTOM,
-        custom_list=user_list 
+        custom_list=user_list
     ).exists()
 
     if item_exists:
@@ -540,3 +737,104 @@ def remove_from_custom_list_view(request):
     list_item.delete()
 
     return JsonResponse({'success': True, 'message': f"Removed '{item_title}' from '{list_name}'."})
+
+@login_required
+@require_POST
+def add_comment_view(request):
+    form = CommentForm(request.POST)
+    content_type_id = request.POST.get('content_type_id')
+    object_id = request.POST.get('object_id')
+
+    if form.is_valid() and content_type_id and object_id:
+        try:
+            content_type = ContentType.objects.get_for_id(content_type_id)
+            # Optional: Check if the content_type is one we allow comments on
+            # target_model = content_type.model_class()
+            # if target_model not in [UserReview, UserContent]:
+            #     raise ValueError("Invalid content type for comments")
+
+            comment = form.save(commit=False)
+            comment.user = request.user
+            comment.content_type = content_type
+            comment.object_id = object_id
+            comment.save()
+            messages.success(request, "Comment added.")
+        except (ContentType.DoesNotExist, ValueError) as e:
+            messages.error(request, f"Could not add comment: Invalid target. {e}")
+        except Exception as e:
+            messages.error(request, f"An unexpected error occurred: {e}")
+    else:
+        # Collect errors if any (though basic validation is above)
+        error_msg = "Could not add comment."
+        if not content_type_id or not object_id:
+            error_msg = "Could not add comment: Missing target information."
+        elif form.errors:
+             error_msg = f"Could not add comment: {form.errors.as_text()}"
+        messages.error(request, error_msg)
+
+
+    # Redirect back to the feed (or potentially the referring page if needed)
+    return redirect('roulette:feed')
+
+# --- NEW VIEW FOR TOGGLING LIKES (AJAX) ---
+@login_required
+@require_POST
+def toggle_like_view(request):
+    content_type_id = request.POST.get('content_type_id')
+    object_id = request.POST.get('object_id')
+
+    if not content_type_id or not object_id:
+        return JsonResponse({'success': False, 'error': 'Missing data'}, status=400)
+
+    try:
+        content_type = ContentType.objects.get_for_id(content_type_id)
+        # Optional: Check if the content_type is one we allow likes on
+        # target_model = content_type.model_class()
+        # if target_model not in [UserReview, UserContent]:
+        #     raise ValueError("Invalid content type for likes")
+
+        like_obj, created = Like.objects.get_or_create(
+            user=request.user,
+            content_type=content_type,
+            object_id=object_id
+        )
+
+        user_liked = True
+        if not created:
+            # If get_or_create found an existing like, delete it (unlike)
+            like_obj.delete()
+            user_liked = False
+
+        # Get the new total like count for this item
+        like_count = Like.objects.filter(
+            content_type=content_type,
+            object_id=object_id
+        ).count()
+
+        return JsonResponse({'success': True, 'user_liked': user_liked, 'like_count': like_count})
+
+    except ContentType.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Invalid content type'}, status=400)
+    except ValueError:
+         return JsonResponse({'success': False, 'error': 'Invalid object ID'}, status=400)
+    except Exception as e:
+         return JsonResponse({'success': False, 'error': f'An error occurred: {e}'}, status=500)
+     
+@login_required
+@require_POST # Ensure only POST requests can delete
+def delete_comment_view(request, comment_id):
+    """Deletes a comment if the logged-in user is the author."""
+    comment = get_object_or_404(Comment, id=comment_id)
+
+    # Check if the current user is the author of the comment
+    if request.user != comment.user:
+        messages.error(request, "You are not authorized to delete this comment.")
+        return HttpResponseForbidden("You are not authorized to delete this comment.") # Or redirect with message
+
+    # Delete the comment
+    comment.delete()
+    messages.success(request, "Comment deleted successfully.")
+
+    # Redirect back to the feed page (or potentially the content detail page if comments are there too)
+    # You might want to pass a 'next' parameter in the form for more dynamic redirects
+    return redirect('roulette:feed')

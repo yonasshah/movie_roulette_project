@@ -20,4 +20,13 @@ urlpatterns = [
     path('list/<int:list_id>/delete/', views.delete_list_view, name='list_delete'), # Handles list deletion
     path('list/add-item/', views.add_to_custom_list_view, name='list_add_item'), # API endpoint to add item
     path('list/remove-item/', views.remove_from_custom_list_view, name='list_remove_item'), # API endpoint to remove item
+    # --- ADDED FOR REVIEWS ---
+    path('content/<str:content_type>/<int:tmdb_id>/review/', views.add_review, name='add_review'),
+    path('review/<int:review_id>/delete/', views.delete_review, name='delete_review'),
+
+    # --- ADDED FOR SOCIAL FEED ---
+    path('feed/', views.feed_view, name='feed'),
+    path('comment/add/', views.add_comment_view, name='add_comment'),
+    path('comment/<int:comment_id>/delete/', views.delete_comment_view, name='delete_comment'),
+    path('like/toggle/', views.toggle_like_view, name='toggle_like'),
 ]

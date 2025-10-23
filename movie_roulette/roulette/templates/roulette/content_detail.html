@@ -15,12 +15,12 @@
             </div>
         {% endif %}
 
-        <div class="p-6 md:p-8 flex flex-col justify-between">
+        <div class="p-6 md:p-8 flex flex-col justify-between flex-1">
             <div>
                 <h2 class="text-4xl font-bold mb-2">
                     {% if content_type == 'movie' %}{{ content.title }}{% else %}{{ content.name }}{% endif %}
                 </h2>
-                <div class="flex items-center text-gray-400 text-sm mb-4 space-x-4">
+                <div class="flex items-center text-gray-400 text-sm mb-4 space-x-4 flex-wrap">
                     <span>
                         {% if content_type == 'movie' %}
                             {{ content.release_date|slice:":4" }}
@@ -35,7 +35,15 @@
                             {{ content.episode_run_time.0 }} min/episode
                         {% endif %}
                     </span>
-                    <span><i class="fas fa-star text-yellow-400 mr-1"></i>{{ content.vote_average|floatformat:1 }}</span>
+                    <span><i class="fas fa-star text-yellow-400 mr-1"></i>{{ content.vote_average|floatformat:1 }} (TMDb)</span>
+                    
+                    <!-- --- ADDED OUR AVERAGE RATING --- -->
+                    {% if avg_rating %}
+                    <span class="text-indigo-400 font-bold">
+                        <i class="fas fa-star text-indigo-400 mr-1"></i>
+                        {{ avg_rating|floatformat:1 }}/10 ({{ review_count }} User Rating{{ review_count|pluralize }})
+                    </span>
+                    {% endif %}
                 </div>
                 <p class="text-gray-300 mb-4">{{ content.overview }}</p>
             </div>
@@ -71,6 +79,84 @@
         </div>
     </div>
 </div> {# End of main content div #}
+
+<!-- --- NEW REVIEW SECTION --- -->
+<div class="bg-gray-800 rounded-lg shadow-2xl max-w-4xl mx-auto mt-8 p-6 md:p-8">
+    <h3 class="text-2xl font-bold text-white mb-6 border-b border-gray-700 pb-3">
+        User Reviews
+    </h3>
+
+    <!-- Review Form -->
+    <div class="mb-8 p-6 bg-gray-900 rounded-lg border border-gray-700">
+        <h4 class="text-xl font-semibold text-white mb-4">
+            {% if user_review %}Your Review{% else %}Leave a Review{% endif %}
+        </h4>
+        <form action="{% url 'roulette:add_review' content_type=content_type tmdb_id=content.id %}" method="POST">
+            {% csrf_token %}
+            <!-- Pass content info to the view -->
+            <input type="hidden" name="title" value="{% if content_type == 'movie' %}{{ content.title|escapejs }}{% else %}{{ content.name|escapejs }}{% endif %}">
+            <input type="hidden" name="poster_path" value="{{ content.poster_path }}">
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Your Rating (out of 10)</label>
+                    {{ review_form.rating }}
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Your Review</label>
+                    {{ review_form.review_text }}
+                </div>
+                <div class="flex items-center justify-between">
+                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-5 rounded text-sm">
+                        {% if user_review %}Update Review{% else %}Submit Review{% endif %}
+                    </button>
+                    
+                    {% if user_review %}
+                    <!-- Delete Button -->
+                    <button type="button" onclick="document.getElementById('delete-review-form').submit();" class="text-red-500 hover:text-red-400 text-sm font-medium">
+                        Delete Review
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+        </form>
+        
+        {% if user_review %}
+        <form id="delete-review-form" action="{% url 'roulette:delete_review' review_id=user_review.id %}" method="POST" class="hidden">
+            {% csrf_token %}
+        </form>
+        {% endif %}
+    </div>
+
+    <!-- Existing Reviews List -->
+    <div class="space-y-6">
+        {% for review in reviews %}
+            {% if review.user != request.user %} {# Don't show the user's own review twice #}
+                <div class="flex space-x-4 p-4 bg-gray-700 rounded-lg">
+                    <a href="{% url 'roulette:user_profile' username=review.user.username %}">
+                        <img src="{{ review.user.profile.image.url }}" class="w-12 h-12 rounded-full object-cover flex-shrink-0" alt="{{ review.user.username }}'s profile picture">
+                    </a>
+                    <div class="flex-1">
+                        <div class="flex items-center justify-between">
+                            <a href="{% url 'roulette:user_profile' username=review.user.username %}" class="font-semibold text-white hover:underline">@{{ review.user.username }}</a>
+                            <span class="text-lg font-bold text-indigo-400">{{ review.rating }}/10</span>
+                        </div>
+                        <p class="text-gray-400 text-xs mb-2">{{ review.timestamp|timesince }} ago</p>
+                        {% if review.review_text %}
+                            <p class="text-gray-300">{{ review.review_text|linebreaksbr }}</p>
+                        {% else %}
+                            <p class="text-gray-500 italic">This user just left a rating.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endif %}
+        {% empty %}
+            <p class="text-center text-gray-500">No reviews yet. Be the first!</p>
+        {% endfor %}
+    </div>
+</div>
+<!-- --- END REVIEW SECTION --- -->
+
 
 {# --- MODIFIED MODAL STRUCTURE --- #}
 <div id="add-to-list-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden px-4">

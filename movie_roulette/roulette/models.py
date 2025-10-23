@@ -2,8 +2,12 @@ from django.db import models
 from django.conf import settings
 from django.dispatch import receiver
 from django.db.models.signals import post_save
+# --- ADDED FOR REVIEW VALIDATORS ---
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
+from django.core.validators import MinValueValidator, MaxValueValidator
 
-    
+
 class UserList(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='custom_lists')
     name = models.CharField(max_length=100)
@@ -14,13 +18,16 @@ class UserList(models.Model):
 
     def __str__(self):
         return f"{self.name} (by {self.user.username})"
-    
+
 class UserFollow(models.Model):
     # The user who is initiating the follow (e.g., Jane)
     follower = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='following', on_delete=models.CASCADE)
     
     # The user being followed (e.g., Joe)
     followed = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='followers', on_delete=models.CASCADE)
+
+    # --- ADDED TIMESTAMP FOR FEED ---
+    timestamp = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         # Ensures a user can only follow another user once
@@ -31,7 +38,7 @@ class UserFollow(models.Model):
     def __str__(self):
         return f"{self.follower.username} follows {self.followed.username}"
     
-    # The model has been renamed from UserMovie to UserContent to reflect that it now handles both.
+# The model has been renamed from UserMovie to UserContent to reflect that it now handles both.
 class UserContent(models.Model):
     # This class defines the types of lists a user can have
     class ListType(models.TextChoices):
@@ -85,3 +92,60 @@ class UserContent(models.Model):
         if self.list_type == self.ListType.CUSTOM and self.custom_list:
             list_name = self.custom_list.name
         return f"{self.user.username} - {self.title} ({list_name})"
+
+# --- NEW MODEL FOR REVIEWS ---
+class UserReview(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='reviews')
+    tmdb_id = models.IntegerField()
+    content_type = models.CharField(max_length=10, choices=UserContent.ContentType.choices)
+    
+    # Rating from 1 (0.5 stars) to 10 (5 stars)
+    rating = models.PositiveSmallIntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(10)]
+    )
+    review_text = models.TextField(blank=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    # Store basic info for display in feeds, so we don't have to hit the API
+    title = models.CharField(max_length=255, default='')
+    poster_path = models.CharField(max_length=255, blank=True, null=True, default='')
+
+    class Meta:
+        unique_together = ('user', 'tmdb_id', 'content_type')
+        ordering = ['-timestamp']
+
+    def __str__(self):
+        return f"Review by {self.user.username} for {self.title} ({self.rating}/10)"
+
+class Comment(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='comments')
+    text = models.TextField(max_length=500)
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    # Generic relation to link to UserReview OR UserContent
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.PositiveIntegerField()
+    content_object = GenericForeignKey('content_type', 'object_id')
+
+    class Meta:
+        ordering = ['timestamp'] # Show oldest comments first
+
+    def __str__(self):
+        return f'Comment by {self.user.username} on {self.content_object}'
+
+# --- NEW LIKE MODEL ---
+class Like(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='likes')
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    # Generic relation to link to UserReview OR UserContent
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.PositiveIntegerField()
+    content_object = GenericForeignKey('content_type', 'object_id')
+
+    class Meta:
+        unique_together = ('user', 'content_type', 'object_id') # User can only like an item once
+        ordering = ['-timestamp']
+
+    def __str__(self):
+        return f'Like by {self.user.username} on {self.content_object}'

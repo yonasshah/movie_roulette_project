@@ -16,12 +16,51 @@
         {% endfor %}
     {% endif %}
 
-    <form method="POST">
+    <form method="POST" enctype="multipart/form-data">
         {% csrf_token %}
-        <div class="space-y-6"> <div>
+        <div class="space-y-6">
+
+            {# --- Updated Profile Picture Section --- #}
+            <div>
+                <label class="block font-semibold text-lg mb-2">{{ form.image.label }}</label>
+                <div class="flex items-start space-x-4"> {# Changed items-center to items-start #}
+                    {# Current Image Preview #}
+                    <img src="{{ user.profile.image.url }}" class="w-20 h-20 rounded-full object-cover border-2 border-gray-600 flex-shrink-0" alt="Current profile picture">
+
+                    {# Manually Rendered File Input Control #}
+                    <div class="flex-grow">
+                        <p class="text-sm text-gray-400 mb-1">Change picture:</p>
+                        {# Use the field attributes but render the input tag directly #}
+                        <input type="file" name="{{ form.image.name }}" id="{{ form.image.id_for_label }}"
+                               class="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-700 cursor-pointer">
+
+                        {# Add link to current file if it's not the default #}
+                        {% if user.profile.image and user.profile.image.url != '/media/default.jpg' %}
+                        <p class="text-xs text-gray-500 mt-1">Currently: <a href="{{ user.profile.image.url }}" target="_blank" class="text-indigo-400 hover:underline">{{ user.profile.image.name }}</a></p>
+                            {# Optional: Add the 'clear' checkbox if needed #}
+                            {% comment %}
+                            {% if form.image.field.widget.is_initial %}
+                            <div class="mt-1">
+                                {{ form.image.field.widget.clear_checkbox_label }} {{ form.image.field.widget.clear_checkbox_input }}
+                            </div>
+                            {% endif %}
+                            {% endcomment %}
+                        {% endif %}
+                    </div>
+                </div>
+                 {% for error in form.image.errors %}
+                    <p class="mt-2 text-xs text-red-400">{{ error }}</p>
+                {% endfor %}
+            </div>
+            {# --- End Updated Profile Picture Section --- #}
+
+            <div>
                 <label for="{{ form.bio.id_for_label }}" class="block font-semibold text-lg mb-2">{{ form.bio.label }}</label>
                 {{ form.bio }}
                 <p class="text-sm text-gray-400 mt-1">Write a short bio (up to 500 characters).</p>
+                {% for error in form.bio.errors %}
+                    <p class="mt-2 text-xs text-red-400">{{ error }}</p>
+                {% endfor %}
             </div>
 
             <div class="flex items-center p-4 bg-gray-700 rounded-lg">

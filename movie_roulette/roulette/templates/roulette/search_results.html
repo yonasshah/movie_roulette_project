@@ -12,7 +12,8 @@
         <div class="space-y-3">
             {% for user in user_results %}
                 <a href="{% url 'roulette:user_profile' username=user.username %}" class="flex items-center p-3 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors">
-                    <i class="fas fa-user-circle mr-3 text-indigo-400 text-xl"></i>
+                    <!-- --- ADDED PROFILE PIC --- -->
+                    <img src="{{ user.profile.image.url }}" class="w-10 h-10 rounded-full mr-3 object-cover" alt="{{ user.username }}'s profile picture">
                     <div>
                         <p class="font-semibold">@{{ user.username }}</p>
                         <p class="text-sm text-gray-400">{{ user.follower_count }} Followers</p>

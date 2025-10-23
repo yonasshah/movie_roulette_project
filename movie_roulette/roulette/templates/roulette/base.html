@@ -12,7 +12,35 @@
         body { font-family: 'Poppins', sans-serif; background-color: #111827; color: #f3f4f6; }
         .list-item { transition: background-color O.2s; }
 
-        
+        .custom-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        /* Hide scrollbar for IE, Edge and Firefox */
+        .custom-scrollbar {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+
+        /* --- ADDED FOR RATING STARS --- */
+        .star-rating {
+            display: inline-flex;
+            flex-direction: row-reverse; /* This makes stars fill from left */
+            justify-content: flex-end;
+        }
+        .star-rating input[type="radio"] { display: none; }
+        .star-rating label {
+            font-size: 1.5rem; /* Adjust size */
+            color: #4b5563; /* gray-600 */
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        .star-rating input[type="radio"]:checked ~ label,
+        .star-rating label:hover,
+        .star-rating label:hover ~ label {
+            color: #f59e0b; /* amber-500 */
+        }
+        /* --- END ADDED --- */
+
         {% block style %}{% endblock %}
     </style>
 </head>
@@ -27,7 +55,13 @@
                         🎲 Roulette
                     </a>
                     <div class="hidden md:flex items-center space-x-6">
-                        <a href="{% url 'roulette:discover' %}" class="text-gray-300 hover:text-white transition-colors text-sm font-semibold">Discover</a>
+                        <!-- --- ADDED FEED LINK --- -->
+                        <a href="{% url 'roulette:feed' %}" class="text-gray-300 hover:text-white transition-colors text-sm font-semibold">
+                            <i class="fas fa-users mr-1"></i> Feed
+                        </a>
+                        <a href="{% url 'roulette:discover' %}" class="text-gray-300 hover:text-white transition-colors text-sm font-semibold">
+                            <i class="fas fa-search mr-1"></i> Discover
+                        </a>
                     </div>
                 </div>
 
@@ -43,7 +77,9 @@
                         <i class="fas fa-list-ul mr-2"></i>My Lists
                     </a>
                         <a href="{% url 'roulette:user_profile' username=user.username %}" class="text-gray-300 hover:text-white transition-colors flex items-center text-sm font-semibold">
-                            <i class="fas fa-user mr-2"></i>My Profile
+                            <!-- --- ADDED PROFILE PIC --- -->
+                            <img src="{{ user.profile.image.url }}" class="w-6 h-6 rounded-full mr-2 object-cover">
+                            My Profile
                         </a>
                         <a href="{% url 'users:settings' %}" class="text-gray-300 hover:text-white transition-colors flex items-center text-sm font-semibold">
                             <i class="fas fa-cog mr-2"></i>Settings
@@ -76,16 +112,29 @@
                         <i class="fas fa-search"></i>
                     </button>
                 </form>
-                <a href="{% url 'roulette:discover' %}" class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium">Discover</a>
+                <!-- --- ADDED FEED LINK (Mobile) --- -->
+                <a href="{% url 'roulette:feed' %}" class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium">
+                    <i class="fas fa-users mr-2"></i> Feed
+                </a>
+                <a href="{% url 'roulette:discover' %}" class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium">
+                    <i class="fas fa-search mr-2"></i> Discover
+                </a>
                 {% if user.is_authenticated %}
-                    <a href="{% url 'roulette:list_all' %}" class="text-gray-300 hover:text-white transition-colors flex items-center text-sm font-semibold">
+                    <a href="{% url 'roulette:list_all' %}" class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium">
                         <i class="fas fa-list-ul mr-2"></i>My Lists
                     </a>
-                    <a href="{% url 'roulette:user_profile' username=user.username %}" class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium">My Profile</a>
-                    <a href="{% url 'users:settings' %}" class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium">Settings</a>
+                    <a href="{% url 'roulette:user_profile' username=user.username %}" class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium">
+                        <img src="{{ user.profile.image.url }}" class="w-6 h-6 rounded-full mr-2 object-cover inline-block">
+                        My Profile
+                    </a>
+                    <a href="{% url 'users:settings' %}" class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium">
+                        <i class="fas fa-cog mr-2"></i> Settings
+                    </a>
                     <form action="{% url 'users:logout' %}" method="post">
                         {% csrf_token %}
-                        <button type="submit" class="text-gray-300 hover:bg-gray-700 hover:text-white block w-full text-left px-3 py-2 rounded-md text-base font-medium">Logout</button>
+                        <button type="submit" class="text-gray-300 hover:bg-gray-700 hover:text-white block w-full text-left px-3 py-2 rounded-md text-base font-medium">
+                            <i class="fas fa-sign-out-alt mr-2"></i> Logout
+                        </button>
                     </form>
                 {% else %}
                     <a href="{% url 'users:login' %}" class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium">Log In</a>
@@ -96,6 +145,21 @@
     </nav>
 
     <main class="w-full max-w-4xl pt-20">
+        <!-- --- ADDED MESSAGES FRAMEWORK --- -->
+        {% if messages %}
+            <div class="mb-6 space-y-2">
+                {% for message in messages %}
+                    <div class="p-3 rounded-md text-center text-sm font-medium
+                                {% if message.tags == 'success' %}bg-green-600 text-white
+                                {% elif message.tags == 'error' %}bg-red-600 text-white
+                                {% else %}bg-blue-600 text-white{% endif %}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+        <!-- --- END MESSAGES --- -->
+
         {% block content %}
         {% endblock %}
     </main>
