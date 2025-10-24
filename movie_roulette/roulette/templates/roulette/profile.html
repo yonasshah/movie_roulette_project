@@ -146,11 +146,12 @@
             <div>
                 <h4 class="text-xl font-semibold mb-3 text-gray-300">Followers ({{ followers_count }})</h4>
                 <div class="space-y-2 max-h-60 md:max-h-96 overflow-y-auto pr-2 custom-scrollbar"> {# Reduced max height on mobile #}
-                    {% for follow in followers_list %}
-                    <a href="{% url 'roulette:user_profile' username=follow.follower__username %}" class="flex items-center p-2 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors">
-                        {# --- TODO: Replace icon with follower's PFP using follow.follower.profile.image.url --- #}
-                        <img src="{{ follow.follower.profile.image.url }}" class="w-8 h-8 rounded-full mr-3 object-cover" alt="{{ follow.follower__username }}'s profile picture">
-                        <span class="font-medium text-sm md:text-base">@{{ follow.follower__username }}</span>
+                     {# --- INTEGRATED FIX: Loop through followers_follows queryset --- #}
+                    {% for follow_relation in followers_follows %}
+                    <a href="{% url 'roulette:user_profile' username=follow_relation.follower.username %}" class="flex items-center p-2 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors">
+                        {# --- INTEGRATED FIX: Access image via follow_relation.follower.profile.image.url --- #}
+                        <img src="{{ follow_relation.follower.profile.image.url }}" class="w-8 h-8 rounded-full mr-3 object-cover" alt="{{ follow_relation.follower.username }}'s profile picture">
+                        <span class="font-medium text-sm md:text-base">@{{ follow_relation.follower.username }}</span>
                     </a>
                     {% empty %}
                     <p class="text-gray-500 text-sm">No one is following {{ profile_user.username }} yet.</p>
@@ -161,11 +162,12 @@
             <div>
                 <h4 class="text-xl font-semibold mb-3 text-gray-300">Following ({{ following_count }})</h4>
                 <div class="space-y-2 max-h-60 md:max-h-96 overflow-y-auto pr-2 custom-scrollbar"> {# Reduced max height on mobile #}
-                    {% for follow in following_list %}
-                    <a href="{% url 'roulette:user_profile' username=follow.followed__username %}" class="flex items-center p-2 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors">
-                        {# --- TODO: Replace icon with followed's PFP using follow.followed.profile.image.url --- #}
-                         <img src="{{ follow.followed.profile.image.url }}" class="w-8 h-8 rounded-full mr-3 object-cover" alt="{{ follow.followed__username }}'s profile picture">
-                        <span class="font-medium text-sm md:text-base">@{{ follow.followed__username }}</span>
+                     {# --- INTEGRATED FIX: Loop through following_follows queryset --- #}
+                    {% for follow_relation in following_follows %}
+                    <a href="{% url 'roulette:user_profile' username=follow_relation.followed.username %}" class="flex items-center p-2 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors">
+                        {# --- INTEGRATED FIX: Access image via follow_relation.followed.profile.image.url --- #}
+                         <img src="{{ follow_relation.followed.profile.image.url }}" class="w-8 h-8 rounded-full mr-3 object-cover" alt="{{ follow_relation.followed.username }}'s profile picture">
+                        <span class="font-medium text-sm md:text-base">@{{ follow_relation.followed.username }}</span>
                     </a>
                     {% empty %}
                     <p class="text-gray-500 text-sm">{{ profile_user.username }} isn't following anyone yet.</p>

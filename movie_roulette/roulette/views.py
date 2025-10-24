@@ -175,6 +175,7 @@ def user_profile_view(request, username):
     is_private = profile_user.profile.is_favorites_private and request.user != profile_user
 
     if not is_private:
+        # Keep .values() here as we only need specific fields for the grid
         favorite_list = list(UserContent.objects.filter(
             user=profile_user,
             list_type=UserContent.ListType.FAVORITE
@@ -185,15 +186,16 @@ def user_profile_view(request, username):
             list_type=UserContent.ListType.WATCHLIST
         ).order_by('-timestamp').values('tmdb_id', 'title', 'poster_path', 'release_year', 'content_type'))
 
-    followers_list = profile_user.followers.select_related('follower').values('follower__username', 'follower__id')
-    following_list = profile_user.following.select_related('followed').values('followed__username', 'followed__id')
+    # --- MODIFICATION: Fetch full related objects ---
+    # Fetch UserFollow objects, prefetching the related user and their profile
+    followers_follows = profile_user.followers.select_related('follower__profile')
+    following_follows = profile_user.following.select_related('followed__profile')
+    # --- END MODIFICATION ---
 
-    followers_count = followers_list.count()
-    following_count = following_list.count()
+    followers_count = followers_follows.count() # Count directly from the queryset
+    following_count = following_follows.count() # Count directly from the queryset
 
-    # --- ADDED: Get user's reviews ---
     user_reviews = UserReview.objects.filter(user=profile_user)
-    # --- END ADDED ---
 
     context = {
         'profile_user': profile_user,
@@ -202,11 +204,13 @@ def user_profile_view(request, username):
         'watchlist_list': watchlist_list,
         'is_private': is_private,
         'is_owner': request.user == profile_user,
-        'followers_list': list(followers_list),
-        'following_list': list(following_list),
+        # --- MODIFICATION: Pass the querysets ---
+        'followers_follows': followers_follows, # Pass the queryset of UserFollow objects
+        'following_follows': following_follows, # Pass the queryset of UserFollow objects
+        # --- END MODIFICATION ---
         'followers_count': followers_count,
         'following_count': following_count,
-        'user_reviews': user_reviews, # <-- Add to context
+        'user_reviews': user_reviews,
     }
 
     return render(request, 'roulette/profile.html', context)
