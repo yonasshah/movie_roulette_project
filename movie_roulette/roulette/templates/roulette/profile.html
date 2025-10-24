@@ -3,68 +3,74 @@
 {% block title %}{{ profile_user.username }}'s Profile - Content Roulette{% endblock %}
 
 {% block content %}
-    <main class="w-full max-w-4xl bg-gray-800 p-8 rounded-lg shadow-2xl pt-20"> 
-        
+    <main class="w-full max-w-4xl bg-gray-800 p-6 md:p-8 rounded-lg shadow-2xl pt-20"> {# Adjusted padding for mobile #}
+
         <div class="border-b border-gray-700 pb-6 mb-6">
-            <div class="flex items-start justify-between">
-                
-                <div class="flex items-start space-x-4">
-                    <!-- --- ADDED PROFILE PICTURE --- -->
-                    <img src="{{ profile_user.profile.image.url }}" class="w-24 h-24 rounded-full object-cover border-2 border-indigo-500" alt="{{ profile_user.username }}'s profile picture">
-                    
-                    <div class="flex flex-col space-y-2 pt-2">
-                        <h2 class="text-4xl font-extrabold text-white">@{{ profile_user.username }}</h2>
-                        <div class="flex space-x-4 text-lg text-gray-400">
+            {# --- MODIFIED: Changed flex direction for mobile --- #}
+            <div class="flex flex-col md:flex-row items-center md:items-start md:justify-between space-y-4 md:space-y-0">
+
+                {# --- Left side content (Image, Username, Stats) --- #}
+                <div class="flex flex-col items-center md:flex-row md:items-start space-y-4 md:space-y-0 md:space-x-4">
+                    <img src="{{ profile_user.profile.image.url }}" class="w-20 h-20 md:w-24 md:h-24 rounded-full object-cover border-2 border-indigo-500 flex-shrink-0" alt="{{ profile_user.username }}'s profile picture">
+
+                    <div class="flex flex-col items-center md:items-start space-y-1 md:space-y-2 pt-2 text-center md:text-left">
+                        {# --- Adjusted text size for mobile --- #}
+                        <h2 class="text-3xl md:text-4xl font-extrabold text-white break-all">@{{ profile_user.username }}</h2>
+                        <div class="flex space-x-4 text-base md:text-lg text-gray-400">
                             <span id="followers-count" class="hover:text-white transition-colors cursor-default">{{ followers_count }} Followers</span>
                             <span id="following-count" class="hover:text-white transition-colors cursor-default">{{ following_count }} Following</span>
                         </div>
                     </div>
                 </div>
 
-                {% if not is_owner %}
-                    <div id="follow-container">
-                        <button 
-                            id="follow-btn" 
-                            data-user-id="{{ profile_user.id }}" 
-                            class="font-semibold py-2 px-5 rounded-full transition-colors 
-                            {% if is_following %}bg-gray-600 hover:bg-red-500{% else %}bg-indigo-600 hover:bg-indigo-700{% endif %}"
-                        >
-                            {% if is_following %}Unfollow{% else %}Follow{% endif %}
-                        </button>
-                        <p id="follow-message" class="text-sm mt-2 text-center"></p>
-                    </div>
-                {% else %}
-                    <a href="{% url 'users:profile_settings' %}" class="font-semibold py-2 px-5 rounded-full transition-colors bg-gray-600 hover:bg-gray-700">
-                        Edit Profile
-                    </a>
-                {% endif %}
+                {# --- Right side content (Button) - Now appears below on mobile --- #}
+                <div class="w-full md:w-auto flex justify-center md:justify-end mt-4 md:mt-0"> {# Added centering for mobile button #}
+                    {% if not is_owner %}
+                        <div id="follow-container" class="text-center">
+                            <button
+                                id="follow-btn"
+                                data-user-id="{{ profile_user.id }}"
+                                class="font-semibold py-2 px-5 rounded-full transition-colors
+                                {% if is_following %}bg-gray-600 hover:bg-red-500 text-white{% else %}bg-indigo-600 hover:bg-indigo-700 text-white{% endif %}"
+                            >
+                                {% if is_following %}Unfollow{% else %}Follow{% endif %}
+                            </button>
+                            <p id="follow-message" class="text-sm mt-2 text-center"></p>
+                        </div>
+                    {% else %}
+                        <a href="{% url 'users:profile_settings' %}" class="font-semibold py-2 px-5 rounded-full transition-colors bg-gray-600 hover:bg-gray-700 text-white">
+                            Edit Profile
+                        </a>
+                    {% endif %}
+                </div>
             </div>
 
             {% if profile_user.profile.bio %}
-                <div class="mt-4 pt-4 border-t border-gray-700">
+                <div class="mt-4 pt-4 border-t border-gray-700 text-center md:text-left"> {# Centered bio text on mobile #}
                     <p class="text-gray-300">{{ profile_user.profile.bio|linebreaksbr }}</p>
                 </div>
             {% endif %}
         </div>
 
-        <!-- --- TABS FOR LISTS/REVIEWS --- -->
+        {# --- TABS FOR LISTS/REVIEWS (No changes needed here for layout) --- #}
         <div class="mb-6 border-b border-gray-700">
-            <nav class="flex space-x-6" aria-label="Tabs">
-                <button id="tab-favorites" class="tab-btn text-white border-b-2 border-indigo-500 py-3 px-1 text-lg font-medium">
+            <nav class="flex space-x-4 md:space-x-6 justify-center md:justify-start" aria-label="Tabs"> {# Centered tabs on mobile #}
+                <button id="tab-favorites" class="tab-btn text-white border-b-2 border-indigo-500 py-3 px-1 text-base md:text-lg font-medium">
                     Favorites
                 </button>
-                <button id="tab-watchlist" class="tab-btn text-gray-400 border-b-2 border-transparent hover:border-gray-500 hover:text-gray-200 py-3 px-1 text-lg font-medium transition-colors">
+                <button id="tab-watchlist" class="tab-btn text-gray-400 border-b-2 border-transparent hover:border-gray-500 hover:text-gray-200 py-3 px-1 text-base md:text-lg font-medium transition-colors">
                     Watchlist
                 </button>
-                <button id="tab-reviews" class="tab-btn text-gray-400 border-b-2 border-transparent hover:border-gray-500 hover:text-gray-200 py-3 px-1 text-lg font-medium transition-colors">
+                <button id="tab-reviews" class="tab-btn text-gray-400 border-b-2 border-transparent hover:border-gray-500 hover:text-gray-200 py-3 px-1 text-base md:text-lg font-medium transition-colors">
                     Reviews ({{ user_reviews.count }})
                 </button>
             </nav>
         </div>
 
-        <!-- --- FAVORITES CONTENT --- -->
+        {# --- FAVORITES CONTENT --- #}
         <div id="content-favorites" class="tab-content">
-            <div id="favorite-list-content" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
+             {# --- Adjusted grid columns for better mobile view --- #}
+            <div id="favorite-list-content" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 md:gap-4">
                 {% comment %} JavaScript will render favorites here using favorite-data {% endcomment %}
             </div>
             {% if is_private %}
@@ -75,9 +81,10 @@
             {% endif %}
         </div>
 
-        <!-- --- WATCHLIST CONTENT --- -->
+        {# --- WATCHLIST CONTENT --- #}
         <div id="content-watchlist" class="tab-content hidden">
-            <div id="watchlist-list-content" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
+             {# --- Adjusted grid columns --- #}
+            <div id="watchlist-list-content" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 md:gap-4">
                 {% if is_private %}
                     <div class="text-center p-8 bg-gray-700 rounded-lg col-span-full">
                         <i class="fas fa-lock text-4xl text-gray-400 mb-2"></i>
@@ -103,17 +110,19 @@
             </div>
         </div>
 
-        <!-- --- REVIEWS CONTENT --- -->
+        {# --- REVIEWS CONTENT --- #}
         <div id="content-reviews" class="tab-content hidden">
             <div class="space-y-6">
                 {% for review in user_reviews %}
-                    <div class="flex space-x-4 p-4 bg-gray-700 rounded-lg">
-                        <a href="{% url 'roulette:content_detail' content_type=review.content_type|lower tmdb_id=review.tmdb_id %}">
-                            <img src="https://image.tmdb.org/t/p/w185/{{ review.poster_path }}" class="w-20 h-auto rounded-md object-cover flex-shrink-0" alt="{{ review.title }} poster">
+                     {# --- Adjusted layout slightly for smaller screens --- #}
+                    <div class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 p-4 bg-gray-700 rounded-lg">
+                        <a href="{% url 'roulette:content_detail' content_type=review.content_type|lower tmdb_id=review.tmdb_id %}" class="flex-shrink-0 mx-auto sm:mx-0">
+                             {# --- Made image slightly smaller on mobile --- #}
+                            <img src="https://image.tmdb.org/t/p/w154/{{ review.poster_path }}" class="w-24 sm:w-20 h-auto rounded-md object-cover" alt="{{ review.title }} poster">
                         </a>
-                        <div class="flex-1">
-                            <div class="flex items-center justify-between">
-                                <a href="{% url 'roulette:content_detail' content_type=review.content_type|lower tmdb_id=review.tmdb_id %}" class="text-lg font-semibold text-white hover:underline">{{ review.title }}</a>
+                        <div class="flex-1 text-center sm:text-left">
+                            <div class="flex flex-col sm:flex-row items-center justify-between">
+                                <a href="{% url 'roulette:content_detail' content_type=review.content_type|lower tmdb_id=review.tmdb_id %}" class="text-lg font-semibold text-white hover:underline mb-1 sm:mb-0">{{ review.title }}</a>
                                 <span class="text-xl font-bold text-indigo-400">{{ review.rating }}/10</span>
                             </div>
                             <p class="text-gray-400 text-xs mb-2">{{ review.timestamp|timesince }} ago</p>
@@ -129,16 +138,19 @@
                 {% endfor %}
             </div>
         </div>
-        
+
+        {# --- Followers/Following List --- #}
+        {# --- Adjusted columns for mobile --- #}
         <div class="mt-10 grid grid-cols-1 md:grid-cols-2 gap-8">
-        
+
             <div>
                 <h4 class="text-xl font-semibold mb-3 text-gray-300">Followers ({{ followers_count }})</h4>
-                <div class="space-y-2 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
+                <div class="space-y-2 max-h-60 md:max-h-96 overflow-y-auto pr-2 custom-scrollbar"> {# Reduced max height on mobile #}
                     {% for follow in followers_list %}
                     <a href="{% url 'roulette:user_profile' username=follow.follower__username %}" class="flex items-center p-2 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors">
-                        <i class="fas fa-user-circle mr-3 text-indigo-400 text-lg"></i> <!-- TODO: Replace with follower's PFP -->
-                        <span class="font-medium">@{{ follow.follower__username }}</span>
+                        {# --- TODO: Replace icon with follower's PFP using follow.follower.profile.image.url --- #}
+                        <img src="{{ follow.follower.profile.image.url }}" class="w-8 h-8 rounded-full mr-3 object-cover" alt="{{ follow.follower__username }}'s profile picture">
+                        <span class="font-medium text-sm md:text-base">@{{ follow.follower__username }}</span>
                     </a>
                     {% empty %}
                     <p class="text-gray-500 text-sm">No one is following {{ profile_user.username }} yet.</p>
@@ -148,11 +160,12 @@
 
             <div>
                 <h4 class="text-xl font-semibold mb-3 text-gray-300">Following ({{ following_count }})</h4>
-                <div class="space-y-2 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
+                <div class="space-y-2 max-h-60 md:max-h-96 overflow-y-auto pr-2 custom-scrollbar"> {# Reduced max height on mobile #}
                     {% for follow in following_list %}
                     <a href="{% url 'roulette:user_profile' username=follow.followed__username %}" class="flex items-center p-2 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors">
-                        <i class="fas fa-user-circle mr-3 text-indigo-400 text-lg"></i> <!-- TODO: Replace with followed's PFP -->
-                        <span class="font-medium">@{{ follow.followed__username }}</span>
+                        {# --- TODO: Replace icon with followed's PFP using follow.followed.profile.image.url --- #}
+                         <img src="{{ follow.followed.profile.image.url }}" class="w-8 h-8 rounded-full mr-3 object-cover" alt="{{ follow.followed__username }}'s profile picture">
+                        <span class="font-medium text-sm md:text-base">@{{ follow.followed__username }}</span>
                     </a>
                     {% empty %}
                     <p class="text-gray-500 text-sm">{{ profile_user.username }} isn't following anyone yet.</p>
@@ -164,6 +177,9 @@
 {% endblock %}
 
 {% block scripts %}
+{# --- Ensure profile images are passed to context in view for followers/following --- #}
+{# The existing JavaScript should still work, but you'll need to update the view #}
+{# to pass the profile image URLs for followers and following lists if you want to display them #}
 {{ block.super }}
     {{ favorite_list|json_script:"favorite-data" }}
 
@@ -171,8 +187,8 @@
         document.addEventListener('DOMContentLoaded', function() {
             const followBtn = document.getElementById('follow-btn');
             const followMessage = document.getElementById('follow-message');
-            const csrfToken = '{{ csrf_token }}'; 
-            
+            const csrfToken = '{{ csrf_token }}';
+
             if (followBtn) {
                 followBtn.addEventListener('click', function() {
                     toggleFollowStatus(this.dataset.userId);
@@ -182,33 +198,40 @@
             async function toggleFollowStatus(userId) {
                 const formData = new FormData();
                 formData.append('user_id', userId);
-                
+
                 try {
                     const response = await fetch('{% url "roulette:toggle_follow" %}', {
                         method: 'POST',
                         headers: { 'X-CSRFToken': csrfToken },
                         body: formData,
                     });
-                    
+
                     if (response.status === 403) {
-                        window.location.href = "{% url 'users:login' %}?next={{ request.path }}";
+                        window.location.href = "{% url 'users:login' %}?next={{ request.path|urlencode }}"; // Ensure next path is encoded
                         return;
                     }
-                    
+
                     const data = await response.json();
 
                     if (data.success) {
                         if (data.is_following) {
                             followBtn.textContent = 'Unfollow';
-                            followBtn.className = 'font-semibold py-2 px-5 rounded-full transition-colors bg-gray-600 hover:bg-red-500';
+                            followBtn.className = 'font-semibold py-2 px-5 rounded-full transition-colors bg-gray-600 hover:bg-red-500 text-white'; // Added text-white
                         } else {
                             followBtn.textContent = 'Follow';
-                            followBtn.className = 'font-semibold py-2 px-5 rounded-full transition-colors bg-indigo-600 hover:bg-indigo-700';
+                            followBtn.className = 'font-semibold py-2 px-5 rounded-full transition-colors bg-indigo-600 hover:bg-indigo-700 text-white'; // Added text-white
                         }
-                        followMessage.textContent = data.message;
-                        followMessage.className = 'text-sm mt-2 text-green-500';
-                        // --- UPDATED: Reload page to update counts ---
-                        setTimeout(() => window.location.reload(), 500); 
+                        // Update counts directly without reload
+                        document.getElementById('followers-count').textContent = `${data.followers_count} Followers`;
+                        // Note: The 'following-count' on the *profile* page shows the *profile user's* following count,
+                        // which doesn't change when the *viewer* follows/unfollows them.
+                        // If you were showing the *viewer's* following count elsewhere, you'd update it here.
+                        // followMessage.textContent = data.message; // Optional: Show a temporary message
+                        // followMessage.className = 'text-sm mt-2 text-green-500';
+                        // setTimeout(() => followMessage.textContent = '', 2000); // Clear message after 2s
+
+                        // --- Optionally reload only if really needed, but direct update is smoother ---
+                        // setTimeout(() => window.location.reload(), 500);
                     } else {
                         followMessage.textContent = data.error || "An unknown error occurred.";
                         followMessage.className = 'text-sm mt-2 text-red-500';
@@ -222,60 +245,73 @@
 
             function renderFavoriteList() {
                 const favoriteListContent = document.getElementById('favorite-list-content');
+                if (!favoriteListContent) return; // Exit if element not found
                 if ({{ is_private|yesno:"true,false" }}) {
-                    return; 
+                    return; // Don't render if private
                 }
-                
-                const items = JSON.parse(document.getElementById('favorite-data').textContent);
-                
-                if (!items || items.length === 0) {
-                    favoriteListContent.innerHTML = `<p class="text-center text-gray-500 col-span-full">This user hasn't added any favorites yet.</p>`;
+
+                const itemsJson = document.getElementById('favorite-data')?.textContent;
+                let items = [];
+                try {
+                    items = itemsJson ? JSON.parse(itemsJson) : [];
+                } catch (e) {
+                    console.error("Error parsing favorite data:", e);
+                    favoriteListContent.innerHTML = `<p class="text-center text-red-500 col-span-full">Error loading favorites.</p>`;
                     return;
                 }
-                
-                favoriteListContent.innerHTML = ''; 
+
+
+                if (!items || items.length === 0) {
+                    favoriteListContent.innerHTML = `<p class="text-center text-gray-500 col-span-full py-4">This user hasn't added any favorites yet.</p>`;
+                    return;
+                }
+
+                favoriteListContent.innerHTML = ''; // Clear previous content
 
                 items.forEach(item => {
-                    const posterUrl = item.poster_path ? `https://image.tmdb.org/t/p/w342${item.poster_path}` : 'https://placehold.co/342x513?text=N/A';
+                    const posterUrl = item.poster_path ? `https://image.tmdb.org/t/p/w342${item.poster_path}` : 'https://placehold.co/342x513/1f2937/374151?text=N/A'; // Placeholder with background color
                     const detailUrl = `/content/${item.content_type.toLowerCase()}/${item.tmdb_id}/`;
+                    const title = item.title || 'Untitled'; // Fallback title
 
                     const el = document.createElement('div');
                     el.className = 'bg-gray-700 rounded-lg shadow-lg overflow-hidden transform hover:scale-105 transition-transform duration-200';
                     el.innerHTML = `
                         <a href="${detailUrl}">
-                            <img src="${posterUrl}" alt="Poster for ${item.title}" class="w-full object-cover" style="aspect-ratio: 2/3;">
+                             {# --- Added aspect ratio and background color for consistency --- #}
+                            <div class="aspect-[2/3] bg-gray-900">
+                                <img src="${posterUrl}" alt="Poster for ${title.replace(/"/g, '&quot;')}" class="w-full h-full object-cover">
+                            </div>
                         </a>
                     `;
                     favoriteListContent.appendChild(el);
                 });
             }
-            
+
             renderFavoriteList();
 
-            // --- ADDED TAB SWITCHING LOGIC ---
+            // --- TAB SWITCHING LOGIC ---
             const tabButtons = document.querySelectorAll('.tab-btn');
             const tabContents = document.querySelectorAll('.tab-content');
 
             tabButtons.forEach(button => {
                 button.addEventListener('click', () => {
-                    // Deactivate all buttons
                     tabButtons.forEach(btn => {
                         btn.classList.remove('text-white', 'border-indigo-500');
                         btn.classList.add('text-gray-400', 'border-transparent', 'hover:border-gray-500', 'hover:text-gray-200');
                     });
-                    
-                    // Activate clicked button
+
                     button.classList.add('text-white', 'border-indigo-500');
                     button.classList.remove('text-gray-400', 'border-transparent', 'hover:border-gray-500', 'hover:text-gray-200');
 
-                    // Hide all content
                     tabContents.forEach(content => {
                         content.classList.add('hidden');
                     });
 
-                    // Show target content
                     const targetId = button.id.replace('tab-', 'content-');
-                    document.getElementById(targetId).classList.remove('hidden');
+                    const targetContent = document.getElementById(targetId);
+                    if (targetContent) {
+                         targetContent.classList.remove('hidden');
+                    }
                 });
             });
             // --- END TAB LOGIC ---
