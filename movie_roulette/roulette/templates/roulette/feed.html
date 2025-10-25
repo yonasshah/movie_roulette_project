@@ -307,40 +307,82 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log("Feed WebSocket connection established.");
         };
 
-        feedSocket.onmessage = function(e) {
-            const data = JSON.parse(e.data);
-            console.log("Message received:", data);
+        // NEW onmessage handler
+        feedSocket.onmessage = async function(e) { // Make it async if you fetch HTML
+             const message = JSON.parse(e.data);
+             console.log("WebSocket Message received:", message);
 
-            if (data.type === 'new_item' && data.html) {
-                const tempDiv = document.createElement('div');
-                tempDiv.innerHTML = data.html.trim();
-                const newItemElement = tempDiv.firstChild;
+             if (message.type === 'new_item' && message.data) {
+                 const newItemData = message.data;
 
-                if (newItemElement && feedContainer) {
-                    // Prepend the new item to the top of the feed list
-                    feedContainer.insertBefore(newItemElement, feedContainer.firstChild);
+                 // OPTION A: Construct HTML directly in JavaScript (Simpler for basic structure)
+                 // This is less maintainable if the structure is complex or re-used heavily.
+                 // You'd build the HTML string here using newItemData fields.
+                 // const newItemHtml = createFeedItemHtml(newItemData); // You'd need to write this function
 
-                    // --- IMPORTANT: If not using full delegation for new items, re-attach listeners ---
-                    // Since we ARE using delegation for like/delete buttons, we only need to
-                    // potentially re-attach the submit listener for any new comment forms within the new item.
-                    const newCommentForms = newItemElement.querySelectorAll('.add-comment-form');
-                    newCommentForms.forEach(form => {
-                        form.addEventListener('submit', function(event) {
-                            event.preventDefault();
-                            handleCommentSubmit(this);
-                        });
-                    });
-                    // --- End listener re-attachment ---
+                 // OPTION B: Fetch the pre-rendered HTML snippet via AJAX (Recommended for complex templates)
+                 // Requires a new Django view to render just the snippet.
+                 try {
+                     // **Requires a new URL and View in Django to render the snippet**
+                     // Example URL: /roulette/render-feed-item/{ctype_id}/{obj_id}/
+                     // The view would fetch the item, comments, likes and render the correct template.
+                     // This example assumes SharedListPost rendering
+                     if (newItemData.type === 'share') {
+                         // --- MODIFIED URL PATTERN ---
+                         // Use content type ID and object ID (which point to SharedListPost)
+                         const response = await fetch(`/render-feed-item/${newItemData.ctype_id}/${newItemData.obj_id}/`); // Replace with your actual URL
+                         // --- END MODIFICATION ---
+                         if (!response.ok) {
+                             throw new Error(`Failed to fetch rendered item: ${response.statusText}`);
+                         }
+                         const htmlResponse = await response.json(); // Assuming the view returns {'html': '...'}
+                         const newItemHtml = htmlResponse.html;
 
-                    window.showToast("New item added to feed!", "info");
-                } else if (!feedContainer) {
-                    console.error("Cannot insert new item: Feed container not found.");
-                } else if (!newItemElement) {
-                     console.error("Received HTML for new item seems invalid:", data.html);
-                }
-            }
-            // Add handling for other message types (e.g., updating like counts) if needed
-        };
+                         if (newItemHtml && feedContainer) {
+                             const tempDiv = document.createElement('div');
+                             tempDiv.innerHTML = newItemHtml.trim();
+                             const newItemElement = tempDiv.firstChild;
+
+                             if (newItemElement) {
+                                 feedContainer.insertBefore(newItemElement, feedContainer.firstChild);
+
+                                 // Re-attach listeners for comment forms specifically within the new item
+                                 const newCommentForms = newItemElement.querySelectorAll('.add-comment-form');
+                                 newCommentForms.forEach(form => {
+                                     form.addEventListener('submit', function(event) {
+                                         event.preventDefault();
+                                         handleCommentSubmit(this);
+                                     });
+                                 });
+
+                                 window.showToast("New item added to feed!", "info");
+                             } else {
+                                 console.error("Received HTML for new item seems invalid:", newItemHtml);
+                             }
+                         } else if (!feedContainer) {
+                             console.error("Cannot insert new item: Feed container not found.");
+                         }
+                     } else {
+                         // Handle other types ('review', 'list_item') similarly if needed
+                         // You'll need corresponding render-feed-item views/logic for these too
+                         console.log("Received new item type:", newItemData.type);
+                         // Example: Fetch HTML for a review item
+                         // if (newItemData.type === 'review') {
+                         //      const response = await fetch(`/render-feed-item/${newItemData.ctype_id}/${newItemData.obj_id}/`);
+                         //      // ... process response and insert HTML ...
+                         // }
+                     }
+
+
+                 } catch (error) {
+                     console.error("Error fetching or inserting new feed item:", error);
+                     window.showToast("Error adding new item to feed.", "error");
+                 }
+
+             }
+             // Handle other message types if necessary
+         };
+         // END NEW onmessage handler
 
         feedSocket.onclose = function(e) {
             console.error('Feed WebSocket closed unexpectedly. Attempting to reconnect...', e);

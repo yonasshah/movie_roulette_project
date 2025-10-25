@@ -3,45 +3,49 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
-from django.template.loader import render_to_string
-from .models import SharedListPost # Import the model here
+# Remove render_to_string import if not used elsewhere
+# from django.template.loader import render_to_string
+from .models import SharedListPost
+from django.contrib.contenttypes.models import ContentType # Import ContentType
 
-@receiver(post_save, sender=SharedListPost) # Adjust sender model if needed later
+@receiver(post_save, sender=SharedListPost)
 def broadcast_new_feed_item(sender, instance, created, **kwargs):
-    if created: # Only broadcast newly created items
+    if created:
         channel_layer = get_channel_layer()
         group_name = 'feed_updates'
 
-        # Render HTML on the backend
-        # Note: Rendering templates outside requests needs care, context might be limited
+        # Get ContentType ID for SharedListPost
         try:
-            # Add basic context; adjust if your template needs more
-            context = {'item': instance}
-            # If your template snippet requires the 'request' object (e.g., for request.user),
-            # you might need to reconsider sending JSON instead, or simplify the snippet.
-            # context['request'] = None # Or find a way to pass a mock request if absolutely necessary
-            item_html = render_to_string('roulette/_feed_item_shared_list.html', context)
-        except Exception as e:
-            print(f"Error rendering template for signal: {e}")
-            item_html = None # Avoid sending broken HTML
+            shared_list_post_ct = ContentType.objects.get_for_model(SharedListPost)
+            ctype_id = shared_list_post_ct.id
+        except ContentType.DoesNotExist:
+            print(f"Error: ContentType for SharedListPost not found.")
+            return # Cannot proceed without ContentType
 
-        if item_html: # Only send if rendering was successful
-            async_to_sync(channel_layer.group_send)(
-                group_name,
-                {
-                    'type': 'feed.update', # Corresponds to method name in consumer (feed_update)
-                    'html': item_html # Send pre-rendered HTML
-                }
-            )
-        else:
-             print(f"Signal for SharedListPost {instance.id} skipped due to template render error.")
+        # Prepare data to send via WebSocket
+        message_data = {
+            'type': 'share', # Indicate the type of item
+            'post_id': instance.id,
+            'user_id': instance.user.id,
+            'username': instance.user.username,
+            'profile_image_url': instance.user.profile.image.url,
+            'list_id': instance.list.id,
+            'list_name': instance.list.name,
+            'list_url': instance.list.get_absolute_url(),
+            'list_description': instance.list.description, # Send description
+            'share_message': instance.message,
+            'timestamp_iso': instance.timestamp.isoformat(), # Send ISO format for JS parsing
+            # Include IDs needed for like/comment functionality on the SharedListPost itself
+            'ctype_id': ctype_id,
+            'obj_id': instance.id,
+        }
+
+        async_to_sync(channel_layer.group_send)(
+            group_name,
+            {
+                'type': 'feed.new_item', # Use a different type for the consumer method
+                'data': message_data # Send JSON data
+            }
+        )
 
 # --- Add receivers for other models (Review, Comment, Like) here later if needed ---
-# Example:
-# @receiver(post_save, sender=Comment)
-# def broadcast_new_comment(sender, instance, created, **kwargs):
-#     if created:
-#         # ... similar logic to get channel_layer, group_name ...
-#         # ... determine target feed item, render comment HTML ...
-#         # ... send message via channel_layer.group_send ...
-#         pass
