@@ -51,12 +51,22 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'project_config.wsgi.application'
 
+# DATABASES = {
+#     'default': dj_database_url.config(
+#         # Replace this default value with your local development DB URL if needed,
+#         # otherwise Render's DATABASE_URL environment variable will be used automatically.
+#         default=os.environ.get('DATABASE_URL'),
+#         conn_max_age=600 # Optional: Number of seconds database connections should persist
+#     )
+# }
+
 DATABASES = {
     'default': dj_database_url.config(
-        # Replace this default value with your local development DB URL if needed,
-        # otherwise Render's DATABASE_URL environment variable will be used automatically.
-        default=os.environ.get('DATABASE_URL'),
-        conn_max_age=600 # Optional: Number of seconds database connections should persist
+        # If DATABASE_URL environment variable is set (like on Render), use it.
+        # Otherwise, default to a local SQLite database named db.sqlite3
+        # located in your project's base directory (BASE_DIR).
+        default=f'sqlite:///{BASE_DIR / "db.sqlite3"}',
+        conn_max_age=600
     )
 }
 
