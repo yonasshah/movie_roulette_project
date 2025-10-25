@@ -13,5 +13,7 @@ tzdata==2025.2
 urllib3==2.5.0
 whitenoise==6.11.0
 Pillow
-psycopg2-binary  # <-- Add this
-dj-database-url  # <-- Add this
+psycopg2-binary
+dj-database-url
+channels==4.0.0  # Or a specific compatible version
+channels-redis==4.2.0 # Or a specific compatible version
