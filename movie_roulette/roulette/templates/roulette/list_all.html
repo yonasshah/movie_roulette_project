@@ -1,3 +1,4 @@
+{# roulette/templates/roulette/list_all.html #}
 {% extends 'roulette/base.html' %}
 
 {% block title %}My Custom Lists{% endblock %}
@@ -8,19 +9,7 @@
         <i class="fas fa-list-ul mr-3 text-indigo-400"></i>My Custom Lists
     </h2>
 
-    <div id="message-container" class="mb-6 space-y-2">
-        {% comment %} Messages displayed via JS or initial load {% endcomment %}
-        {% if messages %}
-            {% for message in messages %}
-                <div class="p-3 rounded-md text-center text-sm font-medium
-                            {% if message.tags == 'success' %}bg-green-600 text-white
-                            {% elif message.tags == 'error' %}bg-red-600 text-white
-                            {% else %}bg-blue-600 text-white{% endif %}">
-                    {{ message }}
-                </div>
-            {% endfor %}
-        {% endif %}
-    </div>
+    {# --- REMOVED message-container for Django messages --- #}
 
     <div class="mb-8 p-6 bg-gray-700 rounded-lg">
         <h3 class="text-xl font-semibold text-white mb-4">Create a New List</h3>
@@ -28,7 +17,7 @@
             {% csrf_token %}
             <div class="flex-grow">
                 {{ form.name }}
-                <div id="form-name-errors" class="text-xs text-red-400 mt-1"></div>
+                <div id="form-name-errors" class="text-xs text-red-400 mt-1"></div> {# Keep for specific field errors if needed #}
             </div>
             <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-5 rounded-md">
                 <i class="fas fa-plus mr-1"></i> Create
@@ -44,7 +33,6 @@
                     <a href="{% url 'roulette:list_detail' list_id=list.id %}" class="font-semibold text-lg text-indigo-300 hover:text-indigo-100 flex-grow mr-4 list-name">
                         {{ list.name }}
                     </a>
-                    {# --- MODIFIED Delete Button --- #}
                     <button type="button" class="delete-list-btn text-red-500 hover:text-red-400 text-lg"
                             data-list-id="{{ list.id }}"
                             data-list-name="{{ list.name|escapejs }}"
@@ -52,7 +40,6 @@
                             title="Delete List">
                         <i class="fas fa-trash"></i>
                     </button>
-                    {# --- END MODIFICATION --- #}
                 </div>
             {% empty %}
                 <p id="no-lists-message" class="text-gray-400 text-center py-4">You haven't created any custom lists yet.</p>
@@ -69,13 +56,12 @@
 document.addEventListener('DOMContentLoaded', function() {
     const createListForm = document.getElementById('create-list-form');
     const nameInput = createListForm ? createListForm.querySelector('input[name="name"]') : null;
-    // const nameErrorsDiv = document.getElementById('form-name-errors'); // REMOVE reference for AJAX errors
-    // const messageContainer = document.getElementById('message-container'); // REMOVE reference for AJAX messages
+    const nameErrorsDiv = document.getElementById('form-name-errors'); // Kept for specific field errors
     const listsContainer = document.getElementById('user-lists-container');
     let noListsMessage = document.getElementById('no-lists-message');
     const csrfToken = '{{ csrf_token }}';
 
-    // --- REMOVE local displayMessage function (now using window.showToast from base.html) ---
+    // --- REMOVE local displayMessage function ---
 
     // --- Function to add a new list item to the page (no changes needed) ---
     function addListToPage(listData) {
@@ -110,12 +96,10 @@ document.addEventListener('DOMContentLoaded', function() {
     if (createListForm) {
         createListForm.addEventListener('submit', async function(event) {
             event.preventDefault();
-            // if(nameErrorsDiv) nameErrorsDiv.textContent = ''; // Clear specific errors
-            // Clear general messages if needed, though toasts handle it now
-            // messageContainer.innerHTML = '';
+            if(nameErrorsDiv) nameErrorsDiv.textContent = ''; // Clear specific errors
             const formData = new FormData(createListForm);
-            const submitButton = createListForm.querySelector('button[type="submit"]'); // Get button
-            if(submitButton) submitButton.disabled = true; // Disable button
+            const submitButton = createListForm.querySelector('button[type="submit"]');
+            if(submitButton) submitButton.disabled = true;
 
             try {
                 const response = await fetch(createListForm.action, {
@@ -126,20 +110,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 const data = await response.json();
                 if (response.ok && data.success) {
                     window.showToast(data.message, 'success'); // USE TOAST
-                    addListToPage(data.list); // Add visually
-                    if (nameInput) nameInput.value = ''; // Clear input field
+                    addListToPage(data.list);
+                    if (nameInput) nameInput.value = '';
                 } else {
                     window.showToast(data.error || 'Could not create list.', 'error'); // USE TOAST
-                    // Optionally still show error near field if needed, but toast is primary
-                    // if (data.error && nameErrorsDiv && data.error.toLowerCase().includes("name")) {
-                    //      nameErrorsDiv.textContent = data.error;
-                    // }
+                    // Optionally show error near field if it relates to the name
+                    if (data.error && nameErrorsDiv && data.error.toLowerCase().includes("name")) {
+                         nameErrorsDiv.textContent = data.error;
+                    }
                 }
             } catch (error) {
                 console.error("List creation error:", error);
                 window.showToast('An unexpected error occurred.', 'error'); // USE TOAST
             } finally {
-                 if(submitButton) submitButton.disabled = false; // Re-enable button
+                 if(submitButton) submitButton.disabled = false;
             }
         });
     }

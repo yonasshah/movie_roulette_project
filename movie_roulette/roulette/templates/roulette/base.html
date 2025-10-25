@@ -125,15 +125,36 @@
                     {% endif %}
                 </div>
                 {# Mobile Menu Button #}
-                <div class="md:hidden flex items-center">
-                    <button id="mobile-menu-button" class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 focus:outline-none"> <i class="fas fa-bars text-2xl"></i> </button>
-                </div>
-            </div>
-        </div>
-        {# Mobile Menu Content #}
-        <div id="mobile-menu" class="hidden md:hidden">
+                <div id="mobile-menu" class="hidden md:hidden">
             <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
-                {# ... Mobile menu links ... #}
+                {# Mobile links matching desktop #}
+                <a href="{% url 'roulette:feed' %}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700">Feed</a>
+                <a href="{% url 'roulette:discover' %}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700">Discover</a>
+
+                {# Mobile Search Bar (Optional but recommended) #}
+                <form action="{% url 'roulette:search_results' %}" method="GET" class="px-3 py-2">
+                    <input type="text" name="q" placeholder="Search..." class="w-full bg-gray-800 border border-gray-700 rounded-md py-1 px-3 text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                </form>
+
+                {# Mobile Auth/User Links #}
+                {% if user.is_authenticated %}
+                    <a href="{% url 'roulette:notifications' %}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700">
+                        Notifications
+                        {% if unread_notifications_count > 0 %}
+                            <span class="inline-flex items-center justify-center ml-2 px-2 py-0.5 text-xs font-bold leading-none text-red-100 bg-red-600 rounded-full">{{ unread_notifications_count }}</span>
+                        {% endif %}
+                    </a>
+                    <a href="{% url 'roulette:user_profile' username=user.username %}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700">My Profile</a>
+                    <a href="{% url 'roulette:list_all' %}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700">My Lists</a>
+                    <a href="{% url 'users:account_settings' %}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700">Account Settings</a>
+                     <form action="{% url 'users:logout' %}" method="post">
+                         {% csrf_token %}
+                         <button type="submit" class="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700">Logout</button>
+                     </form>
+                {% else %}
+                    <a href="{% url 'users:login' %}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700">Log In</a>
+                    <a href="{% url 'users:signup' %}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700">Sign Up</a>
+                {% endif %}
             </div>
         </div>
     </nav>

@@ -125,7 +125,7 @@
                      </div>
                 </div>
 
-                {# Container for modal messages - uses window.showToast now #}
+                {# Container for modal messages - primarily uses window.showToast now, but kept for temp 'info' messages #}
                 <div id="modal-message-container" class="mb-4 text-sm min-h-[20px]"></div>
 
                 <div class="flex justify-end pt-4 border-t border-gray-700">
@@ -178,7 +178,7 @@
                 return response;
             }
 
-            // --- spinRoulette (keep as is, uses window.showToast for errors) ---
+            // --- spinRoulette (Updated to use window.showToast for errors) ---
              async function spinRoulette() {
                 spinner.classList.add('spinning');
                 movieResult.classList.remove('show');
@@ -205,10 +205,8 @@
                 } catch (error) {
                     console.error(error);
                     // Use toast for error display instead of replacing movieResult HTML
-                    window.showToast(error.message, 'error');
+                    window.showToast(error.message, 'error'); // USE GLOBAL TOAST
                     movieResult.innerHTML = ''; // Clear potential old result
-                    // movieResult.innerHTML = `<div class="p-8 text-center text-red-400">${error.message}</div>`; // Old way
-                    // movieResult.classList.add('show'); // Old way
                 } finally {
                     spinner.classList.remove('spinning');
                     spinBtn.disabled = false;
@@ -339,13 +337,16 @@
                 }
             }
 
-            // --- toggleList (keep as is, relies on updateUserLists to show result) ---
+            // --- toggleList (Updated to optionally use window.showToast) ---
             async function toggleList(listType, isRemove = false, tmdbId = null, contentType = null) {
                 const idToToggle = isRemove ? tmdbId : currentContent?.id;
                 if (!idToToggle) return;
                 const formData = new FormData();
                 formData.append('tmdb_id', idToToggle);
                 let url = '';
+                let successMessage = ''; // Define messages for toast
+                let failureMessage = '';
+
                 if (isRemove) {
                     formData.append('content_type', contentType.toLowerCase());
                 } else if (currentContent) {
@@ -355,23 +356,45 @@
                     formData.append('title', isMovie ? currentContent.title : currentContent.name);
                     formData.append('poster_path', currentContent.poster_path || '');
                     formData.append('release_year', releaseDate ? new Date(releaseDate).getFullYear() : 'N/A');
-                } else { console.error("Cannot add to list: currentContent is not defined."); return; }
-                url = (listType === 'favorite') ? `{% url 'roulette:toggle_favorite' %}` : `{% url 'roulette:toggle_watchlist' %}`;
-                const response = await fetchWithAuth(url, { method: 'POST', headers: { 'X-CSRFToken': csrfToken }, body: formData });
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.success) { updateUserLists(); }
-                    // Optionally show a toast based on success/failure here if desired,
-                    // but updateUserLists usually provides enough visual feedback.
-                    // window.showToast(data.success ? `Toggled ${listType}` : `Failed to toggle ${listType}`, data.success ? 'success' : 'error');
+                } else { console.error("Cannot toggle list: currentContent is not defined."); return; }
+
+                if (listType === 'favorite') {
+                    url = `{% url 'roulette:toggle_favorite' %}`;
+                    successMessage = isRemove ? 'Removed from favorites' : 'Added to favorites';
+                    failureMessage = `Failed to toggle favorite`;
                 } else {
-                    window.showToast(`Error toggling ${listType}`, 'error'); // Show toast on network error
+                    url = `{% url 'roulette:toggle_watchlist' %}`;
+                    successMessage = isRemove ? 'Removed from watchlist' : 'Added to watchlist';
+                    failureMessage = `Failed to toggle watchlist`;
+                }
+
+                try {
+                    const response = await fetchWithAuth(url, { method: 'POST', headers: { 'X-CSRFToken': csrfToken }, body: formData });
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.success) {
+                            updateUserLists(); // Still update visually
+                            // Show success toast only if NOT removing (visual feedback is enough for remove)
+                            if (!isRemove) {
+                                window.showToast(successMessage, 'success');
+                            }
+                        } else {
+                             window.showToast(data.error || failureMessage, 'error'); // Show specific error from backend or generic one
+                        }
+                    } else {
+                        // Handle non-OK HTTP responses (like 400, 500)
+                        window.showToast(`Error: ${response.statusText || failureMessage}`, 'error');
+                    }
+                } catch (error) {
+                    // Handle network errors
+                    console.error(`Network error toggling ${listType}:`, error);
+                    window.showToast('Network error occurred.', 'error');
                 }
             }
 
             // --- Modal Functions (open, close, load - keep as is) ---
             function openAddToListModal() {
-                if (!currentContent) { alert("Please spin first to get a movie or show."); return; }
+                if (!currentContent) { window.showToast("Please spin first to get a movie or show.", "error"); return; } // Use toast instead of alert
                 newListNameInput.value = '';
                 modal.classList.remove('hidden');
                 loadUserLists();
@@ -379,7 +402,7 @@
             function closeAddToListModal() {
                 modal.classList.add('hidden');
                 listsContainer.innerHTML = '<p class="text-gray-400">Loading lists...</p>';
-                modalMessageContainer.innerHTML = '';
+                if (modalMessageContainer) modalMessageContainer.innerHTML = ''; // Clear modal message container
             }
             async function loadUserLists() {
                  try {
@@ -403,10 +426,11 @@
                 } catch (error) {
                     console.error("Error loading lists:", error);
                     listsContainer.innerHTML = '<p class="text-red-400">Could not load your lists.</p>';
+                    window.showToast('Could not load your lists.', 'error'); // Inform user via toast
                 }
             }
 
-            // --- addItemToCustomList (use window.showToast) ---
+            // --- addItemToCustomList (Updated to use window.showToast) ---
             async function addItemToCustomList(listId, listName) {
                  if (!currentContent) {
                      window.showToast('No movie/show selected.', 'error'); // Use toast
@@ -443,7 +467,7 @@
                 }
             }
 
-            // --- createNewListAndAdd (use window.showToast) ---
+            // --- createNewListAndAdd (Updated to use window.showToast) ---
             async function createNewListAndAdd() {
                 const newName = newListNameInput.value.trim();
                 if (!newName) {
@@ -466,6 +490,7 @@
                     const createData = await createResponse.json();
 
                     if (!createResponse.ok || !createData.success) {
+                        // Use error message from backend if available
                         throw new Error(createData.error || 'Failed to create list.');
                     }
 
@@ -491,13 +516,13 @@
                 if (removeFavBtn) {
                     const tmdbId = removeFavBtn.dataset.tmdbId;
                     const contentType = removeFavBtn.dataset.contentType;
-                    toggleList('favorite', true, tmdbId, contentType);
+                    toggleList('favorite', true, tmdbId, contentType); // This function handles its own toasts
                 }
                 const removeWatchBtn = event.target.closest('.remove-watchlist-btn');
                 if (removeWatchBtn) {
                     const tmdbId = removeWatchBtn.dataset.tmdbId;
                     const contentType = removeWatchBtn.dataset.contentType;
-                    toggleList('watchlist', true, tmdbId, contentType);
+                    toggleList('watchlist', true, tmdbId, contentType); // This function handles its own toasts
                 }
             });
 

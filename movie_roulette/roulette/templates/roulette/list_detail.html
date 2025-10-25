@@ -1,26 +1,21 @@
+{# roulette/templates/roulette/list_detail.html #}
 {% extends 'roulette/base.html' %}
 
 {% block title %}{{ list.name }}{% endblock %}
 
 {% block content %}
-    {# --- Styles --- #}
+    {# --- REMOVE Local Toast Styles (now in base.html) --- #}
     <style>
-        /* Toggle switch styles */
+        /* Keep existing toggle switch styles */
         .toggle-checkbox:checked + .toggle-label { background-color: #4f46e5; }
         .toggle-checkbox:checked + .toggle-label::before { transform: translateX(20px); }
         .toggle-label { display: inline-block; width: 44px; height: 24px; background-color: #4b5563; border-radius: 9999px; position: relative; cursor: pointer; transition: background-color 0.2s ease; }
         .toggle-label::before { content: ''; position: absolute; left: 2px; top: 2px; width: 20px; height: 20px; background-color: white; border-radius: 50%; transition: transform 0.2s ease; }
-
-        /* Share Fallback Styles */
-        #share-fallback-options { display: none; position: absolute; bottom: 100%; right: 0; margin-bottom: 0.5rem; background-color: #374151; border: 1px solid #4b5563; border-radius: 0.375rem; padding: 0.5rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); z-index: 50; width: max-content; }
-        #share-fallback-options a { display: flex; align-items: center; padding: 0.5rem 0.75rem; color: #d1d5db; font-size: 0.875rem; border-radius: 0.25rem; transition: background-color 0.2s ease; white-space: nowrap; }
-        #share-fallback-options a:hover { background-color: #4b5563; color: #ffffff; }
-        #share-fallback-options a i { margin-right: 0.5rem; width: 1rem; text-align: center; }
     </style>
 
     <div class="bg-gray-800 p-6 md:p-8 rounded-lg shadow-2xl max-w-5xl mx-auto">
 
-        {# --- List Header --- #}
+        {# --- List Header Section (no changes needed) --- #}
         <div class="border-b border-gray-700 pb-4 mb-6">
             <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                 <div>
@@ -37,22 +32,17 @@
                 <div class="flex-shrink-0"> <a href="{% url 'roulette:list_all' %}" class="text-indigo-400 hover:text-indigo-300 text-sm font-semibold whitespace-nowrap"> &larr; Back to All Lists </a> </div>
             </div>
         </div>
+        {# --- End List Header Section --- #}
 
-        {# --- Owner Controls Section --- #}
+        {# --- Owner Controls Section (no changes needed) --- #}
         {% if is_owner %}
         <div class="mb-6 p-4 bg-gray-700 rounded-lg space-y-4">
             <h3 class="text-lg font-semibold border-b border-gray-600 pb-2">List Settings</h3>
-            {# Public Toggle - Ensure this section is present #}
             <div class="flex items-center justify-between">
                 <label for="public-toggle" class="font-medium text-gray-300">Public List:</label>
-                <div class="relative">
-                    <input type="checkbox" id="public-toggle" class="toggle-checkbox sr-only" {% if list.is_public %}checked{% endif %}>
-                    <label for="public-toggle" class="toggle-label"></label>
-                </div>
+                <div class="relative"> <input type="checkbox" id="public-toggle" class="toggle-checkbox sr-only" {% if list.is_public %}checked{% endif %}> <label for="public-toggle" class="toggle-label"></label> </div>
             </div>
-            <p id="public-toggle-message" class="text-sm text-center min-h-[20px]"></p> {# For AJAX status #}
-
-            {# Share to Feed Form #}
+            <p id="public-toggle-message" class="text-sm text-center min-h-[20px]"></p> {# Kept for 'Updating...' text #}
             <details class="bg-gray-800 rounded">
                 <summary class="cursor-pointer font-semibold p-3 hover:bg-gray-600 rounded-t transition-colors"> <i class="fas fa-share mr-2"></i> Share to Feed </summary>
                 <form id="share-list-form" action="{% url 'roulette:list_share_feed' list_id=list.id %}" method="POST" class="p-3 border-t border-gray-700 space-y-3">
@@ -62,28 +52,12 @@
                 </form>
             </details>
         </div>
-        {% endif %} {# End is_owner block #}
-
-        {# --- General Actions (Share Externally Button) --- #}
-        {% if list.is_public or is_owner %} {# Button visible if public OR if user is owner #}
-        <div class="mb-6 flex justify-end">
-            <div class="relative">
-                <button id="external-share-btn" title="Share this list externally" class="bg-gray-600 hover:bg-gray-500 text-white font-semibold py-2 px-4 rounded-md inline-flex items-center">
-                    <i class="fas fa-external-link-alt mr-2"></i> Share Externally
-                </button>
-                <div id="share-fallback-options" class="shadow-lg">
-                    <a id="share-copy-link" href="#" title="Copy link to clipboard"> <i class="fas fa-copy"></i> Copy Link </a>
-                    <a id="share-email" href="#" target="_blank"> <i class="fas fa-envelope"></i> Email </a>
-                    <a id="share-sms" href="#" target="_blank"> <i class="fas fa-comment-sms"></i> SMS </a>
-                </div>
-            </div>
-        </div>
         {% endif %}
+        {# --- End Owner Controls --- #}
 
-        {# --- Container for JS Messages --- #}
-        <div id="message-container" class="mb-4 space-y-2"> {% comment %} JS Toasts appear globally {% endcomment %} </div>
+        {# --- REMOVED Django messages block --- #}
 
-        {# --- Display List Items --- #}
+        {# --- Display List Items Section (no changes needed) --- #}
         <h3 class="text-xl font-semibold mb-4">Items in this List ({{ items.count }})</h3>
         <div id="list-items-container" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
             {% for item in items %}
@@ -95,55 +69,50 @@
                 </div>
             {% empty %} <p class="text-center text-gray-500 col-span-full py-8">This list is empty.</p> {% endfor %}
         </div>
+        {# --- End List Items Section --- #}
 
     </div>{# End main container #}
+
+    {# --- REMOVE Local Toast Container (now in base.html) --- #}
+
 {% endblock %}
+
 
 {% block scripts %}
 {{ block.super }} {# Includes base.html's script with window.showToast #}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // --- Variables ---
     const csrfToken = '{{ csrf_token }}';
     const itemsContainer = document.getElementById('list-items-container');
-    const isOwner = {{ is_owner|yesno:"true,false" }}; // Passed from view
+    const isOwner = {{ is_owner|yesno:"true,false" }};
     const publicToggle = document.getElementById('public-toggle');
-    const publicToggleMessage = document.getElementById('public-toggle-message');
+    const publicToggleMessage = document.getElementById('public-toggle-message'); // Kept for 'Updating...' message
     const listStatusIcon = document.getElementById('list-status-icon');
     const shareListForm = document.getElementById('share-list-form');
-    const shareFormErrors = document.getElementById('share-form-errors');
+    const shareFormErrors = document.getElementById('share-form-errors'); // Kept for potential form-specific errors
     const shareMessageTextarea = shareListForm ? shareListForm.querySelector('textarea[name="message"]') : null;
-    const externalShareBtn = document.getElementById('external-share-btn');
-    const fallbackOptions = document.getElementById('share-fallback-options');
 
-    // --- Get URL from context (ensure list_absolute_url is passed from view) ---
-    const listUrl = "{{ list_absolute_url|escapejs|default:'' }}"; // Use default filter
-    const listTitle = "{{ list.name|escapejs }}";
-    const listDescription = "{{ list.description|escapejs|truncatechars:100 }}";
-
-    if (!listUrl) {
-        console.warn("list_absolute_url is not defined in template context. External sharing might not work correctly.");
-    }
-    // --- End Variables ---
-
+    // --- REMOVE local displayMessage function ---
 
     // --- Function for removing items ---
     async function removeItemFromList(itemId, itemTitle) {
         if (!confirm(`Are you sure you want to remove '${itemTitle}' from this list?`)) { return; }
-        const formData = new FormData(); formData.append('item_id', itemId);
+        const formData = new FormData();
+        formData.append('item_id', itemId);
         try {
-            const response = await fetch("{% url 'roulette:list_remove_item' %}", { method: 'POST', headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' }, body: formData });
+            const response = await fetch("{% url 'roulette:list_remove_item' %}", {
+                method: 'POST', headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' }, body: formData,
+            });
             const data = await response.json();
             if (response.ok && data.success) {
-                itemsContainer?.querySelector(`.remove-item-btn[data-item-id="${itemId}"]`)?.closest('.group')?.remove();
-                if (itemsContainer && !itemsContainer.querySelector('.group')) { itemsContainer.innerHTML = '<p class="text-center text-gray-500 col-span-full py-8">This list is empty.</p>'; }
-                window.showToast(data.message, 'success');
-            } else { window.showToast(data.error || 'Failed to remove item.', 'error'); }
-        } catch (error) { console.error("Error removing item:", error); window.showToast('A network error occurred.', 'error'); }
+                itemsContainer.querySelector(`.remove-item-btn[data-item-id="${itemId}"]`)?.closest('.group')?.remove();
+                if (!itemsContainer.querySelector('.group')) { itemsContainer.innerHTML = '<p class="text-center text-gray-500 col-span-full py-8">This list is empty.</p>'; }
+                window.showToast(data.message, 'success'); // USE GLOBAL TOAST
+            } else { window.showToast(data.error || 'Failed to remove item.', 'error'); } // USE GLOBAL TOAST
+        } catch (error) { console.error("Error removing item:", error); window.showToast('A network error occurred.', 'error'); } // USE GLOBAL TOAST
     }
 
-    // --- Event Listeners ---
-    // Remove Item Listener
+    // Add event listener for remove buttons ONLY if owner
     if (isOwner && itemsContainer) {
         itemsContainer.addEventListener('click', function(event) {
             const removeButton = event.target.closest('.remove-item-btn');
@@ -151,27 +120,39 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Public Toggle Listener
+    // Public Toggle Logic
     if (isOwner && publicToggle) {
         publicToggle.addEventListener('change', async function() {
             const originalCheckedState = this.checked;
+            // Display temporary message in its dedicated spot
             if(publicToggleMessage) publicToggleMessage.textContent = 'Updating...';
             try {
-                const response = await fetch("{% url 'roulette:list_toggle_public' list_id=list.id %}", { method: 'POST', headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' } });
+                const response = await fetch("{% url 'roulette:list_toggle_public' list_id=list.id %}", {
+                    method: 'POST', headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' }
+                });
                 const data = await response.json();
-                if(publicToggleMessage) publicToggleMessage.textContent = '';
+                if(publicToggleMessage) publicToggleMessage.textContent = ''; // Clear 'Updating...'
+
                 if (response.ok && data.success) {
-                    window.showToast(data.message, 'success');
+                    window.showToast(data.message, 'success'); // USE GLOBAL TOAST
                     if (listStatusIcon) {
-                        listStatusIcon.innerHTML = data.is_public ? '<i class="fas fa-globe-americas text-green-400"></i>' : '<i class="fas fa-lock text-yellow-400"></i>';
-                        listStatusIcon.title = data.is_public ? 'Public List' : 'Private List';
+                         listStatusIcon.innerHTML = data.is_public ? '<i class="fas fa-globe-americas text-green-400"></i>' : '<i class="fas fa-lock text-yellow-400"></i>';
+                         listStatusIcon.title = data.is_public ? 'Public List' : 'Private List';
                     }
-                } else { this.checked = !originalCheckedState; window.showToast(data.error || 'Failed status update.', 'error'); }
-            } catch (error) { this.checked = !originalCheckedState; if(publicToggleMessage) publicToggleMessage.textContent = ''; console.error("Toggle error:", error); window.showToast('Network error.', 'error'); }
+                } else {
+                    this.checked = !originalCheckedState;
+                    window.showToast(data.error || 'Failed status update.', 'error'); // USE GLOBAL TOAST
+                }
+            } catch (error) {
+                 this.checked = !originalCheckedState;
+                 if(publicToggleMessage) publicToggleMessage.textContent = ''; // Clear 'Updating...'
+                 console.error("Toggle error:", error);
+                 window.showToast('Network error.', 'error'); // USE GLOBAL TOAST
+            }
         });
     }
 
-    // Share List Form Listener
+    // Share List Form AJAX Handling
     if (isOwner && shareListForm) {
         shareListForm.addEventListener('submit', async function(event) {
             event.preventDefault();
@@ -180,104 +161,28 @@ document.addEventListener('DOMContentLoaded', function() {
             if(submitButton) submitButton.disabled = true;
             const formData = new FormData(shareListForm);
             try {
-                const response = await fetch(shareListForm.action, { method: 'POST', headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' }, body: formData });
+                const response = await fetch(shareListForm.action, {
+                    method: 'POST', headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' }, body: formData
+                });
                 const data = await response.json();
                 if (response.ok && data.success) {
-                    window.showToast(data.message, 'success');
+                    window.showToast(data.message, 'success'); // USE GLOBAL TOAST
                     if(shareMessageTextarea) shareMessageTextarea.value = '';
                     shareListForm.closest('details')?.removeAttribute('open');
-                } else { window.showToast(data.error || 'Failed to share.', 'error'); if(shareFormErrors) shareFormErrors.textContent = data.error || 'Failed to share.'; }
-            } catch (error) { console.error("Share error:", error); window.showToast('Network error.', 'error'); if(shareFormErrors) shareFormErrors.textContent = 'Network error.'; }
+                } else {
+                     window.showToast(data.error || 'Failed to share.', 'error'); // USE GLOBAL TOAST
+                     // Optionally display error near the form too
+                     if(shareFormErrors) shareFormErrors.textContent = data.error || 'Failed to share.';
+                 }
+            } catch (error) {
+                console.error("Share error:", error);
+                window.showToast('Network error.', 'error'); // USE GLOBAL TOAST
+                if(shareFormErrors) shareFormErrors.textContent = 'Network error.';
+             }
             finally { if(submitButton) submitButton.disabled = false; }
         });
     }
 
-    // --- External Share Logic ---
-    if (externalShareBtn) {
-        externalShareBtn.addEventListener('click', async () => {
-             // Ensure listUrl is available before attempting to share
-             if (!listUrl) {
-                window.showToast("Could not determine the list URL.", "error");
-                console.error("listUrl is empty or not defined.");
-                return;
-             }
-
-            const shareData = {
-                title: listTitle,
-                text: listDescription ? `${listTitle}: ${listDescription}` : listTitle,
-                url: listUrl
-            };
-
-            if (navigator.share) { // Try Web Share API
-                try {
-                    await navigator.share(shareData);
-                    console.log('List shared successfully via Web Share API');
-                } catch (err) {
-                    console.error('Error sharing:', err);
-                    if (err.name !== 'AbortError') { // Don't show error if user cancelled
-                        window.showToast(`Could not share: ${err.message || err.name || 'Unknown error'}`, 'error');
-                    }
-                    // Always show fallback if Web Share fails or is cancelled
-                    setupFallbackLinks();
-                    toggleFallback(true);
-                }
-            } else { // Show Fallback if Web Share API not supported
-                console.log('Web Share API not supported, showing fallback.');
-                setupFallbackLinks();
-                toggleFallback(true);
-            }
-        });
-
-        // Close fallback when clicking outside
-        document.addEventListener('click', (event) => {
-            if (fallbackOptions && fallbackOptions.style.display === 'block' // Check if visible
-                && externalShareBtn && !externalShareBtn.contains(event.target) // Click not on button
-                && !fallbackOptions.contains(event.target)) // Click not in fallback options
-            {
-                toggleFallback(false);
-            }
-        });
-    }
-
-    function toggleFallback(show) {
-        if (fallbackOptions) {
-            fallbackOptions.style.display = show ? 'block' : 'none';
-        }
-    }
-
-    function setupFallbackLinks() {
-        if (!listUrl) return; // Don't setup if URL is missing
-
-        const shareText = encodeURIComponent(`${listTitle}${listDescription ? ': ' + listDescription : ''}\n${listUrl}`);
-        const shareTitle = encodeURIComponent(listTitle);
-        const encodedListUrl = encodeURIComponent(listUrl);
-
-        const copyLink = document.getElementById('share-copy-link');
-        const emailLink = document.getElementById('share-email');
-        const smsLink = document.getElementById('share-sms');
-
-        // Copy Link
-        if (copyLink) {
-            // Remove previous listener to avoid duplicates if setup runs multiple times
-            copyLink.replaceWith(copyLink.cloneNode(true)); // Simple way to remove listeners
-            document.getElementById('share-copy-link').addEventListener('click', (e) => {
-                e.preventDefault();
-                navigator.clipboard.writeText(listUrl).then(() => {
-                    window.showToast('Link copied!', 'success');
-                    toggleFallback(false);
-                }).catch(err => {
-                    console.error('Failed to copy text: ', err);
-                    window.showToast('Failed to copy link.', 'error');
-                });
-            });
-        }
-        // Email
-        if (emailLink) { emailLink.href = `mailto:?subject=${shareTitle}&body=${shareText}`; }
-        // SMS
-        if (smsLink) { smsLink.href = `sms:?body=${shareText}`; }
-    }
-    // --- END External Share Logic ---
-
-}); // End DOMContentLoaded
+});
 </script>
 {% endblock %}

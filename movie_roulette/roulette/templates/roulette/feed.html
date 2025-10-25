@@ -1,4 +1,3 @@
-{# roulette/templates/roulette/feed.html #}
 {% extends 'roulette/base.html' %}
 
 {% block title %}Activity Feed{% endblock %}
@@ -14,12 +13,14 @@
 
     <div class="space-y-6">
         {% for item in feed_items %}
+            {# --- Feed Item Wrapper --- #}
             <div class="feed-item bg-gray-700 p-4 rounded-lg shadow-md"
                  {% if item.type != 'follow' %}
                      data-item-id="{{ item.obj_id }}"
                      data-ctype-id="{{ item.ctype_id }}"
                  {% endif %}>
                 <div class="flex space-x-4">
+                    {# --- Profile Picture --- #}
                     {% with actor=item.user %}
                         {% if actor %}
                         <a href="{% url 'roulette:user_profile' username=actor.username %}">
@@ -29,8 +30,10 @@
                          <div class="w-12 h-12 rounded-full bg-gray-600 flex-shrink-0"></div>
                         {% endif %}
                     {% endwith %}
+                    {# --- End Profile Picture --- #}
 
                     <div class="flex-1">
+                        {# --- Display Content Based on Item Type --- #}
                         {% if item.type == 'share' %}
                             {% include 'roulette/_feed_item_shared_list.html' with item=item comment_form=comment_form %}
                         {% elif item.type == 'follow' %}
@@ -38,6 +41,7 @@
                         {% else %} {# Handles 'review' and 'list_item' #}
                             {% include 'roulette/_feed_item_content.html' with item=item %}
 
+                            {# --- Like/Comment Section --- #}
                             <div class="mt-3 pt-3 border-t border-gray-600 flex items-center space-x-6 text-gray-400 text-sm">
                                 <button class="like-button flex items-center hover:text-red-500 transition-colors {% if item.fetched_user_liked %}text-red-500{% endif %}"
                                         data-ctype-id="{{ item.ctype_id }}"
@@ -52,12 +56,14 @@
                                 </span>
                             </div>
 
+                            {# Comments List #}
                             <div class="comments-list mt-4 space-y-3">
                                 {% for comment in item.fetched_comments %}
                                     {% include 'roulette/_comment.html' with comment=comment request=request %}
                                 {% endfor %}
                             </div>
 
+                            {# Comment Form #}
                             <div class="mt-4">
                                 <form class="add-comment-form flex items-center space-x-2" method="POST" action="{% url 'roulette:add_comment' %}">
                                     {% csrf_token %}
@@ -74,7 +80,9 @@
                                     </button>
                                 </form>
                             </div>
+                            {# --- End Like/Comment Section --- #}
                         {% endif %}
+                        {# --- End Display Content --- #}
                     </div> {# End flex-1 #}
                 </div> {# End flex #}
             </div> {# End feed-item #}
@@ -90,12 +98,14 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const csrfToken = '{{ csrf_token }}';
-    const feedContainer = document.querySelector('.space-y-6');
+    // Use querySelector for the main feed container if it's the specific target
+    // If you intend to target the overall space-y-6 div, keep it as is.
+    const feedContainer = document.querySelector('.max-w-3xl.mx-auto .space-y-6');
     const globalMessageContainer = document.getElementById('feed-message-container');
 
-    // --- REMOVE local displayMessage function ---
+    // --- REMOVED local displayMessage function (uses window.showToast now) ---
 
-    // --- Like Click Handler ---
+    // --- Like Click Handler (no changes needed) ---
     async function handleLikeClick(buttonElement) {
         const ctypeId = buttonElement.dataset.ctypeId;
         const objId = buttonElement.dataset.objId;
@@ -120,11 +130,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (countSpan) countSpan.textContent = data.like_count;
                 if (labelSpan) labelSpan.textContent = (data.like_count === 1) ? ' Like' : ' Likes';
             } else {
-                window.showToast(data.error || 'Failed to toggle like.', 'error'); // USE GLOBAL TOAST
+                window.showToast(data.error || 'Failed to toggle like.', 'error');
             }
         } catch (error) {
             console.error("Like error:", error);
-            window.showToast('A network error occurred while liking.', 'error'); // USE GLOBAL TOAST
+            window.showToast('A network error occurred while liking.', 'error');
         }
     }
 
@@ -164,35 +174,26 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (countDisplay) {
                         const countSpan = countDisplay.querySelector('.count-number');
                         const pluralSpan = countDisplay.querySelector('.plural-s');
-                        const currentComments = feedItemDiv.querySelector('.comments-list').querySelectorAll('.comment-item');
+                        const currentComments = commentsListDiv.querySelectorAll('.comment-item'); // Recount after adding
                         const newCount = currentComments.length;
                         if(countSpan) countSpan.textContent = newCount;
                         if(pluralSpan) pluralSpan.textContent = (newCount === 1) ? '' : 's';
                     }
-                    const newCommentDiv = commentsListDiv.lastElementChild;
-                    const newDeleteBtn = newCommentDiv ? newCommentDiv.querySelector('.delete-comment-btn') : null;
-                    if (newDeleteBtn) {
-                        if (!newDeleteBtn.dataset.listenerAttached) {
-                            newDeleteBtn.addEventListener('click', handleDeleteClick);
-                            newDeleteBtn.dataset.listenerAttached = 'true';
-                        }
-                    }
+                    // --- REMOVED direct listener attachment for new delete button ---
                 }
             } else {
-                // Show error in the form's error div
                 if(errorsDiv) {
                     errorsDiv.textContent = data.error || 'Could not post comment.';
                     if (data.form_errors && data.form_errors.text) {
                         errorsDiv.textContent = data.form_errors.text.join(' ');
                     }
                 }
-                 // Optionally show a generic error toast as well
                 window.showToast('Could not post comment.', 'error');
             }
         } catch (error) {
              console.error("Comment submit error:", error);
              if(errorsDiv) errorsDiv.textContent = 'An unexpected network error occurred.';
-             window.showToast('An unexpected network error occurred.', 'error'); // USE GLOBAL TOAST
+             window.showToast('An unexpected network error occurred.', 'error');
         } finally {
              if(submitButton) submitButton.disabled = false;
         }
@@ -205,12 +206,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (!commentId || !deleteUrl) {
             console.error("Missing commentId or deleteUrl on delete button");
+             window.showToast('Cannot delete comment: Missing information.', 'error');
             return;
         }
 
+        // --- Only confirm ONCE ---
         if (!confirm('Are you sure you want to delete this comment?')) {
             return;
         }
+
+        // --- Prevent multiple clicks during request ---
+        buttonElement.disabled = true;
 
         try {
             const response = await fetch(deleteUrl, {
@@ -227,52 +233,55 @@ document.addEventListener('DOMContentLoaded', function() {
                 const feedItemDiv = buttonElement.closest('.feed-item');
 
                 if (commentItemDiv) {
-                    commentItemDiv.remove();
+                    commentItemDiv.remove(); // Remove comment visually
 
-                    if (feedItemDiv) {
+                    if (feedItemDiv) { // Update count
                         const countDisplay = feedItemDiv.querySelector('.comment-count-display');
                          if (countDisplay) {
                             const countSpan = countDisplay.querySelector('.count-number');
                             const pluralSpan = countDisplay.querySelector('.plural-s');
-                            const currentComments = feedItemDiv.querySelector('.comments-list').querySelectorAll('.comment-item');
+                            const currentComments = feedItemDiv.querySelector('.comments-list').querySelectorAll('.comment-item'); // Recount
                             const newCount = currentComments.length;
                             if(countSpan) countSpan.textContent = newCount;
                             if(pluralSpan) pluralSpan.textContent = (newCount === 1) ? '' : 's';
                         }
                     }
-                    window.showToast('Comment deleted.', 'success'); // USE GLOBAL TOAST
+                    window.showToast('Comment deleted.', 'success'); // SUCCESS TOAST
                 }
             } else {
                 console.error("Comment delete failed:", data.error);
-                 window.showToast(data.error || 'Could not delete comment.', 'error'); // USE GLOBAL TOAST
+                window.showToast(data.error || 'Could not delete comment.', 'error'); // ERROR TOAST
             }
         } catch (error) {
             console.error("Error during comment delete:", error);
-            window.showToast('A network error occurred while deleting.', 'error'); // USE GLOBAL TOAST
+            window.showToast('A network error occurred while deleting.', 'error'); // NETWORK ERROR TOAST
+        } finally {
+            // Re-enable button regardless of outcome
+             buttonElement.disabled = false;
         }
     }
 
-    // --- Named handler for delete clicks ---
-    function handleDeleteClick(event) {
-        handleCommentDelete(this);
-    }
+    // --- REMOVED handleDeleteClick named handler ---
 
-    // --- Attach Event Listeners ---
+    // --- Attach Event Listeners using Delegation ---
     if (feedContainer) {
         feedContainer.addEventListener('click', function(event) {
+            // Handle Like Clicks
             const likeButton = event.target.closest('.like-button');
             if (likeButton) {
                 handleLikeClick(likeButton);
-                return;
+                return; // Stop further processing for this click
             }
+
+            // Handle Delete Comment Clicks
             const deleteButton = event.target.closest('.delete-comment-btn');
-            if (deleteButton) {
-                // No need to add listener here, just call handler directly
-                handleCommentDelete(deleteButton);
-                return;
+            if (deleteButton && !deleteButton.disabled) { // Check if not already processing
+                handleCommentDelete(deleteButton); // Directly call the delete handler
+                return; // Stop further processing for this click
             }
         });
 
+        // Attach submit listeners directly to forms (delegation for submit is less common/trickier)
         feedContainer.querySelectorAll('.add-comment-form').forEach(form => {
             form.addEventListener('submit', function(event) {
                 event.preventDefault();
@@ -280,13 +289,10 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
 
-        // Attach initial delete listeners (still needed for existing comments)
-        feedContainer.querySelectorAll('.delete-comment-btn').forEach(button => {
-            if (!button.dataset.listenerAttached) {
-                 button.addEventListener('click', handleDeleteClick);
-                 button.dataset.listenerAttached = 'true';
-            }
-        });
+        // --- REMOVED direct listener attachment for initial delete buttons ---
+
+    } else {
+        console.error("Feed container not found for event listeners.");
     }
 
 });
