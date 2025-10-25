@@ -6,6 +6,9 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils import timezone
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
+from django.template.loader import render_to_string
 from django.urls import reverse
 from django.contrib.contenttypes.fields import GenericRelation # Import GenericRelation
 
@@ -222,3 +225,4 @@ class SharedListPost(models.Model):
 
     def __str__(self):
         return f"Shared list '{self.list.name}' by @{self.user.username} at {self.timestamp.strftime('%Y-%m-%d %H:%M')}"
+    

@@ -1,0 +1,8 @@
+# movie_roulette/roulette/routing.py
+from django.urls import re_path
+from . import consumers
+
+websocket_urlpatterns = [
+    re_path(r'ws/feed/$', consumers.FeedConsumer.as_asgi()), # URL for feed updates
+    # Add other WebSocket routes here if needed
+]
