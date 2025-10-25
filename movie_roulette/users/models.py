@@ -13,33 +13,47 @@ class Profile(models.Model):
     def __str__(self):
         return f'{self.user.username} Profile'
 
-    # --- Updated save method ---
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs) # Save the profile instance first
 
-        # Construct the expected URL path for the default image
-        # Ensure MEDIA_URL ends with a slash in settings.py
         default_image_url = f"{settings.MEDIA_URL}default.jpg"
 
-        # Check if the image field has a file associated with it AND
-        # if its URL is different from the default image URL.
-        # This prevents resizing the original default.jpg file.
         if self.image and self.image.url != default_image_url:
             try:
-                # Now self.image.path should be correct for uploaded files
                 img = Image.open(self.image.path)
 
+                # --- Check for EXIF Orientation ---
+                try:
+                    # Get orientation tag identifier
+                    for orientation in ExifTags.TAGS.keys():
+                        if ExifTags.TAGS[orientation] == 'Orientation':
+                            break
+                    
+                    exif = dict(img._getexif().items())
+
+                    if exif[orientation] == 3:
+                        img = img.rotate(180, expand=True)
+                    elif exif[orientation] == 6:
+                        img = img.rotate(270, expand=True)
+                    elif exif[orientation] == 8:
+                        img = img.rotate(90, expand=True)
+                except (AttributeError, KeyError, IndexError):
+                    # Cases: image doesn't have getexif method, EXIF data missing, or orientation tag missing
+                    pass # No EXIF orientation data to apply
+                # --- End EXIF Handling ---
+
+                # Continue with resizing
                 if img.height > 300 or img.width > 300:
                     output_size = (300, 300)
                     img.thumbnail(output_size)
-                    img.save(self.image.path) # Overwrite the uploaded image file
+                
+                # Save the potentially rotated and resized image
+                img.save(self.image.path)
+
             except FileNotFoundError:
-                # Handle cases where the file might be missing unexpectedly
-                # You could log this error if needed
-                print(f"Warning: Image file not found at {self.image.path} during resize attempt.")
+                print(f"Warning: Image file not found at {self.image.path} during processing attempt.")
             except Exception as e:
-                # Catch other potential errors during image processing
-                print(f"Error resizing image {self.image.path}: {e}")
+                print(f"Error processing image {self.image.path}: {e}")
     # --- End Updated save method ---
 
 # This signal ensures a Profile is created automatically for each new User
