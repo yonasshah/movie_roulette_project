@@ -3,6 +3,27 @@
 {% block title %}{{ profile_user.username }}'s Profile - Content Roulette{% endblock %}
 
 {% block content %}
+    {# --- ADD Styles for the Modal --- #}
+    <style>
+        .modal-overlay {
+            transition: opacity 0.3s ease;
+        }
+        .modal-image {
+            max-width: 90vw; /* Limit width */
+            max-height: 80vh; /* Limit height */
+            transition: transform 0.3s ease;
+        }
+        /* Start hidden/small for animation */
+        .modal-container.hidden .modal-image {
+             transform: scale(0.9);
+        }
+        /* Animate to full size when shown */
+         .modal-container:not(.hidden) .modal-image {
+            transform: scale(1);
+        }
+    </style>
+    {# --- END Styles --- #}
+
     <main class="w-full max-w-4xl bg-gray-800 p-6 md:p-8 rounded-lg shadow-2xl pt-20"> {# Adjusted padding for mobile #}
 
         <div class="border-b border-gray-700 pb-6 mb-6">
@@ -11,7 +32,11 @@
 
                 {# --- Left side content (Image, Username, Stats) --- #}
                 <div class="flex flex-col items-center md:flex-row md:items-start space-y-4 md:space-y-0 md:space-x-4">
-                    <img src="{{ profile_user.profile.image.url }}" class="w-20 h-20 md:w-24 md:h-24 rounded-full object-cover border-2 border-indigo-500 flex-shrink-0" alt="{{ profile_user.username }}'s profile picture">
+                    {# --- ADD ID and cursor-pointer --- #}
+                    <img id="profile-picture-main" src="{{ profile_user.profile.image.url }}"
+                         class="w-20 h-20 md:w-24 md:h-24 rounded-full object-cover border-2 border-indigo-500 flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+                         alt="{{ profile_user.username }}'s profile picture">
+                    {# --- END Change --- #}
 
                     <div class="flex flex-col items-center md:items-start space-y-1 md:space-y-2 pt-2 text-center md:text-left">
                         {# --- Adjusted text size for mobile --- #}
@@ -176,6 +201,15 @@
             </div>
         </div>
     </main>
+
+    {# --- ADD PROFILE PICTURE MODAL --- #}
+    <div id="profile-pic-modal" class="modal-container hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[100] p-4"> {# Increased z-index #}
+        <div class="modal-overlay fixed inset-0 opacity-0"></div> {# Starts transparent #}
+        <button id="modal-close-btn" class="absolute top-4 right-4 text-white text-4xl z-[101] hover:text-gray-400 transition-colors">&times;</button>
+        <img id="modal-image-content" src="" alt="Profile picture preview" class="modal-image rounded-lg shadow-lg z-[101]">
+    </div>
+    {# --- END MODAL --- #}
+
 {% endblock %}
 
 {% block scripts %}
@@ -190,6 +224,16 @@
             const followBtn = document.getElementById('follow-btn');
             const followMessage = document.getElementById('follow-message');
             const csrfToken = '{{ csrf_token }}';
+            const tabButtons = document.querySelectorAll('.tab-btn');
+            const tabContents = document.querySelectorAll('.tab-content');
+
+            // --- ADD Modal variables ---
+            const profilePicMain = document.getElementById('profile-picture-main');
+            const modal = document.getElementById('profile-pic-modal');
+            const modalImage = document.getElementById('modal-image-content');
+            const modalCloseBtn = document.getElementById('modal-close-btn');
+            const modalOverlay = modal.querySelector('.modal-overlay');
+            // --- END Modal variables ---
 
             if (followBtn) {
                 followBtn.addEventListener('click', function() {
@@ -227,13 +271,6 @@
                         document.getElementById('followers-count').textContent = `${data.followers_count} Followers`;
                         // Note: The 'following-count' on the *profile* page shows the *profile user's* following count,
                         // which doesn't change when the *viewer* follows/unfollows them.
-                        // If you were showing the *viewer's* following count elsewhere, you'd update it here.
-                        // followMessage.textContent = data.message; // Optional: Show a temporary message
-                        // followMessage.className = 'text-sm mt-2 text-green-500';
-                        // setTimeout(() => followMessage.textContent = '', 2000); // Clear message after 2s
-
-                        // --- Optionally reload only if really needed, but direct update is smoother ---
-                        // setTimeout(() => window.location.reload(), 500);
                     } else {
                         followMessage.textContent = data.error || "An unknown error occurred.";
                         followMessage.className = 'text-sm mt-2 text-red-500';
@@ -292,9 +329,6 @@
             renderFavoriteList();
 
             // --- TAB SWITCHING LOGIC ---
-            const tabButtons = document.querySelectorAll('.tab-btn');
-            const tabContents = document.querySelectorAll('.tab-content');
-
             tabButtons.forEach(button => {
                 button.addEventListener('click', () => {
                     tabButtons.forEach(btn => {
@@ -317,6 +351,43 @@
                 });
             });
             // --- END TAB LOGIC ---
+
+             // --- ADD Modal Event Listeners ---
+            if (profilePicMain && modal && modalImage && modalCloseBtn && modalOverlay) {
+                // Open modal
+                profilePicMain.addEventListener('click', function() {
+                    modalImage.src = this.src; // Set modal image source to clicked image source
+                    modal.classList.remove('hidden');
+                    // Add small delay for transition effect after display:flex is applied
+                    requestAnimationFrame(() => {
+                         requestAnimationFrame(() => { // Double rAF ensures rendering before transition starts
+                            modalOverlay.classList.add('opacity-100'); // Fade in overlay
+                            modalOverlay.classList.remove('opacity-0');
+                         });
+                    });
+                });
+
+                // Close modal function
+                function closeModal() {
+                    modalOverlay.classList.remove('opacity-100'); // Fade out overlay
+                    modalOverlay.classList.add('opacity-0');
+                     // Wait for transition before hiding container
+                    setTimeout(() => modal.classList.add('hidden'), 300); // 300ms matches transition duration
+                }
+
+                // Close modal via button or overlay click
+                modalCloseBtn.addEventListener('click', closeModal);
+                modalOverlay.addEventListener('click', closeModal); // Click on overlay closes
+
+                 // Close modal via Escape key
+                document.addEventListener('keydown', function(event) {
+                    if (event.key === 'Escape' && !modal.classList.contains('hidden')) {
+                        closeModal();
+                    }
+                });
+            }
+            // --- END Modal Event Listeners ---
+
         });
     </script>
 {% endblock %}
