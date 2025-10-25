@@ -2,23 +2,23 @@
 
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
-from django.http import JsonResponse, HttpResponseForbidden
+from django.http import Http404, JsonResponse, HttpResponseForbidden
 from django.views.decorators.http import require_POST
 from django.template.loader import render_to_string
+from django.urls import reverse
 from django.contrib.auth.decorators import login_required
 from django.conf import settings
 import requests
+from django.utils.safestring import mark_safe # Import mark_safe
+from django.utils.html import escape # Import escape
 from django.contrib.contenttypes.models import ContentType
-from .forms import UserListForm, ReviewForm, CommentForm # Add CommentForm
-from .models import Notification, UserContent, UserFollow, UserList, UserReview, Comment, Like # Add Comment, Like
+from .forms import ShareListForm, UserListForm, ReviewForm, CommentForm # Add CommentForm
+from .models import Notification, SharedListPost, UserContent, UserFollow, UserList, UserReview, Comment, Like, SharedListPost # Add Comment, Like
 import random
-# --- Import ReviewForm and UserReview ---
 from django.contrib.auth import get_user_model
 from django.db.models import Q, Count, Avg
 from django.db import IntegrityError # To handle duplicate list names
 from django.urls import reverse # For redirects
-
-# --- ADDED FOR SOCIAL FEED ---
 from itertools import chain
 from operator import attrgetter
 # --- END ADDED ---
@@ -26,130 +26,140 @@ from operator import attrgetter
 # --- UPDATED VIEW FOR SOCIAL FEED ---
 @login_required
 def feed_view(request):
-    """Displays a chronological feed with comments and likes, excluding history and follows.""" # Updated docstring
-
+    """Displays a chronological feed including reviews, list items, and shared lists."""
     followed_user_ids = list(request.user.following.values_list('followed_id', flat=True))
     user_ids_to_include = followed_user_ids + [request.user.id]
 
+    # Get ContentTypes for models that appear in the feed or can be liked/commented on
     review_ct = ContentType.objects.get_for_model(UserReview)
     usercontent_ct = ContentType.objects.get_for_model(UserContent)
+    sharedlistpost_ct = ContentType.objects.get_for_model(SharedListPost) # Use SharedListPost
 
-    # Fetch main items
+    # Fetch Reviews created by followed users or self
     reviews = UserReview.objects.filter(
         user_id__in=user_ids_to_include
     ).select_related('user', 'user__profile')
 
+    # Fetch non-History List Items added by followed users or self
     list_items = UserContent.objects.filter(
         user_id__in=user_ids_to_include
     ).exclude(
         list_type=UserContent.ListType.HISTORY
     ).select_related('user', 'user__profile', 'custom_list')
 
-    # --- REMOVE OR COMMENT OUT THESE LINES ---
-    # follows = UserFollow.objects.filter(
-    #     follower_id__in=user_ids_to_include
-    # ).select_related('follower', 'follower__profile', 'followed', 'followed__profile')
-    # --- END REMOVAL ---
+    # Fetch SharedListPost objects by followed users or self
+    shared_posts = SharedListPost.objects.filter(
+        user_id__in=user_ids_to_include
+    ).select_related(
+        'user', 'user__profile', 'list' # Eager load related objects
+    )
 
-    # Combine and add type/generic relation info
+    # Combine items into a single list
     raw_feed_items = []
+    # Process reviews and list_items
     for item in reviews:
         item.type = 'review'
         item.ctype_id = review_ct.id
         item.obj_id = item.id
+        # Ensure item.user is set (it should be from the query)
+        item.user = item.user if hasattr(item, 'user') else None
         raw_feed_items.append(item)
 
     for item in list_items:
         item.type = 'list_item'
         item.ctype_id = usercontent_ct.id
         item.obj_id = item.id
+        # Ensure item.user is set
+        item.user = item.user if hasattr(item, 'user') else None
         raw_feed_items.append(item)
 
-    # --- REMOVE OR COMMENT OUT THIS LOOP ---
-    # for item in follows:
-    #     item.type = 'follow'
-    #     item.ctype_id = None # Follows don't link to Comment/Like directly
-    #     item.obj_id = None
-    #     raw_feed_items.append(item)
-    # --- END REMOVAL ---
+    # Process SharedListPost objects
+    for item in shared_posts:
+        # Skip if the associated list was deleted
+        if not item.list:
+            continue
+        item.type = 'share' # Assign type
+        # Set ctype_id and obj_id to the SharedListPost itself
+        item.ctype_id = sharedlistpost_ct.id
+        item.obj_id = item.id
+        # Ensure item.user is set (it should be from the query's select_related)
+        item.user = item.user if hasattr(item, 'user') else None
+        raw_feed_items.append(item)
 
+    # Sort all items chronologically
     raw_feed_items.sort(key=attrgetter('timestamp'), reverse=True)
-    feed_items_limited = raw_feed_items[:50] # Limit to 50 most recent combined items
+    feed_items_limited = raw_feed_items[:50] # Limit the feed size
 
-    # Pre-fetch comments and likes logic remains the same
+    # --- Pre-fetch comments and likes for relevant items ---
     item_lookup = {}
     content_type_ids = set()
     object_ids_by_ctype = {}
 
     for item in feed_items_limited:
-        # --- ADDED CHECK: Ensure item has ctype_id and obj_id before processing for comments/likes ---
+        # Process reviews, list_items, AND shares for potential likes/comments
         if item.ctype_id and item.obj_id:
-            item_lookup[item.obj_id] = item # Use obj_id as key since it's unique within its type
+            lookup_key = (item.ctype_id, item.obj_id)
+            item_lookup[lookup_key] = item
             content_type_ids.add(item.ctype_id)
             if item.ctype_id not in object_ids_by_ctype:
                 object_ids_by_ctype[item.ctype_id] = set()
             object_ids_by_ctype[item.ctype_id].add(item.obj_id)
-            item.comments = [] # Initialize comments list
-            item.like_count = 0 # Initialize like count
-            item.user_liked = False # Initialize user liked status
-    # --- END CHECK ---
 
-    # --- Fetching comments based on the filtered items ---
-    comments_qs = Comment.objects.filter(
-        content_type_id__in=content_type_ids # Use the collected content type IDs
-    ).select_related('user', 'user__profile')
+            # --- Use DIFFERENT attribute names to avoid TypeError ---
+            item.fetched_comments = [] # Use fetched_comments instead of comments
+            item.fetched_like_count = 0 # Use fetched_like_count instead of like_count
+            item.fetched_user_liked = False # Use fetched_user_liked instead of user_liked
+            # --- END CHANGE ---
 
-    all_comments = []
-    for ct_id, obj_ids in object_ids_by_ctype.items():
-         # Fetch comments only for the object IDs relevant to this content type
-        all_comments.extend(list(comments_qs.filter(content_type_id=ct_id, object_id__in=obj_ids)))
+    # Fetching comments (includes comments on Reviews, ListItems, SharedListPosts)
+    if content_type_ids: # Only query if there are items to fetch for
+        # Flatten object IDs needed for the query
+        all_object_ids = {oid for ctid in content_type_ids for oid in object_ids_by_ctype.get(ctid, set())}
 
-    # --- Assign comments to their respective items ---
-    for comment in all_comments:
-         # Use obj_id for lookup
-        if comment.object_id in item_lookup and hasattr(item_lookup[comment.object_id], 'comments'):
-             item_lookup[comment.object_id].comments.append(comment)
+        comments_qs = Comment.objects.filter(
+            content_type_id__in=content_type_ids,
+            object_id__in=all_object_ids
+        ).select_related('user', 'user__profile')
 
+        # Efficiently group comments by their target object
+        comments_by_target = {}
+        for comment in comments_qs:
+            key = (comment.content_type_id, comment.object_id)
+            if key not in comments_by_target:
+                comments_by_target[key] = []
+            comments_by_target[key].append(comment)
 
-    # --- Fetching likes based on the filtered items ---
-    likes_qs = Like.objects.filter(
-        content_type_id__in=content_type_ids # Use the collected content type IDs
-    )
-    all_likes = []
-    for ct_id, obj_ids in object_ids_by_ctype.items():
-        # Fetch likes only for the object IDs relevant to this content type
-        all_likes.extend(list(likes_qs.filter(content_type_id=ct_id, object_id__in=obj_ids)))
+        # Assign comments to feed items using the new attribute name
+        for key, item in item_lookup.items():
+            item.fetched_comments = comments_by_target.get(key, []) # Assign to fetched_comments
 
+        # Fetching likes (includes likes on Reviews, ListItems, SharedListPosts)
+        likes_qs = Like.objects.filter(
+             content_type_id__in=content_type_ids,
+             object_id__in=all_object_ids
+        )
 
-    # --- Calculate like counts and user liked status ---
-    likes_by_item = {} # Key: obj_id, Value: count
-    user_liked_items = set() # Set of obj_ids liked by the current user
+        # Calculate like counts and user liked status efficiently
+        likes_by_item = likes_qs.values('content_type_id', 'object_id').annotate(count=Count('id')).values('content_type_id', 'object_id', 'count')
+        user_liked_items_qs = likes_qs.filter(user=request.user).values_list('content_type_id', 'object_id')
+        user_liked_items = set(user_liked_items_qs)
 
-    for like in all_likes:
-         # Use obj_id for lookup
-         if like.object_id in item_lookup:
-            likes_by_item[like.object_id] = likes_by_item.get(like.object_id, 0) + 1
-            if like.user_id == request.user.id:
-                user_liked_items.add(like.object_id)
+        # Create lookups for counts
+        like_counts_lookup = {(d['content_type_id'], d['object_id']): d['count'] for d in likes_by_item}
 
+        # Assign like data to feed items using the new attribute names
+        for key, item in item_lookup.items():
+            item.fetched_like_count = like_counts_lookup.get(key, 0) # Assign to fetched_like_count
+            item.fetched_user_liked = key in user_liked_items # Assign to fetched_user_liked
+    # --- End pre-fetching ---
 
-    # --- Assign like data to feed items ---
-    for obj_id, item in item_lookup.items():
-         if hasattr(item, 'like_count'): # Check if attribute exists before assigning
-            item.like_count = likes_by_item.get(obj_id, 0)
-            item.user_liked = obj_id in user_liked_items
-
-    # --- End pre-fetching logic ---
-
-
-    comment_form = CommentForm()
+    comment_form = CommentForm() # Form for adding new comments
 
     context = {
         'feed_items': feed_items_limited,
         'comment_form': comment_form,
     }
     return render(request, 'roulette/feed.html', context)
-
 
 # This view is responsible for showing the main page of your app.
 @login_required
@@ -696,18 +706,40 @@ def create_list_view(request):
 
 @login_required
 def list_detail_view(request, list_id):
-    """Displays the items within a specific custom list."""
-    user_list = get_object_or_404(UserList, id=list_id, user=request.user) # Ensure user owns list
+    try:
+        user_list = UserList.objects.select_related('user', 'user__profile').get(id=list_id)
+    except UserList.DoesNotExist:
+        raise Http404("List not found.")
 
-    # Get items associated with this specific list
+    is_owner = user_list.user == request.user
+
+    if not is_owner and not user_list.is_public:
+        return render(request, 'roulette/private_list.html', {'list_owner': user_list.user}, status=403)
+
     list_items = UserContent.objects.filter(
         custom_list=user_list,
         list_type=UserContent.ListType.CUSTOM
     ).order_by('-timestamp')
 
+    share_form = ShareListForm()
+
+    # --- Build absolute URL in the view ---
+    try:
+        # get_absolute_url() gives relative path like /list/28/
+        list_relative_url = user_list.get_absolute_url()
+        # build_absolute_uri makes it http://127.0.0.1:8000/list/28/
+        list_absolute_url = request.build_absolute_uri(list_relative_url)
+    except Exception as e:
+        print(f"Error building absolute URL for list {list_id}: {e}") # Add error logging
+        list_absolute_url = "" # Provide a fallback
+    # --- End build ---
+
     context = {
         'list': user_list,
         'items': list_items,
+        'is_owner': is_owner,
+        'share_form': share_form,
+        'list_absolute_url': list_absolute_url, # Pass the full URL to the template
     }
     return render(request, 'roulette/list_detail.html', context)
 
@@ -976,3 +1008,76 @@ def notifications_view(request):
         'notifications': notifications # Pass the original queryset to the template
     }
     return render(request, 'roulette/notifications.html', context)
+
+@login_required
+@require_POST # Ensure only POST requests
+def toggle_list_public_view(request, list_id):
+    """Toggles the is_public status of a user's list via AJAX."""
+    user_list = get_object_or_404(UserList, id=list_id, user=request.user) # Ensure ownership
+
+    user_list.is_public = not user_list.is_public
+    user_list.save(update_fields=['is_public', 'updated_at']) # Save efficiently
+
+    return JsonResponse({
+        'success': True,
+        'is_public': user_list.is_public,
+        'message': f"List '{user_list.name}' is now {'public' if user_list.is_public else 'private'}."
+    })
+    
+@login_required
+@require_POST # Ensure only POST requests
+def share_list_to_feed_view(request, list_id):
+    """Shares a custom list. Handles AJAX and standard POST."""
+    user_list = get_object_or_404(UserList, id=list_id, user=request.user)
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+
+    # Optional: Check if public (uncomment if needed)
+    if not user_list.is_public:
+        error_msg = 'Only public lists can be shared.'
+        if is_ajax:
+            return JsonResponse({'success': False, 'error': error_msg}, status=400)
+        else:
+            messages.error(request, error_msg)
+            return redirect(user_list.get_absolute_url())
+
+    form = ShareListForm(request.POST)
+    final_share_message = None
+
+    if form.is_valid():
+        message_from_form = form.cleaned_data.get('message', '').strip()
+        if message_from_form:
+             final_share_message = message_from_form
+    # else: # Should generally be valid unless manipulated
+    #     error_msg = "Invalid message submitted."
+    #     if is_ajax:
+    #          return JsonResponse({'success': False, 'error': error_msg}, status=400)
+    #     else:
+    #          messages.error(request, error_msg)
+    #          return redirect(user_list.get_absolute_url())
+
+    try:
+        # Create the SharedListPost object
+        SharedListPost.objects.create(
+            user=request.user,
+            list=user_list,
+            message=final_share_message
+        )
+
+        success_msg = f"List '{user_list.name}' shared to your feed."
+        if is_ajax:
+            # Return JSON for JavaScript toast
+            return JsonResponse({'success': True, 'message': success_msg})
+        else:
+            # Fallback for non-JS: Use Django messages and redirect
+            messages.success(request, success_msg)
+            return redirect(user_list.get_absolute_url())
+
+    except Exception as e:
+        # Catch potential errors during creation
+        print(f"Error sharing list {list_id}: {e}") # Log the error
+        error_msg = "An unexpected error occurred while sharing the list."
+        if is_ajax:
+             return JsonResponse({'success': False, 'error': error_msg}, status=500)
+        else:
+             messages.error(request, error_msg)
+             return redirect(user_list.get_absolute_url())

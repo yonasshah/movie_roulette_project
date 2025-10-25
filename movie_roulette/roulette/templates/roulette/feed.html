@@ -1,3 +1,4 @@
+{# roulette/templates/roulette/feed.html #}
 {% extends 'roulette/base.html' %}
 
 {% block title %}Activity Feed{% endblock %}
@@ -8,84 +9,80 @@
         <i class="fas fa-users mr-3 text-indigo-400"></i>Activity Feed
     </h2>
 
-    {# --- ADDED ID for global messages if needed --- #}
+    {# Container for global messages (e.g., like/comment errors) #}
     <div id="feed-message-container" class="mb-4 space-y-2"></div>
 
     <div class="space-y-6">
         {% for item in feed_items %}
-            {# --- ADDED data-item-id to the wrapper for easier targeting --- #}
-            <div class="feed-item bg-gray-700 p-4 rounded-lg shadow-md" data-item-id="{{ item.obj_id }}" data-ctype-id="{{ item.ctype_id }}">
+            <div class="feed-item bg-gray-700 p-4 rounded-lg shadow-md"
+                 {% if item.type != 'follow' %}
+                     data-item-id="{{ item.obj_id }}"
+                     data-ctype-id="{{ item.ctype_id }}"
+                 {% endif %}>
                 <div class="flex space-x-4">
-                    {% comment %} Profile picture logic remains the same {% endcomment %}
-                     {% if item.type == 'follow' %}
-                        {% with actor=item.follower %}
-                            <a href="{% url 'roulette:user_profile' username=actor.username %}">
-                                <img src="{{ actor.profile.image.url }}" class="w-12 h-12 rounded-full object-cover flex-shrink-0" alt="{{ actor.username }}'s profile picture">
-                            </a>
-                        {% endwith %}
-                    {% else %} {# For 'review' or 'list_item' #}
-                        {% with actor=item.user %}
-                            <a href="{% url 'roulette:user_profile' username=actor.username %}">
-                                <img src="{{ actor.profile.image.url }}" class="w-12 h-12 rounded-full object-cover flex-shrink-0" alt="{{ actor.username }}'s profile picture">
-                            </a>
-                        {% endwith %}
-                    {% endif %}
+                    {% with actor=item.user %}
+                        {% if actor %}
+                        <a href="{% url 'roulette:user_profile' username=actor.username %}">
+                            <img src="{{ actor.profile.image.url }}" class="w-12 h-12 rounded-full object-cover flex-shrink-0" alt="{{ actor.username }}'s profile picture">
+                        </a>
+                        {% else %}
+                         <div class="w-12 h-12 rounded-full bg-gray-600 flex-shrink-0"></div>
+                        {% endif %}
+                    {% endwith %}
 
                     <div class="flex-1">
-                            {% include 'roulette/_feed_item_content.html' %}
+                        {% if item.type == 'share' %}
+                            {% include 'roulette/_feed_item_shared_list.html' with item=item comment_form=comment_form %}
+                        {% elif item.type == 'follow' %}
+                            {% include 'roulette/_feed_item_content.html' with item=item %}
+                        {% else %} {# Handles 'review' and 'list_item' #}
+                            {% include 'roulette/_feed_item_content.html' with item=item %}
 
-                            {% if item.type != 'follow' %}
-                            {# Like/Comment Count Display remains the same #}
                             <div class="mt-3 pt-3 border-t border-gray-600 flex items-center space-x-6 text-gray-400 text-sm">
-                                <button class="like-button flex items-center hover:text-red-500 transition-colors {% if item.user_liked %}text-red-500{% endif %}"
+                                <button class="like-button flex items-center hover:text-red-500 transition-colors {% if item.fetched_user_liked %}text-red-500{% endif %}"
                                         data-ctype-id="{{ item.ctype_id }}"
                                         data-obj-id="{{ item.obj_id }}">
                                     <i class="fas fa-heart mr-1"></i>
-                                    <span class="like-count">{{ item.like_count }}</span>
-                                    <span class="ml-1">Like{{ item.like_count|pluralize }}</span>
+                                    <span class="like-count">{{ item.fetched_like_count }}</span>
+                                    <span class="ml-1">Like{{ item.fetched_like_count|pluralize }}</span>
                                 </button>
                                 <span class="comment-count-display flex items-center">
                                     <i class="fas fa-comment mr-1"></i>
-                                    <span class="count-number">{{ item.comments|length }}</span>&nbsp;Comment<span class="plural-s">{{ item.comments|length|pluralize }}</span> {# Used &nbsp; for space #}
+                                    <span class="count-number">{{ item.fetched_comments|length }}</span>&nbsp;Comment<span class="plural-s">{{ item.fetched_comments|length|pluralize }}</span>
                                 </span>
                             </div>
 
-                            {# --- ADDED ID to comment list container --- #}
                             <div class="comments-list mt-4 space-y-3">
-                                {% for comment in item.comments %}
-                                    {# --- Include a comment template fragment (we'll create this) --- #}
-                                    {% include 'roulette/_comment.html' with comment=comment %}
+                                {% for comment in item.fetched_comments %}
+                                    {% include 'roulette/_comment.html' with comment=comment request=request %}
                                 {% endfor %}
                             </div>
 
-                            {# --- MODIFIED Comment Form --- #}
                             <div class="mt-4">
-                                {# --- ADDED ID to form --- #}
                                 <form class="add-comment-form flex items-center space-x-2" method="POST" action="{% url 'roulette:add_comment' %}">
                                     {% csrf_token %}
                                     <input type="hidden" name="content_type_id" value="{{ item.ctype_id }}">
                                     <input type="hidden" name="object_id" value="{{ item.obj_id }}">
+                                    <input type="hidden" name="next" value="{{ request.path }}">
                                     <img src="{{ user.profile.image.url }}" class="w-8 h-8 rounded-full object-cover flex-shrink-0" alt="Your profile picture">
                                     <div class="flex-grow">
-                                        {# Render the text field directly for easier access in JS #}
-                                        <textarea name="text" rows="2" placeholder="Add a comment..." class="w-full px-3 py-2 border border-gray-600 bg-gray-900 rounded-md placeholder-gray-500 text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 text-sm" required maxlength="500"></textarea>
-                                        <div class="comment-form-errors text-xs text-red-400 mt-1"></div> {# For JS errors #}
+                                        {{ comment_form.text }}
+                                        <div class="comment-form-errors text-xs text-red-400 mt-1"></div>
                                     </div>
                                     <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1 px-3 rounded text-sm">
                                         Post
                                     </button>
                                 </form>
                             </div>
-                            {# --- END MODIFIED Comment Form --- #}
-                            {% endif %}
-                        </div>
-                </div>
-            </div>
+                        {% endif %}
+                    </div> {# End flex-1 #}
+                </div> {# End flex #}
+            </div> {# End feed-item #}
         {% empty %}
             <p class="text-center text-gray-500 py-8">Your feed is empty...</p>
         {% endfor %}
-    </div>
-</div>
+    </div> {# End space-y-6 #}
+</div> {# End container #}
 {% endblock %}
 
 {% block scripts %}
@@ -93,33 +90,19 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const csrfToken = '{{ csrf_token }}';
-    const feedContainer = document.querySelector('.space-y-6'); // Main container for feed items
+    const feedContainer = document.querySelector('.space-y-6');
     const globalMessageContainer = document.getElementById('feed-message-container');
 
-    // --- Function to display messages ---
-    function displayMessage(container, message, type = 'error') {
-        // ... (Keep this function as is) ...
-        const messageDiv = document.createElement('div');
-        messageDiv.textContent = message;
-        let bgColor = 'bg-red-600';
-        if (type === 'success') bgColor = 'bg-green-600';
-        if (type === 'info') bgColor = 'bg-blue-600';
-        messageDiv.className = `p-2 rounded-md text-center text-sm ${bgColor} text-white`;
-        container.innerHTML = '';
-        container.appendChild(messageDiv);
-        setTimeout(() => {
-            messageDiv.style.transition = 'opacity 0.5s ease';
-            messageDiv.style.opacity = '0';
-            setTimeout(() => messageDiv.remove(), 500);
-        }, 3000);
-    }
+    // --- REMOVE local displayMessage function ---
 
     // --- Like Click Handler ---
     async function handleLikeClick(buttonElement) {
-        // ... (Keep this function as is) ...
         const ctypeId = buttonElement.dataset.ctypeId;
         const objId = buttonElement.dataset.objId;
-        if (!ctypeId || !objId) return;
+        if (!ctypeId || !objId) {
+            console.error("Like button missing data attributes");
+            return;
+        }
         const formData = new FormData();
         formData.append('content_type_id', ctypeId);
         formData.append('object_id', objId);
@@ -137,21 +120,31 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (countSpan) countSpan.textContent = data.like_count;
                 if (labelSpan) labelSpan.textContent = (data.like_count === 1) ? ' Like' : ' Likes';
             } else {
-                displayMessage(globalMessageContainer, data.error || 'Failed to toggle like.');
+                window.showToast(data.error || 'Failed to toggle like.', 'error'); // USE GLOBAL TOAST
             }
         } catch (error) {
-            displayMessage(globalMessageContainer, 'A network error occurred while liking.');
+            console.error("Like error:", error);
+            window.showToast('A network error occurred while liking.', 'error'); // USE GLOBAL TOAST
         }
     }
 
     // --- Comment Form Handler ---
     async function handleCommentSubmit(formElement) {
-        // ... (Keep this function as is) ...
         const textArea = formElement.querySelector('textarea[name="text"]');
         const errorsDiv = formElement.querySelector('.comment-form-errors');
         const submitButton = formElement.querySelector('button[type="submit"]');
-        errorsDiv.textContent = '';
-        submitButton.disabled = true;
+        const ctypeIdInput = formElement.querySelector('input[name="content_type_id"]');
+        const objIdInput = formElement.querySelector('input[name="object_id"]');
+
+        if (!ctypeIdInput || !ctypeIdInput.value || !objIdInput || !objIdInput.value) {
+             console.error("Comment form missing ctype_id or object_id");
+             if(errorsDiv) errorsDiv.textContent = 'Cannot submit comment: Missing target information.';
+             return;
+        }
+
+        if(errorsDiv) errorsDiv.textContent = '';
+        if(submitButton) submitButton.disabled = true;
+
         const formData = new FormData(formElement);
         try {
             const response = await fetch(formElement.action, {
@@ -162,41 +155,52 @@ document.addEventListener('DOMContentLoaded', function() {
             const data = await response.json();
             if (response.ok && data.success) {
                 const feedItemDiv = formElement.closest('.feed-item');
-                const commentsListDiv = feedItemDiv.querySelector('.comments-list');
+                const commentsListDiv = feedItemDiv ? feedItemDiv.querySelector('.comments-list') : null;
                 if (commentsListDiv && data.comment_html) {
                     commentsListDiv.insertAdjacentHTML('beforeend', data.comment_html);
-                    textArea.value = '';
+                    if(textArea) textArea.value = '';
+
                     const countDisplay = feedItemDiv.querySelector('.comment-count-display');
                     if (countDisplay) {
                         const countSpan = countDisplay.querySelector('.count-number');
                         const pluralSpan = countDisplay.querySelector('.plural-s');
-                        const newCount = parseInt(countSpan.textContent || '0') + 1;
-                        countSpan.textContent = newCount;
-                        pluralSpan.textContent = (newCount === 1) ? '' : 's';
+                        const currentComments = feedItemDiv.querySelector('.comments-list').querySelectorAll('.comment-item');
+                        const newCount = currentComments.length;
+                        if(countSpan) countSpan.textContent = newCount;
+                        if(pluralSpan) pluralSpan.textContent = (newCount === 1) ? '' : 's';
                     }
-                    // Re-attach listener to the delete button within the newly added comment
                     const newCommentDiv = commentsListDiv.lastElementChild;
-                    const newDeleteBtn = newCommentDiv.querySelector('.delete-comment-btn');
+                    const newDeleteBtn = newCommentDiv ? newCommentDiv.querySelector('.delete-comment-btn') : null;
                     if (newDeleteBtn) {
-                        newDeleteBtn.addEventListener('click', handleDeleteClick);
+                        if (!newDeleteBtn.dataset.listenerAttached) {
+                            newDeleteBtn.addEventListener('click', handleDeleteClick);
+                            newDeleteBtn.dataset.listenerAttached = 'true';
+                        }
                     }
                 }
             } else {
-                errorsDiv.textContent = data.error || 'Could not post comment.';
-                if (data.form_errors && data.form_errors.text) {
-                    errorsDiv.textContent = data.form_errors.text.join(' ');
+                // Show error in the form's error div
+                if(errorsDiv) {
+                    errorsDiv.textContent = data.error || 'Could not post comment.';
+                    if (data.form_errors && data.form_errors.text) {
+                        errorsDiv.textContent = data.form_errors.text.join(' ');
+                    }
                 }
+                 // Optionally show a generic error toast as well
+                window.showToast('Could not post comment.', 'error');
             }
         } catch (error) {
-            errorsDiv.textContent = 'An unexpected network error occurred.';
+             console.error("Comment submit error:", error);
+             if(errorsDiv) errorsDiv.textContent = 'An unexpected network error occurred.';
+             window.showToast('An unexpected network error occurred.', 'error'); // USE GLOBAL TOAST
         } finally {
-             submitButton.disabled = false;
+             if(submitButton) submitButton.disabled = false;
         }
     }
 
-    // --- NEW Comment Delete Handler ---
+    // --- Comment Delete Handler ---
     async function handleCommentDelete(buttonElement) {
-        const commentId = buttonElement.dataset.commentId;
+         const commentId = buttonElement.dataset.commentId;
         const deleteUrl = buttonElement.dataset.deleteUrl;
 
         if (!commentId || !deleteUrl) {
@@ -210,59 +214,65 @@ document.addEventListener('DOMContentLoaded', function() {
 
         try {
             const response = await fetch(deleteUrl, {
-                method: 'POST', // Still use POST for deletion
+                method: 'POST',
                 headers: {
                     'X-CSRFToken': csrfToken,
-                    'X-Requested-With': 'XMLHttpRequest' // Mark as AJAX
+                    'X-Requested-With': 'XMLHttpRequest'
                 }
-                // No body needed for simple delete if ID is in URL
             });
-
             const data = await response.json();
 
             if (response.ok && data.success) {
                 const commentItemDiv = buttonElement.closest('.comment-item');
-                const feedItemDiv = buttonElement.closest('.feed-item'); // Find parent feed item
+                const feedItemDiv = buttonElement.closest('.feed-item');
 
                 if (commentItemDiv) {
-                    commentItemDiv.remove(); // Remove comment visually
+                    commentItemDiv.remove();
 
-                    // Update comment count display on parent feed item
-                    const countDisplay = feedItemDiv.querySelector('.comment-count-display');
-                     if (countDisplay) {
-                        const countSpan = countDisplay.querySelector('.count-number');
-                        const pluralSpan = countDisplay.querySelector('.plural-s');
-                        // Ensure count doesn't go below zero
-                        const newCount = Math.max(0, parseInt(countSpan.textContent || '0') - 1);
-                        countSpan.textContent = newCount;
-                        pluralSpan.textContent = (newCount === 1) ? '' : 's';
+                    if (feedItemDiv) {
+                        const countDisplay = feedItemDiv.querySelector('.comment-count-display');
+                         if (countDisplay) {
+                            const countSpan = countDisplay.querySelector('.count-number');
+                            const pluralSpan = countDisplay.querySelector('.plural-s');
+                            const currentComments = feedItemDiv.querySelector('.comments-list').querySelectorAll('.comment-item');
+                            const newCount = currentComments.length;
+                            if(countSpan) countSpan.textContent = newCount;
+                            if(pluralSpan) pluralSpan.textContent = (newCount === 1) ? '' : 's';
+                        }
                     }
-                    displayMessage(globalMessageContainer, 'Comment deleted.', 'success');
+                    window.showToast('Comment deleted.', 'success'); // USE GLOBAL TOAST
                 }
             } else {
                 console.error("Comment delete failed:", data.error);
-                displayMessage(globalMessageContainer, data.error || 'Could not delete comment.');
+                 window.showToast(data.error || 'Could not delete comment.', 'error'); // USE GLOBAL TOAST
             }
         } catch (error) {
             console.error("Error during comment delete:", error);
-            displayMessage(globalMessageContainer, 'A network error occurred while deleting.');
+            window.showToast('A network error occurred while deleting.', 'error'); // USE GLOBAL TOAST
         }
     }
-    // --- End NEW Comment Delete Handler ---
 
-
-    // --- Modified Event Listener Attachment ---
-    function handleDeleteClick(event) { // Define the handler function
-        handleCommentDelete(this); // 'this' refers to the button clicked
+    // --- Named handler for delete clicks ---
+    function handleDeleteClick(event) {
+        handleCommentDelete(this);
     }
 
+    // --- Attach Event Listeners ---
     if (feedContainer) {
-        // Attach to initial Like Buttons
-        feedContainer.querySelectorAll('.like-button').forEach(button => {
-            button.addEventListener('click', function() { handleLikeClick(this); });
+        feedContainer.addEventListener('click', function(event) {
+            const likeButton = event.target.closest('.like-button');
+            if (likeButton) {
+                handleLikeClick(likeButton);
+                return;
+            }
+            const deleteButton = event.target.closest('.delete-comment-btn');
+            if (deleteButton) {
+                // No need to add listener here, just call handler directly
+                handleCommentDelete(deleteButton);
+                return;
+            }
         });
 
-        // Attach to initial Comment Forms
         feedContainer.querySelectorAll('.add-comment-form').forEach(form => {
             form.addEventListener('submit', function(event) {
                 event.preventDefault();
@@ -270,13 +280,13 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
 
-        // Attach to initial Delete Comment Buttons
+        // Attach initial delete listeners (still needed for existing comments)
         feedContainer.querySelectorAll('.delete-comment-btn').forEach(button => {
-            button.addEventListener('click', handleDeleteClick);
+            if (!button.dataset.listenerAttached) {
+                 button.addEventListener('click', handleDeleteClick);
+                 button.dataset.listenerAttached = 'true';
+            }
         });
-
-        // Note: For dynamically added comments (after submit), the listener
-        // for the new delete button is added within handleCommentSubmit
     }
 
 });

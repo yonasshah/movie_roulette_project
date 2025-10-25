@@ -68,63 +68,38 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const createListForm = document.getElementById('create-list-form');
-    const nameInput = createListForm.querySelector('input[name="name"]');
-    const nameErrorsDiv = document.getElementById('form-name-errors');
-    const messageContainer = document.getElementById('message-container');
+    const nameInput = createListForm ? createListForm.querySelector('input[name="name"]') : null;
+    // const nameErrorsDiv = document.getElementById('form-name-errors'); // REMOVE reference for AJAX errors
+    // const messageContainer = document.getElementById('message-container'); // REMOVE reference for AJAX messages
     const listsContainer = document.getElementById('user-lists-container');
-    let noListsMessage = document.getElementById('no-lists-message'); // Use let
+    let noListsMessage = document.getElementById('no-lists-message');
     const csrfToken = '{{ csrf_token }}';
 
-    // --- Function to display messages (success/error/info) ---
-    function displayMessage(message, type = 'error') {
-        const messageDiv = document.createElement('div');
-        messageDiv.textContent = message;
-        let bgColor = 'bg-red-600';
-        if (type === 'success') bgColor = 'bg-green-600';
-        if (type === 'info') bgColor = 'bg-blue-600';
-        messageDiv.className = `p-3 rounded-md text-center text-sm font-medium ${bgColor} text-white`;
-        messageContainer.innerHTML = '';
-        messageContainer.appendChild(messageDiv);
-        setTimeout(() => {
-            messageDiv.style.transition = 'opacity 0.5s ease';
-            messageDiv.style.opacity = '0';
-            setTimeout(() => messageDiv.remove(), 500);
-        }, 3000);
-    }
+    // --- REMOVE local displayMessage function (now using window.showToast from base.html) ---
 
-    // --- Function to add a new list item to the page ---
+    // --- Function to add a new list item to the page (no changes needed) ---
     function addListToPage(listData) {
-        noListsMessage = document.getElementById('no-lists-message'); // Re-check if it exists
+        noListsMessage = document.getElementById('no-lists-message');
         if (noListsMessage) {
             noListsMessage.remove();
-            noListsMessage = null; // Ensure it's nullified
+            noListsMessage = null;
         }
-
         const listItemDiv = document.createElement('div');
         listItemDiv.className = 'user-list-item flex items-center justify-between p-4 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors';
         listItemDiv.dataset.listId = listData.id;
-
         const detailUrl = `/list/${listData.id}/`;
         const deleteUrl = `/list/${listData.id}/delete/`;
-        // Escape the list name properly for JS confirm dialog and HTML attribute
         const escapedListName = listData.name.replace(/'/g, "\\'").replace(/"/g, "&quot;");
-
-
         listItemDiv.innerHTML = `
             <a href="${detailUrl}" class="font-semibold text-lg text-indigo-300 hover:text-indigo-100 flex-grow mr-4 list-name">
-                ${ listData.name } {# Display raw name here #}
+                ${ listData.name }
             </a>
             <button type="button" class="delete-list-btn text-red-500 hover:text-red-400 text-lg"
-                    data-list-id="${listData.id}"
-                    data-list-name="${escapedListName}"
-                    data-delete-url="${deleteUrl}"
-                    title="Delete List">
+                    data-list-id="${listData.id}" data-list-name="${escapedListName}" data-delete-url="${deleteUrl}" title="Delete List">
                 <i class="fas fa-trash"></i>
             </button>
         `;
         listsContainer.appendChild(listItemDiv);
-
-        // --- Attach listener to the new delete button ---
         const newDeleteBtn = listItemDiv.querySelector('.delete-list-btn');
         if (newDeleteBtn) {
             newDeleteBtn.addEventListener('click', handleDeleteListClick);
@@ -132,68 +107,64 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // --- Handler for creating a new list (AJAX) ---
-    createListForm.addEventListener('submit', async function(event) {
-        event.preventDefault();
-        nameErrorsDiv.textContent = '';
-        messageContainer.innerHTML = '';
-        const formData = new FormData(createListForm);
+    if (createListForm) {
+        createListForm.addEventListener('submit', async function(event) {
+            event.preventDefault();
+            // if(nameErrorsDiv) nameErrorsDiv.textContent = ''; // Clear specific errors
+            // Clear general messages if needed, though toasts handle it now
+            // messageContainer.innerHTML = '';
+            const formData = new FormData(createListForm);
+            const submitButton = createListForm.querySelector('button[type="submit"]'); // Get button
+            if(submitButton) submitButton.disabled = true; // Disable button
 
-        try {
-            const response = await fetch(createListForm.action, {
-                method: 'POST',
-                headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
-                body: formData
-            });
-            const data = await response.json();
-            if (response.ok && data.success) {
-                displayMessage(data.message, 'success');
-                addListToPage(data.list); // Add visually
-                nameInput.value = '';
-            } else {
-                displayMessage(data.error || 'Could not create list.', 'error');
-                if (data.error && data.error.includes("name")) {
-                     nameErrorsDiv.textContent = data.error;
+            try {
+                const response = await fetch(createListForm.action, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
+                    body: formData
+                });
+                const data = await response.json();
+                if (response.ok && data.success) {
+                    window.showToast(data.message, 'success'); // USE TOAST
+                    addListToPage(data.list); // Add visually
+                    if (nameInput) nameInput.value = ''; // Clear input field
+                } else {
+                    window.showToast(data.error || 'Could not create list.', 'error'); // USE TOAST
+                    // Optionally still show error near field if needed, but toast is primary
+                    // if (data.error && nameErrorsDiv && data.error.toLowerCase().includes("name")) {
+                    //      nameErrorsDiv.textContent = data.error;
+                    // }
                 }
+            } catch (error) {
+                console.error("List creation error:", error);
+                window.showToast('An unexpected error occurred.', 'error'); // USE TOAST
+            } finally {
+                 if(submitButton) submitButton.disabled = false; // Re-enable button
             }
-        } catch (error) {
-            displayMessage('An unexpected error occurred.', 'error');
-        }
-    });
+        });
+    }
 
-    // --- NEW: Handler for deleting a list (AJAX) ---
+    // --- Handler for deleting a list (AJAX) ---
     async function handleListDelete(buttonElement) {
         const listId = buttonElement.dataset.listId;
-        const listName = buttonElement.dataset.listName; // Use the escaped name for confirm
+        const listName = buttonElement.dataset.listName;
         const deleteUrl = buttonElement.dataset.deleteUrl;
-
         if (!listId || !deleteUrl) return;
-
-        // Use the potentially escaped listName in the confirm dialog
         if (!confirm(`Are you sure you want to delete the list '${listName}'? This action cannot be undone.`)) {
             return;
         }
-
         try {
             const response = await fetch(deleteUrl, {
-                method: 'POST', // Still POST for deletion via URL pattern
-                headers: {
-                    'X-CSRFToken': csrfToken,
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-                // No body needed if ID is in URL
+                method: 'POST', headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' }
             });
-
             const data = await response.json();
-
             if (response.ok && data.success) {
                 const listItemElement = buttonElement.closest('.user-list-item');
                 if (listItemElement) {
-                    listItemElement.remove(); // Remove visually
-                    displayMessage(data.message || 'List deleted successfully.', 'success');
-
-                    // Check if the container is now empty
+                    listItemElement.remove();
+                    window.showToast(data.message || 'List deleted successfully.', 'success'); // USE TOAST
                     noListsMessage = document.getElementById('no-lists-message'); // Re-check
-                    if (!listsContainer.querySelector('.user-list-item') && !noListsMessage) {
+                    if (listsContainer && !listsContainer.querySelector('.user-list-item') && !noListsMessage) {
                         const p = document.createElement('p');
                         p.id = 'no-lists-message';
                         p.className = 'text-gray-400 text-center py-4';
@@ -202,23 +173,23 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 }
             } else {
-                 displayMessage(data.error || 'Failed to delete list.', 'error');
+                 window.showToast(data.error || 'Failed to delete list.', 'error'); // USE TOAST
             }
         } catch (error) {
             console.error("List deletion error:", error);
-            displayMessage('An network error occurred while deleting.', 'error');
+            window.showToast('A network error occurred while deleting.', 'error'); // USE TOAST
         }
     }
 
-    // --- Helper function to attach listener ---
-    function handleDeleteListClick() {
-        handleListDelete(this); // 'this' is the button clicked
-    }
+    // Helper function to attach listener
+    function handleDeleteListClick() { handleListDelete(this); }
 
-    // --- Attach listeners to initial delete buttons ---
-    listsContainer.querySelectorAll('.delete-list-btn').forEach(button => {
-        button.addEventListener('click', handleDeleteListClick);
-    });
+    // Attach listeners to initial delete buttons
+    if (listsContainer) {
+        listsContainer.querySelectorAll('.delete-list-btn').forEach(button => {
+            button.addEventListener('click', handleDeleteListClick);
+        });
+    }
 
 });
 </script>

@@ -2,23 +2,31 @@ from django.db import models
 from django.conf import settings
 from django.dispatch import receiver
 from django.db.models.signals import post_save
-# --- ADDED FOR REVIEW VALIDATORS ---
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils import timezone
+from django.urls import reverse
+from django.contrib.contenttypes.fields import GenericRelation # Import GenericRelation
 
 
 class UserList(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='custom_lists')
     name = models.CharField(max_length=100)
-
+    description = models.TextField(blank=True, null=True, max_length=500, help_text="Optional: Describe your list.")
+    is_public = models.BooleanField(default=False, help_text="Make this list viewable by others?")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     class Meta:
         unique_together = ('user', 'name')
         ordering = ['name']
 
     def __str__(self):
         return f"{self.name} (by {self.user.username})"
+    
+    def get_absolute_url(self):
+        # Returns the URL for this specific list's detail page
+        return reverse('roulette:list_detail', kwargs={'list_id': self.id})
 
 class UserFollow(models.Model):
     # The user who is initiating the follow (e.g., Jane)
@@ -117,13 +125,15 @@ class UserReview(models.Model):
 
     def __str__(self):
         return f"Review by {self.user.username} for {self.title} ({self.rating}/10)"
+    
+
 
 class Comment(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='comments')
     text = models.TextField(max_length=500)
     timestamp = models.DateTimeField(auto_now_add=True)
 
-    # Generic relation to link to UserReview OR UserContent
+    # Generic relation can now link to UserReview, UserContent, OR SharedListPost
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     object_id = models.PositiveIntegerField()
     content_object = GenericForeignKey('content_type', 'object_id')
@@ -139,13 +149,13 @@ class Like(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='likes')
     timestamp = models.DateTimeField(auto_now_add=True)
 
-    # Generic relation to link to UserReview OR UserContent
+    # Generic relation can now link to UserReview, UserContent, OR SharedListPost
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     object_id = models.PositiveIntegerField()
     content_object = GenericForeignKey('content_type', 'object_id')
 
     class Meta:
-        unique_together = ('user', 'content_type', 'object_id') # User can only like an item once
+        unique_together = ('user', 'content_type', 'object_id')
         ordering = ['-timestamp']
 
     def __str__(self):
@@ -162,6 +172,11 @@ class Notification(models.Model):
     target_content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, null=True, blank=True, related_name='target_notifications')
     target_object_id = models.PositiveIntegerField(null=True, blank=True)
     target = GenericForeignKey('target_content_type', 'target_object_id')
+
+    # Action Object: The object *involved* in the action if different from target (e.g., the UserList being shared)
+    action_object_content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, null=True, blank=True, related_name='action_object_notifications')
+    action_object_object_id = models.PositiveIntegerField(null=True, blank=True)
+    action_object = GenericForeignKey('action_object_content_type', 'action_object_object_id')
     # Timestamp of the action
     timestamp = models.DateTimeField(default=timezone.now) # Use timezone.now
     # Read status
@@ -171,9 +186,39 @@ class Notification(models.Model):
         ordering = ['-timestamp'] # Show newest first
 
     def __str__(self):
-        if self.target:
-            return f'{self.actor} {self.verb} {self.target} ({self.recipient})'
-        elif self.actor:
-             return f'{self.actor} {self.verb} ({self.recipient})'
-        else:
-             return f'{self.verb} ({self.recipient})'
+        # --- Update str method ---
+        parts = []
+        if self.actor:
+            parts.append(f"@{self.actor.username}")
+        parts.append(self.verb)
+
+        # Prefer showing action_object for verbs like 'shared'
+        if self.action_object and 'shared' in self.verb:
+             parts.append(f"'{self.action_object.name}'") # Assuming action_object (UserList) has a 'name'
+        elif self.target:
+            # Basic string representation of the target
+            target_str = str(self.target)
+            if hasattr(self.target, 'title'): # For UserContent/UserReview
+                target_str = self.target.title
+            elif hasattr(self.target, 'username'): # For User (if target is a User)
+                target_str = f"@{self.target.username}"
+            parts.append(f"'{target_str}'")
+
+        return f"{' '.join(parts)} -> @{self.recipient.username}"
+    
+class SharedListPost(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='shared_list_posts')
+    list = models.ForeignKey(UserList, on_delete=models.CASCADE, related_name='shared_in_feeds') # Link to the UserList
+    message = models.TextField(blank=True, null=True, max_length=500) # Optional message
+    timestamp = models.DateTimeField(auto_now_add=True) # Timestamp of sharing
+
+    # --- Add GenericRelations for Comments and Likes ---
+    comments = GenericRelation(Comment)
+    likes = GenericRelation(Like)
+    # --- End Add ---
+
+    class Meta:
+        ordering = ['-timestamp'] # Newest first
+
+    def __str__(self):
+        return f"Shared list '{self.list.name}' by @{self.user.username} at {self.timestamp.strftime('%Y-%m-%d %H:%M')}"

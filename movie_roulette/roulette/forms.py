@@ -13,11 +13,41 @@ class UserListForm(forms.ModelForm):
             'class': 'w-full px-3 py-2 border border-gray-700 bg-gray-900 rounded-md placeholder-gray-500 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm'
         })
     )
+    
+    description = forms.CharField(
+        required=False,
+        max_length=500,
+        help_text="Optional: Describe your list.", # Help text added here
+        widget=forms.Textarea(attrs={
+            'placeholder': 'Optional description...',
+            'rows': 3,
+            'class': 'w-full mt-2 px-3 py-2 border border-gray-700 bg-gray-900 rounded-md placeholder-gray-500 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm'
+        })
+    )
+    is_public = forms.BooleanField(
+        required=False,
+        label="Make this list public?",
+        help_text="Allows others to view this list via its link.", # Help text added here
+        widget=forms.CheckboxInput(attrs={'class': 'h-4 w-4 text-indigo-600 rounded border-gray-600 bg-gray-700 focus:ring-indigo-500'})
+    )
 
     class Meta:
         model = UserList
         fields = ['name']
 
+
+class ShareListForm(forms.Form):
+    # Optional message when sharing
+    message = forms.CharField(
+        required=False,
+        max_length=280, # Limit message length
+        widget=forms.Textarea(attrs={
+            'placeholder': 'Add an optional message (max 280 chars)...',
+            'rows': 3,
+            'class': 'w-full px-3 py-2 border border-gray-700 bg-gray-900 rounded-md placeholder-gray-500 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm'
+        })
+    )
+    
 # --- FORM FOR REVIEWS ---
 class ReviewForm(forms.ModelForm):
     # Use a ChoiceField for ratings to create a <select> dropdown
