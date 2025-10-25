@@ -8,14 +8,6 @@
         Profile Settings
     </h2>
 
-    {% if messages %}
-        {% for message in messages %}
-            <div class="bg-green-600 text-white p-3 rounded-md mb-4 text-center">
-                {{ message }}
-            </div>
-        {% endfor %}
-    {% endif %}
-
     <form method="POST" enctype="multipart/form-data">
         {% csrf_token %}
         <div class="space-y-6">

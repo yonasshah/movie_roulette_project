@@ -74,7 +74,7 @@
 </head>
 <body class="min-h-screen flex flex-col items-center p-4 md:p-8">
 
-    {# --- Navbar --- #}
+    {# --- Navbar --- (No changes needed) #}
     <nav class="fixed top-0 left-0 right-0 z-50 bg-gray-900 border-b border-indigo-700 shadow-lg">
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16">
@@ -125,7 +125,13 @@
                     {% endif %}
                 </div>
                 {# Mobile Menu Button #}
-                <div id="mobile-menu" class="hidden md:hidden">
+                 <div class="md:hidden flex items-center">
+                     <button id="mobile-menu-button" class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 focus:outline-none"> <i class="fas fa-bars text-2xl"></i> </button>
+                 </div>
+            </div>
+        </div>
+        {# Mobile Menu Content #}
+        <div id="mobile-menu" class="hidden md:hidden">
             <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
                 {# Mobile links matching desktop #}
                 <a href="{% url 'roulette:feed' %}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700">Feed</a>
@@ -157,25 +163,28 @@
                 {% endif %}
             </div>
         </div>
+        {# End Mobile Menu Content #}
     </nav>
     {# --- End Navbar --- #}
 
     {# --- Main Content Area --- #}
     <main class="w-full max-w-4xl pt-20">
-        {# --- Standard Django Messages Block (kept for non-AJAX) --- #}
+        {# --- Script to embed Django messages as JSON --- #}
         {% if messages %}
-            <div id="django-message-container" class="mb-6 space-y-2"> {# Added ID #}
+            {# Iterate over messages directly to build the JSON list #}
+            <script id="django-messages-data" type="application/json">
+            [
                 {% for message in messages %}
-                    <div class="p-3 rounded-md text-center text-sm font-medium
-                                {% if message.tags == 'success' %}bg-green-600 text-white
-                                {% elif message.tags == 'error' %}bg-red-600 text-white
-                                {% else %}bg-blue-600 text-white{% endif %}">
-                        {{ message }}
-                    </div>
+                    {
+                        "message": "{{ message.message|escapejs }}",
+                        "tags": "{{ message.tags }}",
+                        "level": {{ message.level }}
+                    }{% if not forloop.last %},{% endif %}
                 {% endfor %}
-            </div>
+            ]
+            </script>
         {% endif %}
-        {# --- End Django Messages --- #}
+        {# --- End Message Handling Change --- #}
 
         {# --- Content Block --- #}
         {% block content %}
@@ -226,7 +235,7 @@
                     });
                 }
 
-                // --- ADD Toast Notification Function (Now Global) ---
+                // --- Toast Notification Function (Global) ---
                 function showToast(message, type = 'success') {
                     const toastContainer = document.getElementById('toast-container');
                     if (!toastContainer) {
@@ -261,6 +270,29 @@
 
                 // Make showToast globally accessible
                  window.showToast = showToast;
+
+                // --- Process Django messages as toasts ---
+                const messagesDataElement = document.getElementById('django-messages-data');
+                if (messagesDataElement) {
+                    try {
+                        const messagesData = JSON.parse(messagesDataElement.textContent);
+                        messagesData.forEach(msg => {
+                            // Map Django message tags to toast types
+                            let type = 'info'; // Default type
+                            if (msg.tags.includes('success')) {
+                                type = 'success';
+                            } else if (msg.tags.includes('error')) {
+                                type = 'error';
+                            } else if (msg.tags.includes('warning')) {
+                                type = 'info'; // Or create a 'warning' style if needed
+                            }
+                            window.showToast(msg.message, type);
+                        });
+                    } catch (e) {
+                        console.error("Error parsing Django messages for toasts:", e);
+                    }
+                }
+                // --- END Django message processing ---
 
             }); // End DOMContentLoaded
         </script>
