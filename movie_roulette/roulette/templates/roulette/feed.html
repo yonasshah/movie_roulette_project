@@ -308,79 +308,139 @@ document.addEventListener('DOMContentLoaded', function() {
         };
 
         // NEW onmessage handler
-        feedSocket.onmessage = async function(e) { // Make it async if you fetch HTML
+        feedSocket.onmessage = async function(e) { // Keep async if needed elsewhere, though not strictly for this part
              const message = JSON.parse(e.data);
              console.log("WebSocket Message received:", message);
 
-             if (message.type === 'new_item' && message.data) {
+             if (message.type === 'new_item' && message.data && message.data.type === 'share') {
                  const newItemData = message.data;
+                 const feedContainer = document.querySelector('.max-w-3xl.mx-auto > .space-y-6'); // Make sure this selector is correct
 
-                 // OPTION A: Construct HTML directly in JavaScript (Simpler for basic structure)
-                 // This is less maintainable if the structure is complex or re-used heavily.
-                 // You'd build the HTML string here using newItemData fields.
-                 // const newItemHtml = createFeedItemHtml(newItemData); // You'd need to write this function
-
-                 // OPTION B: Fetch the pre-rendered HTML snippet via AJAX (Recommended for complex templates)
-                 // Requires a new Django view to render just the snippet.
-                 try {
-                     // **Requires a new URL and View in Django to render the snippet**
-                     // Example URL: /roulette/render-feed-item/{ctype_id}/{obj_id}/
-                     // The view would fetch the item, comments, likes and render the correct template.
-                     // This example assumes SharedListPost rendering
-                     if (newItemData.type === 'share') {
-                         // --- MODIFIED URL PATTERN ---
-                         // Use content type ID and object ID (which point to SharedListPost)
-                         const response = await fetch(`/render-feed-item/${newItemData.ctype_id}/${newItemData.obj_id}/`); // Replace with your actual URL
-                         // --- END MODIFICATION ---
-                         if (!response.ok) {
-                             throw new Error(`Failed to fetch rendered item: ${response.statusText}`);
-                         }
-                         const htmlResponse = await response.json(); // Assuming the view returns {'html': '...'}
-                         const newItemHtml = htmlResponse.html;
-
-                         if (newItemHtml && feedContainer) {
-                             const tempDiv = document.createElement('div');
-                             tempDiv.innerHTML = newItemHtml.trim();
-                             const newItemElement = tempDiv.firstChild;
-
-                             if (newItemElement) {
-                                 feedContainer.insertBefore(newItemElement, feedContainer.firstChild);
-
-                                 // Re-attach listeners for comment forms specifically within the new item
-                                 const newCommentForms = newItemElement.querySelectorAll('.add-comment-form');
-                                 newCommentForms.forEach(form => {
-                                     form.addEventListener('submit', function(event) {
-                                         event.preventDefault();
-                                         handleCommentSubmit(this);
-                                     });
-                                 });
-
-                                 window.showToast("New item added to feed!", "info");
-                             } else {
-                                 console.error("Received HTML for new item seems invalid:", newItemHtml);
-                             }
-                         } else if (!feedContainer) {
-                             console.error("Cannot insert new item: Feed container not found.");
-                         }
-                     } else {
-                         // Handle other types ('review', 'list_item') similarly if needed
-                         // You'll need corresponding render-feed-item views/logic for these too
-                         console.log("Received new item type:", newItemData.type);
-                         // Example: Fetch HTML for a review item
-                         // if (newItemData.type === 'review') {
-                         //      const response = await fetch(`/render-feed-item/${newItemData.ctype_id}/${newItemData.obj_id}/`);
-                         //      // ... process response and insert HTML ...
-                         // }
-                     }
-
-
-                 } catch (error) {
-                     console.error("Error fetching or inserting new feed item:", error);
-                     window.showToast("Error adding new item to feed.", "error");
+                 if (!feedContainer) {
+                     console.error("Cannot insert new item: Feed container not found.");
+                     return;
                  }
 
+                 // --- START: Build HTML from JSON data ---
+                 try {
+                    const tempDiv = document.createElement('div');
+                    // Use template literals to build the HTML structure based on _feed_item_shared_list.html
+                    // Note: Ensure URLs are generated correctly. Using template literals for simplicity here.
+                    //       You might need more robust URL generation depending on your setup.
+                    // Note: Escaping user-generated content (like messages) is crucial for security.
+                    const profileUrl = `/user/${encodeURIComponent(newItemData.username)}/`;
+                    const listUrl = newItemData.list_url; // Already generated in the signal
+                    const addCommentUrl = "{% url 'roulette:add_comment' %}"; // Use Django tag for base URL
+                    const csrfToken = '{{ csrf_token }}'; // Get CSRF token from template
+                    const currentUserImageUrl = "{{ user.profile.image.url }}"; // Get current user image URL
+
+                    // Basic escaping function (replace with a more robust one if needed)
+                    function escapeHtml(unsafe) {
+                        if (!unsafe) return '';
+                        return unsafe
+                             .replace(/&/g, "&amp;")
+                             .replace(/</g, "&lt;")
+                             .replace(/>/g, "&gt;")
+                             .replace(/"/g, "&quot;")
+                             .replace(/'/g, "&#039;");
+                    }
+
+                    // Calculate 'timesince' (simplified - consider a JS library for accuracy)
+                    // This is a very basic example; a library like `moment.js` or `date-fns` is better.
+                    const postDate = new Date(newItemData.timestamp_iso);
+                    const now = new Date();
+                    const secondsAgo = Math.round((now - postDate) / 1000);
+                    let timesince = `${secondsAgo} seconds ago`;
+                    // Add more complex logic for minutes, hours, days etc. if desired
+
+                    tempDiv.innerHTML = `
+                        <div class="feed-item bg-gray-700 p-4 rounded-lg shadow-md" data-item-id="${newItemData.obj_id}" data-ctype-id="${newItemData.ctype_id}">
+                            <div class="flex space-x-4">
+                                <a href="${profileUrl}">
+                                    <img src="${escapeHtml(newItemData.profile_image_url)}" class="w-12 h-12 rounded-full object-cover flex-shrink-0" alt="${escapeHtml(newItemData.username)}'s profile picture">
+                                </a>
+                                <div class="flex-1">
+                                    <div class="text-gray-300">
+                                        <a href="${profileUrl}" class="font-semibold text-white hover:underline">@${escapeHtml(newItemData.username)}</a>
+                                        shared the list
+                                        <a href="${escapeHtml(listUrl)}" class="font-semibold text-indigo-300 hover:underline">${escapeHtml(newItemData.list_name)}</a>
+                                        <i class="fas fa-share text-blue-400 ml-1"></i>
+                                    </div>
+                                    <p class="text-gray-400 text-xs mb-2">${timesince}</p>
+
+                                    ${newItemData.share_message ? `
+                                        <p class="text-gray-200 bg-gray-600 p-3 rounded-md">${escapeHtml(newItemData.share_message).replace(/\n/g, '<br>')}</p>
+                                    ` : ''}
+
+                                    ${newItemData.list_description ? `
+                                        <div class="mt-2 text-sm text-gray-400 border-l-2 border-gray-600 pl-2 italic">
+                                            ${escapeHtml(newItemData.list_description.substring(0, 100))} ${newItemData.list_description.length > 100 ? '...' : ''}
+                                        </div>
+                                    ` : ''}
+
+                                    <div class="mt-3 pt-3 border-t border-gray-600 flex items-center space-x-6 text-gray-400 text-sm">
+                                        <button class="like-button flex items-center hover:text-red-500 transition-colors"
+                                                data-ctype-id="${newItemData.ctype_id}" data-obj-id="${newItemData.obj_id}">
+                                            <i class="fas fa-heart mr-1"></i>
+                                            <span class="like-count">0</span>
+                                            <span class="ml-1"> Like</span>
+                                        </button>
+                                        <span class="comment-count-display flex items-center">
+                                            <i class="fas fa-comment mr-1"></i>
+                                            <span class="count-number">0</span>&nbsp;Comment<span class="plural-s">s</span>
+                                        </span>
+                                    </div>
+
+                                    <div class="comments-list mt-4 space-y-3"></div>
+
+                                    <div class="mt-4">
+                                        <form class="add-comment-form flex items-center space-x-2" method="POST" action="${addCommentUrl}">
+                                            <input type="hidden" name="csrfmiddlewaretoken" value="${csrfToken}">
+                                            <input type="hidden" name="content_type_id" value="${newItemData.ctype_id}">
+                                            <input type="hidden" name="object_id" value="${newItemData.obj_id}">
+                                            <input type="hidden" name="next" value="${window.location.pathname}">
+                                            <img src="${currentUserImageUrl}" class="w-8 h-8 rounded-full object-cover flex-shrink-0" alt="Your profile picture">
+                                            <div class="flex-grow">
+                                                <textarea name="text" rows="2" placeholder="Add a comment..." class="w-full px-3 py-2 border border-gray-600 bg-gray-900 rounded-md placeholder-gray-500 text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 text-sm" maxlength="500" required id="id_text_${newItemData.obj_id}"></textarea>
+                                                <div class="comment-form-errors text-xs text-red-400 mt-1"></div>
+                                            </div>
+                                            <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1 px-3 rounded text-sm">Post</button>
+                                        </form>
+                                    </div>
+                                </div> </div> </div> `.trim();
+
+                    const newItemElement = tempDiv.firstChild;
+
+                    if (newItemElement) {
+                        feedContainer.insertBefore(newItemElement, feedContainer.firstChild);
+
+                        // Re-attach listeners specifically for the new item's comment form
+                        const newCommentForm = newItemElement.querySelector('.add-comment-form');
+                        if (newCommentForm) {
+                            newCommentForm.addEventListener('submit', function(event) {
+                                event.preventDefault();
+                                handleCommentSubmit(this); // Assuming handleCommentSubmit is defined in your script
+                            });
+                        }
+                        // Note: Like and Delete buttons will be handled by event delegation already set up on feedContainer
+
+                        window.showToast("New item added to feed!", "info");
+                    } else {
+                        console.error("Failed to create HTML element for new item.");
+                    }
+
+                 } catch (error) {
+                     console.error("Error building or inserting new feed item HTML:", error);
+                     window.showToast("Error adding new item to feed.", "error");
+                 }
+                 // --- END: Build HTML ---
+
+             } else if (message.type === 'new_item') {
+                 // Handle other potential item types ('review', 'list_item') if needed
+                 console.log("Received new non-share item type:", message.data.type);
+                 // You would need similar HTML-building logic here for those types
              }
-             // Handle other message types if necessary
+             // Handle other message types if necessary (e.g., updates, deletions)
          };
          // END NEW onmessage handler
 
