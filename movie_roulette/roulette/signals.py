@@ -1,11 +1,12 @@
 # roulette/signals.py
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 # Import Notification model
-from .models import SharedListPost, Notification # <<< ADDED Notification
+from .models import SharedListPost, Notification, Comment, Like# <<< ADDED Notification
 from django.contrib.contenttypes.models import ContentType # Import ContentType
+from django.template.loader import render_to_string
 
 # --- Receiver for SharedListPost ---
 @receiver(post_save, sender=SharedListPost)
@@ -80,4 +81,73 @@ def send_notification_update(sender, instance, created, **kwargs):
         )
         print(f"Signal: Sent update to group {user_specific_group}") # Logging
 
-# --- Add receivers for other models (Comment, Like) here later if needed ---
+# --- NEW: Receiver for Comment ---
+@receiver(post_save, sender=Comment)
+def send_new_comment(sender, instance, created, **kwargs):
+    if created:
+        channel_layer = get_channel_layer()
+        group_name = 'feed_updates' # Send to the general feed group
+
+        # Render the comment HTML using the template
+        # Note: This requires passing a dummy request or modifying the template context
+        try:
+            comment_html = render_to_string('roulette/_comment.html', {'comment': instance})
+        except Exception as e:
+            print(f"Error rendering comment HTML in signal: {e}")
+            comment_html = "<p>Error loading comment.</p>" # Fallback HTML
+
+        print(f"Signal: Sending new comment for {instance.content_type_id}:{instance.object_id} to group {group_name}") # Logging
+
+        async_to_sync(channel_layer.group_send)(
+            group_name,
+            {
+                'type': 'feed.new_comment', # Method name in FeedConsumer
+                'data': {
+                    'ctype_id': instance.content_type_id,
+                    'obj_id': instance.object_id,
+                    'comment_html': comment_html,
+                    # Send user ID to prevent the commenter from getting a duplicate via WebSocket
+                    'commenter_id': instance.user.id
+                }
+            }
+        )
+        print(f"Signal: Sent new comment update to group {group_name}") # Logging
+
+
+# --- NEW: Function to send like update (used by post_save and post_delete) ---
+def send_like_update(instance):
+    channel_layer = get_channel_layer()
+    group_name = 'feed_updates' # Send to the general feed group
+
+    # Calculate the current like count for the target object
+    like_count = Like.objects.filter(
+        content_type_id=instance.content_type_id,
+        object_id=instance.object_id
+    ).count()
+
+    print(f"Signal: Sending like update for {instance.content_type_id}:{instance.object_id}, new count: {like_count}") # Logging
+
+    async_to_sync(channel_layer.group_send)(
+        group_name,
+        {
+            'type': 'feed.like_update', # Method name in FeedConsumer
+            'data': {
+                'ctype_id': instance.content_type_id,
+                'obj_id': instance.object_id,
+                'like_count': like_count,
+            }
+        }
+    )
+    print(f"Signal: Sent like update to group {group_name}") # Logging
+
+
+# --- NEW: Receivers for Like model ---
+@receiver(post_save, sender=Like)
+def send_like_update_on_save(sender, instance, created, **kwargs):
+    if created: # Only send update when a like is added
+        send_like_update(instance)
+
+@receiver(post_delete, sender=Like)
+def send_like_update_on_delete(sender, instance, **kwargs):
+    # Send update when a like is removed
+    send_like_update(instance)

@@ -28,7 +28,7 @@ class FeedConsumer(AsyncWebsocketConsumer):
             )
         print("FeedConsumer: WebSocket disconnected.") # Logging
 
-    # Receive message from the feed group (triggered by backend signals)
+    # --- Handler for new feed items (SharedListPost) ---
     async def feed_new_item(self, event):
         message_data = event['data'] # Get the JSON data sent by the signal
         print(f"FeedConsumer: Received feed_new_item: {message_data}") # Logging
@@ -38,7 +38,31 @@ class FeedConsumer(AsyncWebsocketConsumer):
             'type': 'new_item', # Tell JS this is a new item
             'data': message_data, # Send the raw data
         }))
-        print("FeedConsumer: Sent message to client.") # Logging
+        print("FeedConsumer: Sent new_item message to client.") # Logging
+
+    # --- NEW: Handler for new comments ---
+    async def feed_new_comment(self, event):
+        message_data = event['data']
+        print(f"FeedConsumer: Received feed_new_comment: {message_data}") # Logging
+
+        # Send comment data (including HTML) to WebSocket client
+        await self.send(text_data=json.dumps({
+            'type': 'new_comment', # Tell JS this is a new comment
+            'data': message_data,
+        }))
+        print("FeedConsumer: Sent new_comment message to client.") # Logging
+
+    # --- NEW: Handler for like updates ---
+    async def feed_like_update(self, event):
+        message_data = event['data']
+        print(f"FeedConsumer: Received feed_like_update: {message_data}") # Logging
+
+        # Send like update data to WebSocket client
+        await self.send(text_data=json.dumps({
+            'type': 'like_update', # Tell JS this is a like update
+            'data': message_data,
+        }))
+        print("FeedConsumer: Sent like_update message to client.") # Logging
 
     # Optional: Keep feed_update if used elsewhere, or remove if feed_new_item replaces it
     # async def feed_update(self, event):
