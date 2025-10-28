@@ -114,7 +114,6 @@ def send_new_comment(sender, instance, created, **kwargs):
         print(f"Signal: Sent new comment update to group {group_name}") # Logging
 
 
-
 # --- NEW: Function to send like update (used by post_save and post_delete) ---
 def send_like_update(instance):
     channel_layer = get_channel_layer()
