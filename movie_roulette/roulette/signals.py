@@ -4,7 +4,7 @@ from django.dispatch import receiver
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 # Import Notification model
-from .models import SharedListPost, Notification, Comment, Like# <<< ADDED Notification
+from .models import SharedListPost, Notification, Comment, Like, UserContent# <<< ADDED Notification
 from django.contrib.contenttypes.models import ContentType # Import ContentType
 from django.template.loader import render_to_string
 
@@ -45,6 +45,50 @@ def broadcast_new_feed_item(sender, instance, created, **kwargs):
             group_name,
             {
                 'type': 'feed.new_item', # Use a different type for the consumer method
+                'data': message_data # Send JSON data
+            }
+        )
+        
+@receiver(post_save, sender=UserContent)
+def broadcast_new_usercontent_item(sender, instance, created, **kwargs):
+    # Only broadcast for NEW items, and EXCLUDE history items
+    if created and instance.list_type != UserContent.ListType.HISTORY:
+        channel_layer = get_channel_layer()
+        group_name = 'feed_updates'
+
+        # Get ContentType ID for UserContent
+        try:
+            usercontent_ct = ContentType.objects.get_for_model(UserContent)
+            ctype_id = usercontent_ct.id
+        except ContentType.DoesNotExist:
+            print(f"Error: ContentType for UserContent not found.")
+            return # Cannot proceed
+
+        # Prepare data to send via WebSocket
+        message_data = {
+            'type': 'list_item', # Indicate the type of item
+            'user_id': instance.user.id,
+            'username': instance.user.username,
+            'profile_image_url': instance.user.profile.image.url,
+            'list_type': instance.list_type, # e.g., 'FAVORITE', 'WATCHLIST', 'CUSTOM'
+            'content_type': instance.content_type, # 'MOVIE' or 'TV'
+            'tmdb_id': instance.tmdb_id,
+            'title': instance.title,
+            'poster_path': instance.poster_path,
+            'release_year': instance.release_year,
+            'timestamp_iso': instance.timestamp.isoformat(),
+            # Include IDs needed for like/comment functionality on the UserContent item itself
+            'ctype_id': ctype_id,
+            'obj_id': instance.id,
+            # Include custom list details if applicable
+            'custom_list_id': instance.custom_list.id if instance.list_type == UserContent.ListType.CUSTOM and instance.custom_list else None,
+            'custom_list_name': instance.custom_list.name if instance.list_type == UserContent.ListType.CUSTOM and instance.custom_list else None,
+        }
+
+        async_to_sync(channel_layer.group_send)(
+            group_name,
+            {
+                'type': 'feed.new_item', # Reuse the same consumer method type
                 'data': message_data # Send JSON data
             }
         )

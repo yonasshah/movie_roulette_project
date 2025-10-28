@@ -78,7 +78,7 @@
                 </div> {# End flex #}
             </div> {# End feed-item #}
         {% empty %}
-            <p class="text-center text-gray-500 py-8">Your feed is empty...</p>
+            <p id="empty-feed-message" class="text-center text-gray-500 py-8">Your feed is empty...</p> {# Added ID #}
         {% endfor %}
     </div> {# End space-y-6 #}
 </div> {# End container #}
@@ -241,7 +241,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // --- NEW Helper Function to Update Comment Count Display ---
+    // --- Helper Function to Update Comment Count Display ---
     function updateCommentCountDisplay(feedItemDiv) {
         if (!feedItemDiv) return;
         const countDisplay = feedItemDiv.querySelector('.comment-count-display');
@@ -273,7 +273,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         // Attach submit listeners directly to forms
-        // Need to re-query inside if new items are added dynamically
         function attachCommentSubmitListeners(container) {
              container.querySelectorAll('.add-comment-form').forEach(form => {
                 // Prevent adding multiple listeners to the same form
@@ -297,7 +296,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const feedSocketURL = `${feedSocketProtocol}//${window.location.host}/ws/feed/`;
     let feedSocket = null;
 
-    function connectFeedWebSocket() { // Renamed from connectWebSocket
+    function connectFeedWebSocket() {
         console.log("Attempting to connect Feed WebSocket...");
         feedSocket = new WebSocket(feedSocketURL);
 
@@ -305,66 +304,152 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log("Feed WebSocket connection established.");
         };
 
-        // --- MODIFIED onmessage handler ---
-        feedSocket.onmessage = function(e) { // Removed async
+        // --- INTEGRATED onmessage handler ---
+        feedSocket.onmessage = function(e) {
              const message = JSON.parse(e.data);
              console.log("Feed WebSocket Message received:", message);
 
-             if (message.type === 'new_item' && message.data && message.data.type === 'share') {
-                 // --- Keep Existing 'share' item handling code ---
+             // Check the OUTER message type first
+             if (message.type === 'new_item' && message.data) {
                  const newItemData = message.data;
+                 const innerItemType = newItemData.type; // 'share' or 'list_item'
+
                  const feedContainer = document.querySelector('.max-w-3xl.mx-auto > .space-y-6');
                  if (!feedContainer) { console.error("Cannot insert new item: Feed container not found."); return; }
-                 try {
-                    // (Your existing code to build and insert HTML for new shared list item)
-                    // This section is copied VERBATIM from your provided feed.html
-                    const tempDiv = document.createElement('div');
-                    function escapeHtml(unsafe) { if (!unsafe) return ''; return unsafe.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;"); }
-                    const postDate = new Date(newItemData.timestamp_iso); const now = new Date(); const secondsAgo = Math.round((now - postDate) / 1000); let timesince = `${secondsAgo} seconds ago`; // Simplified timesince
-                    const profileUrl = `/user/${encodeURIComponent(newItemData.username)}/`; const listUrl = newItemData.list_url; const addCommentUrl = "{% url 'roulette:add_comment' %}"; const csrfTokenWS = '{{ csrf_token }}'; const currentUserImageUrlWS = "{{ user.profile.image.url }}";
-                    tempDiv.innerHTML = `
-                        <div class="feed-item bg-gray-700 p-4 rounded-lg shadow-md" data-item-id="${newItemData.obj_id}" data-ctype-id="${newItemData.ctype_id}">
-                            <div class="flex space-x-4"> <a href="${profileUrl}"><img src="${escapeHtml(newItemData.profile_image_url)}" class="w-12 h-12 rounded-full object-cover flex-shrink-0" alt="${escapeHtml(newItemData.username)}'s profile picture"></a>
-                                <div class="flex-1"> <div class="text-gray-300"> <a href="${profileUrl}" class="font-semibold text-white hover:underline">@${escapeHtml(newItemData.username)}</a> shared the list <a href="${escapeHtml(listUrl)}" class="font-semibold text-indigo-300 hover:underline">${escapeHtml(newItemData.list_name)}</a> <i class="fas fa-share text-blue-400 ml-1"></i> </div> <p class="text-gray-400 text-xs mb-2">${timesince}</p>
-                                    ${newItemData.share_message ? `<p class="text-gray-200 bg-gray-600 p-3 rounded-md">${escapeHtml(newItemData.share_message).replace(/\n/g, '<br>')}</p>` : ''}
-                                    ${newItemData.list_description ? `<div class="mt-2 text-sm text-gray-400 border-l-2 border-gray-600 pl-2 italic"> ${escapeHtml(newItemData.list_description.substring(0, 100))} ${newItemData.list_description.length > 100 ? '...' : ''} </div>` : ''}
-                                    <div class="mt-3 pt-3 border-t border-gray-600 flex items-center space-x-6 text-gray-400 text-sm"> <button class="like-button flex items-center hover:text-red-500 transition-colors" data-ctype-id="${newItemData.ctype_id}" data-obj-id="${newItemData.obj_id}"> <i class="fas fa-heart mr-1"></i> <span class="like-count">0</span> <span class="ml-1"> Like</span> </button> <span class="comment-count-display flex items-center"> <i class="fas fa-comment mr-1"></i> <span class="count-number">0</span>&nbsp;Comment<span class="plural-s">s</span> </span> </div>
-                                    <div class="comments-list mt-4 space-y-3"></div>
-                                    <div class="mt-4"> <form class="add-comment-form flex items-center space-x-2" method="POST" action="${addCommentUrl}"> <input type="hidden" name="csrfmiddlewaretoken" value="${csrfTokenWS}"> <input type="hidden" name="content_type_id" value="${newItemData.ctype_id}"> <input type="hidden" name="object_id" value="${newItemData.obj_id}"> <input type="hidden" name="next" value="${window.location.pathname}"> <img src="${currentUserImageUrlWS}" class="w-8 h-8 rounded-full object-cover flex-shrink-0" alt="Your profile picture"> <div class="flex-grow"> <textarea name="text" rows="2" placeholder="Add a comment..." class="w-full px-3 py-2 border border-gray-600 bg-gray-900 rounded-md placeholder-gray-500 text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 text-sm" maxlength="500" required id="id_text_${newItemData.obj_id}_ws"></textarea> <div class="comment-form-errors text-xs text-red-400 mt-1"></div> </div> <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1 px-3 rounded text-sm">Post</button> </form> </div>
-                                </div> </div> </div> `.trim();
-                    // End copied code
-                    const newItemElement = tempDiv.firstChild;
-                    if (newItemElement) {
-                        feedContainer.insertBefore(newItemElement, feedContainer.firstChild);
-                        // Re-attach listeners for the NEW comment form
-                        attachCommentSubmitListeners(newItemElement); // Use helper
-                        window.showToast("New post added to feed!", "info"); // Changed message slightly
-                    } else { console.error("Failed to create HTML element for new item."); }
-                 } catch (error) { console.error("Error building or inserting new feed item HTML:", error); window.showToast("Error adding new item to feed.", "error"); }
-                // --- End Existing 'share' item handling code ---
 
-             } else if (message.type === 'new_comment') { // <<< --- HANDLE New Comment ---
+                 // --- Remove empty feed message if it exists ---
+                 const emptyMsg = document.getElementById('empty-feed-message');
+                 if (emptyMsg) { emptyMsg.remove(); }
+                 // --- End Remove ---
+
+                 try {
+                     const tempDiv = document.createElement('div');
+                     // Helper to escape HTML, useful for user-generated content
+                     function escapeHtml(unsafe) { if (!unsafe) return ''; return unsafe.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;"); }
+
+                     // Simplified timesince calculation for JS (more accurate calculation can be done)
+                     const postDate = new Date(newItemData.timestamp_iso);
+                     const now = new Date();
+                     const secondsAgo = Math.round((now - postDate) / 1000);
+                     let timesince = `${secondsAgo} seconds ago`;
+                     // Basic time formatting (you could use a library like moment.js or date-fns for better formatting)
+                     if (secondsAgo > 60) timesince = `${Math.round(secondsAgo / 60)} minutes ago`;
+                     if (secondsAgo > 3600) timesince = `${Math.round(secondsAgo / 3600)} hours ago`;
+                     if (secondsAgo > 86400) timesince = `${Math.round(secondsAgo / 86400)} days ago`;
+
+                     const profileUrl = `/user/${encodeURIComponent(newItemData.username)}/`;
+                     const addCommentUrl = "{% url 'roulette:add_comment' %}";
+                     const csrfTokenWS = '{{ csrf_token }}';
+                     const currentUserImageUrlWS = "{{ user.profile.image.url }}";
+                     let itemHTML = '';
+
+                     // --- Differentiate HTML generation based on INNER type ---
+                     if (innerItemType === 'share') {
+                         const listUrl = newItemData.list_url;
+                         itemHTML = `
+                         <div class="feed-item bg-gray-700 p-4 rounded-lg shadow-md" data-item-id="${newItemData.obj_id}" data-ctype-id="${newItemData.ctype_id}">
+                             <div class="flex space-x-4"> <a href="${profileUrl}"><img src="${escapeHtml(newItemData.profile_image_url)}" class="w-12 h-12 rounded-full object-cover flex-shrink-0" alt="${escapeHtml(newItemData.username)}'s profile picture"></a>
+                                 <div class="flex-1"> <div class="text-gray-300"> <a href="${profileUrl}" class="font-semibold text-white hover:underline">@${escapeHtml(newItemData.username)}</a> shared the list <a href="${escapeHtml(listUrl)}" class="font-semibold text-indigo-300 hover:underline">${escapeHtml(newItemData.list_name)}</a> <i class="fas fa-share text-blue-400 ml-1"></i> </div> <p class="text-gray-400 text-xs mb-2">${timesince}</p>
+                                     ${newItemData.share_message ? `<p class="text-gray-200 bg-gray-600 p-3 rounded-md">${escapeHtml(newItemData.share_message).replace(/\n/g, '<br>')}</p>` : ''}
+                                     ${newItemData.list_description ? `<div class="mt-2 text-sm text-gray-400 border-l-2 border-gray-600 pl-2 italic"> ${escapeHtml(newItemData.list_description.substring(0, 100))} ${newItemData.list_description.length > 100 ? '...' : ''} </div>` : ''}
+                                     <div class="mt-3 pt-3 border-t border-gray-600 flex items-center space-x-6 text-gray-400 text-sm"> <button class="like-button flex items-center hover:text-red-500 transition-colors" data-ctype-id="${newItemData.ctype_id}" data-obj-id="${newItemData.obj_id}"> <i class="fas fa-heart mr-1"></i> <span class="like-count">0</span> <span class="ml-1"> Like</span> </button> <span class="comment-count-display flex items-center"> <i class="fas fa-comment mr-1"></i> <span class="count-number">0</span>&nbsp;Comment<span class="plural-s">s</span> </span> </div>
+                                     <div class="comments-list mt-4 space-y-3"></div>
+                                     <div class="mt-4"> <form class="add-comment-form flex items-center space-x-2" method="POST" action="${addCommentUrl}"> <input type="hidden" name="csrfmiddlewaretoken" value="${csrfTokenWS}"> <input type="hidden" name="content_type_id" value="${newItemData.ctype_id}"> <input type="hidden" name="object_id" value="${newItemData.obj_id}"> <input type="hidden" name="next" value="${window.location.pathname}"> <img src="${currentUserImageUrlWS}" class="w-8 h-8 rounded-full object-cover flex-shrink-0" alt="Your profile picture"> <div class="flex-grow"> <textarea name="text" rows="2" placeholder="Add a comment..." class="w-full px-3 py-2 border border-gray-600 bg-gray-900 rounded-md placeholder-gray-500 text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 text-sm" maxlength="500" required id="id_text_${newItemData.obj_id}_ws_share"></textarea> <div class="comment-form-errors text-xs text-red-400 mt-1"></div> </div> <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1 px-3 rounded text-sm">Post</button> </form> </div>
+                                 </div> </div> </div> `.trim();
+                     }
+                     else if (innerItemType === 'list_item') {
+                         const contentDetailUrl = `/content/${newItemData.content_type.toLowerCase()}/${newItemData.tmdb_id}/`;
+                         let actionText = '';
+                         let iconClass = '';
+
+                         if (newItemData.list_type === 'FAVORITE') {
+                             actionText = `added <a href="${contentDetailUrl}" class="font-semibold text-indigo-300 hover:underline">${escapeHtml(newItemData.title)}</a> to Favorites`;
+                             iconClass = 'fas fa-heart text-red-500 ml-1';
+                         } else if (newItemData.list_type === 'WATCHLIST') {
+                             actionText = `added <a href="${contentDetailUrl}" class="font-semibold text-indigo-300 hover:underline">${escapeHtml(newItemData.title)}</a> to their Watchlist`;
+                             iconClass = 'fas fa-bookmark text-indigo-400 ml-1';
+                         } else if (newItemData.list_type === 'CUSTOM' && newItemData.custom_list_id) {
+                              const customListDetailUrl = `/list/${newItemData.custom_list_id}/`;
+                              actionText = `added <a href="${contentDetailUrl}" class="font-semibold text-indigo-300 hover:underline">${escapeHtml(newItemData.title)}</a> to <a href="${customListDetailUrl}" class="font-semibold text-indigo-300 hover:underline">${escapeHtml(newItemData.custom_list_name)}</a>`;
+                              iconClass = 'fas fa-list-ul text-gray-400 ml-1';
+                         } else {
+                             // Fallback in case list_type is unexpected (shouldn't happen with current signal logic)
+                             actionText = `added <a href="${contentDetailUrl}" class="font-semibold text-indigo-300 hover:underline">${escapeHtml(newItemData.title)}</a>`;
+                             iconClass = 'fas fa-check text-gray-400 ml-1';
+                         }
+
+                         // Build the HTML for the list_item
+                         itemHTML = `
+                         <div class="feed-item bg-gray-700 p-4 rounded-lg shadow-md" data-item-id="${newItemData.obj_id}" data-ctype-id="${newItemData.ctype_id}">
+                             <div class="flex space-x-4">
+                                 <a href="${profileUrl}">
+                                     <img src="${escapeHtml(newItemData.profile_image_url)}" class="w-12 h-12 rounded-full object-cover flex-shrink-0" alt="${escapeHtml(newItemData.username)}'s profile picture">
+                                 </a>
+                                 <div class="flex-1">
+                                     <div class="text-gray-300">
+                                         <a href="${profileUrl}" class="font-semibold text-white hover:underline">@${escapeHtml(newItemData.username)}</a>
+                                         ${actionText} {# Action text with links is inserted here #}
+                                         <i class="${iconClass}"></i>
+                                     </div>
+                                     <p class="text-gray-400 text-xs">${timesince}</p>
+                                     <div class="mt-3 pt-3 border-t border-gray-600 flex items-center space-x-6 text-gray-400 text-sm">
+                                         <button class="like-button flex items-center hover:text-red-500 transition-colors" data-ctype-id="${newItemData.ctype_id}" data-obj-id="${newItemData.obj_id}">
+                                             <i class="fas fa-heart mr-1"></i> <span class="like-count">0</span> <span class="ml-1"> Like</span>
+                                         </button>
+                                         <span class="comment-count-display flex items-center">
+                                             <i class="fas fa-comment mr-1"></i> <span class="count-number">0</span>&nbsp;Comment<span class="plural-s">s</span>
+                                         </span>
+                                     </div>
+                                     <div class="comments-list mt-4 space-y-3"></div>
+                                     <div class="mt-4">
+                                         <form class="add-comment-form flex items-center space-x-2" method="POST" action="${addCommentUrl}">
+                                             <input type="hidden" name="csrfmiddlewaretoken" value="${csrfTokenWS}">
+                                             <input type="hidden" name="content_type_id" value="${newItemData.ctype_id}">
+                                             <input type="hidden" name="object_id" value="${newItemData.obj_id}">
+                                             <input type="hidden" name="next" value="${window.location.pathname}">
+                                             <img src="${currentUserImageUrlWS}" class="w-8 h-8 rounded-full object-cover flex-shrink-0" alt="Your profile picture">
+                                             <div class="flex-grow">
+                                                 <textarea name="text" rows="2" placeholder="Add a comment..." class="w-full px-3 py-2 border border-gray-600 bg-gray-900 rounded-md placeholder-gray-500 text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 text-sm" maxlength="500" required id="id_text_${newItemData.obj_id}_ws_list"></textarea>
+                                                 <div class="comment-form-errors text-xs text-red-400 mt-1"></div>
+                                             </div>
+                                             <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1 px-3 rounded text-sm">Post</button>
+                                         </form>
+                                     </div>
+                                 </div>
+                             </div>
+                         </div>`.trim();
+                     }
+                     // --- End Differentiation ---
+
+                     tempDiv.innerHTML = itemHTML; // Set the generated HTML
+                     const newItemElement = tempDiv.firstChild;
+
+                     if (newItemElement) {
+                         feedContainer.insertBefore(newItemElement, feedContainer.firstChild); // Add to top
+                         attachCommentSubmitListeners(newItemElement); // Attach listener to the new form
+                         window.showToast("New item added to feed!", "info");
+                     } else {
+                         console.error("Failed to create HTML element for new item type:", innerItemType);
+                     }
+                 } catch (error) {
+                     console.error("Error building or inserting new feed item HTML:", error);
+                     window.showToast("Error adding new item to feed.", "error");
+                 }
+
+             }
+             else if (message.type === 'new_comment') {
                  const commentData = message.data;
                  console.log("JS: Received new comment data:", commentData);
-
-                 // Find the target feed item using data attributes
                  const targetFeedItem = feedContainer.querySelector(`.feed-item[data-ctype-id="${commentData.ctype_id}"][data-item-id="${commentData.obj_id}"]`);
-
                  if (targetFeedItem) {
-                    // Check if the commenter is the current user. If so, don't add duplicate HTML.
                     if (commentData.commenter_id === currentUserId) {
                         console.log("JS: Skipping self-comment update via WebSocket.");
-                        // Still update the count display for self-comments
                         updateCommentCountDisplay(targetFeedItem);
-                        return; // Stop processing this message
+                        return;
                     }
-
-                    // --- If it's another user's comment, add it ---
                     const commentsList = targetFeedItem.querySelector('.comments-list');
                     if (commentsList && commentData.comment_html) {
-                        // Append the new comment HTML
                         commentsList.insertAdjacentHTML('beforeend', commentData.comment_html);
-                        // Update the comment count display
                         updateCommentCountDisplay(targetFeedItem);
                     } else {
                         console.error("Could not find comments list or missing comment HTML for item:", commentData.ctype_id, commentData.obj_id);
@@ -373,24 +458,19 @@ document.addEventListener('DOMContentLoaded', function() {
                       console.warn("Could not find target feed item for new comment:", commentData.ctype_id, commentData.obj_id);
                  }
 
-             } else if (message.type === 'like_update') { // <<< --- HANDLE Like Update ---
+             }
+             else if (message.type === 'like_update') {
                  const likeData = message.data;
                  console.log("JS: Received like update data:", likeData);
-
-                 // Find the target feed item
                  const targetFeedItem = feedContainer.querySelector(`.feed-item[data-ctype-id="${likeData.ctype_id}"][data-item-id="${likeData.obj_id}"]`);
-
                  if (targetFeedItem) {
                      const likeButton = targetFeedItem.querySelector('.like-button');
                      if (likeButton) {
                          const countSpan = likeButton.querySelector('.like-count');
-                         const labelSpan = likeButton.querySelector('.ml-1'); // Span holding " Like" or " Likes"
+                         const labelSpan = likeButton.querySelector('.ml-1');
                          const newCount = likeData.like_count;
-
                          if (countSpan) countSpan.textContent = newCount;
                          if (labelSpan) labelSpan.textContent = (newCount === 1) ? ' Like' : ' Likes';
-
-                         // Note: We don't update the button's color (red/gray) here via broadcast
                      } else {
                          console.error("Could not find like button for item:", likeData.ctype_id, likeData.obj_id);
                      }
@@ -398,19 +478,14 @@ document.addEventListener('DOMContentLoaded', function() {
                      console.warn("Could not find target feed item for like update:", likeData.ctype_id, likeData.obj_id);
                  }
              }
-             // Handle other original 'new_item' types if necessary (you had an else if for this)
-             else if (message.type === 'new_item') {
-                 console.log("Received new non-share item type:", message.data.type);
-                 // You would need similar HTML-building logic here for those types if needed
-             }
+             // Add else if blocks here for other potential message.type values ('comment_deleted', 'like_removed' etc.) if needed
          };
-         // --- END MODIFIED onmessage handler ---
+         // --- END INTEGRATED onmessage handler ---
 
         feedSocket.onclose = function(e) {
             console.error('Feed WebSocket closed unexpectedly. Attempting to reconnect...', e);
              if (e.code !== 1000 && e.code !== 1008) {
-                // Use the correct function name for reconnection
-                setTimeout(connectFeedWebSocket, 5000 + Math.random() * 1000); // Reconnect after 5-6s
+                setTimeout(connectFeedWebSocket, 5000 + Math.random() * 1000);
              } else {
                  console.log("Feed WebSocket closed normally or due to policy violation.");
              }
@@ -418,13 +493,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
         feedSocket.onerror = function(err) {
             console.error('Feed WebSocket error:', err);
-            // feedSocket.close(); // Let onclose handle reconnect attempts
         };
     }
 
     // --- Initial Connection for Feed ---
     if (feedContainer) {
-       connectFeedWebSocket(); // Use renamed function
+       connectFeedWebSocket();
     }
     // --- End Feed WebSocket ---
 
