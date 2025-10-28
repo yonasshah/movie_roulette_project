@@ -113,6 +113,25 @@ def send_new_comment(sender, instance, created, **kwargs):
         )
         print(f"Signal: Sent new comment update to group {group_name}") # Logging
 
+@receiver(post_delete, sender=Comment)
+def send_delete_comment(sender, instance, **kwargs):
+    channel_layer = get_channel_layer()
+    group_name = 'feed_updates' # Send to the general feed group
+
+    print(f"Signal: Sending delete comment for comment ID {instance.id} (parent: {instance.content_type_id}:{instance.object_id})") # Logging
+
+    async_to_sync(channel_layer.group_send)(
+        group_name,
+        {
+            'type': 'feed.delete_comment', # Method name in FeedConsumer
+            'data': {
+                'ctype_id': instance.content_type_id,
+                'obj_id': instance.object_id, # ID of the parent feed item
+                'comment_id': instance.id # ID of the comment being deleted
+            }
+        }
+    )
+    print(f"Signal: Sent delete comment update to group {group_name}") # Logging
 
 # --- NEW: Function to send like update (used by post_save and post_delete) ---
 def send_like_update(instance):

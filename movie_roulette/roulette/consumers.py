@@ -40,7 +40,7 @@ class FeedConsumer(AsyncWebsocketConsumer):
         }))
         print("FeedConsumer: Sent new_item message to client.") # Logging
 
-    # --- NEW: Handler for new comments ---
+    # --- Handler for new comments ---
     async def feed_new_comment(self, event):
         message_data = event['data']
         print(f"FeedConsumer: Received feed_new_comment: {message_data}") # Logging
@@ -52,7 +52,7 @@ class FeedConsumer(AsyncWebsocketConsumer):
         }))
         print("FeedConsumer: Sent new_comment message to client.") # Logging
 
-    # --- NEW: Handler for like updates ---
+    # --- Handler for like updates ---
     async def feed_like_update(self, event):
         message_data = event['data']
         print(f"FeedConsumer: Received feed_like_update: {message_data}") # Logging
@@ -63,6 +63,18 @@ class FeedConsumer(AsyncWebsocketConsumer):
             'data': message_data,
         }))
         print("FeedConsumer: Sent like_update message to client.") # Logging
+
+    # --- NEW: Handler for comment deletion ---
+    async def feed_delete_comment(self, event):
+        message_data = event['data']
+        print(f"FeedConsumer: Received feed_delete_comment: {message_data}") # Logging
+
+        # Send comment deletion data to WebSocket client
+        await self.send(text_data=json.dumps({
+            'type': 'delete_comment', # Tell JS this is a comment deletion
+            'data': message_data,
+        }))
+        print("FeedConsumer: Sent delete_comment message to client.") # Logging
 
     # Optional: Keep feed_update if used elsewhere, or remove if feed_new_item replaces it
     # async def feed_update(self, event):

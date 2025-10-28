@@ -53,7 +53,7 @@
                             </div>
                             <div class="comments-list mt-4 space-y-3">
                                 {% for comment in item.fetched_comments %}
-                                     {# Pass request needed for delete button check in included template #}
+                                    {# Pass request needed for delete button check in included template #}
                                     {% include 'roulette/_comment.html' with comment=comment request=request %}
                                 {% endfor %}
                             </div>
@@ -91,10 +91,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const csrfToken = '{{ csrf_token }}';
     const feedContainer = document.querySelector('.max-w-3xl.mx-auto > .space-y-6');
     const globalMessageContainer = document.getElementById('feed-message-container');
-    // --- Get current user ID (needed to avoid self-comment duplication) ---
+    // --- Get current user ID (needed for logic) ---
     const currentUserId = "{{ user.id|escapejs }}";
 
-    // --- Like Click Handler ---
+    // --- Like Click Handler (Keep as is) ---
     async function handleLikeClick(buttonElement) {
         const ctypeId = buttonElement.dataset.ctypeId;
         const objId = buttonElement.dataset.objId;
@@ -122,7 +122,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // --- Comment Form Handler ---
+    // --- Comment Form Handler (Keep as is) ---
     async function handleCommentSubmit(formElement) {
         const textArea = formElement.querySelector('textarea[name="text"]');
         const errorsDiv = formElement.querySelector('.comment-form-errors');
@@ -167,7 +167,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // --- Comment Delete Handler ---
+    // --- Comment Delete Handler (Keep as is) ---
     async function handleCommentDelete(buttonElement) {
         const commentId = buttonElement.dataset.commentId;
         const deleteUrl = buttonElement.dataset.deleteUrl;
@@ -185,6 +185,8 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             const data = await response.json();
             if (response.ok && data.success) {
+                // This AJAX handler only removes the comment for the user who clicked delete.
+                // The WebSocket 'delete_comment' broadcast will remove it for everyone else.
                 const commentItemDiv = buttonElement.closest('.comment-item');
                 const feedItemDiv = buttonElement.closest('.feed-item'); // Find parent feed item
                 if (commentItemDiv) {
@@ -205,9 +207,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // --- Shared Post Delete Handler ---
+    // --- Shared Post Delete Handler (Keep as is) ---
     async function handlePostDelete(buttonElement) {
-        // (Keep existing code from your file)
         const postId = buttonElement.dataset.postId;
         const deleteUrl = buttonElement.dataset.deleteUrl;
         if (!postId || !deleteUrl) {
@@ -241,7 +242,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // --- NEW Helper Function to Update Comment Count Display ---
+    // --- Helper Function to Update Comment Count Display (Keep as is) ---
     function updateCommentCountDisplay(feedItemDiv) {
         if (!feedItemDiv) return;
         const countDisplay = feedItemDiv.querySelector('.comment-count-display');
@@ -259,7 +260,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // --- END Helper ---
 
 
-    // --- Attach Event Listeners using Delegation ---
+    // --- Attach Event Listeners using Delegation (Keep as is) ---
     if (feedContainer) {
         feedContainer.addEventListener('click', function(event) {
             const likeButton = event.target.closest('.like-button');
@@ -276,14 +277,14 @@ document.addEventListener('DOMContentLoaded', function() {
         // Need to re-query inside if new items are added dynamically
         function attachCommentSubmitListeners(container) {
              container.querySelectorAll('.add-comment-form').forEach(form => {
-                // Prevent adding multiple listeners to the same form
-                if (form.dataset.listenerAttached) return;
-                form.addEventListener('submit', function(event) {
-                    event.preventDefault();
-                    handleCommentSubmit(this);
-                });
-                form.dataset.listenerAttached = 'true'; // Mark as attached
-            });
+                 // Prevent adding multiple listeners to the same form
+                 if (form.dataset.listenerAttached) return;
+                 form.addEventListener('submit', function(event) {
+                     event.preventDefault();
+                     handleCommentSubmit(this);
+                 });
+                 form.dataset.listenerAttached = 'true'; // Mark as attached
+             });
         }
         attachCommentSubmitListeners(feedContainer); // Attach to initial forms
 
@@ -293,7 +294,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
     // --- WebSocket Connection for Feed ---
-    const feedSocketProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const feedSocketProtocol = window.location.protocol === 'https:.' ? 'wss:' : 'ws:';
     const feedSocketURL = `${feedSocketProtocol}//${window.location.host}/ws/feed/`;
     let feedSocket = null;
 
@@ -316,34 +317,35 @@ document.addEventListener('DOMContentLoaded', function() {
                  const feedContainer = document.querySelector('.max-w-3xl.mx-auto > .space-y-6');
                  if (!feedContainer) { console.error("Cannot insert new item: Feed container not found."); return; }
                  try {
-                    // (Your existing code to build and insert HTML for new shared list item)
-                    // This section is copied VERBATIM from your provided feed.html
-                    const tempDiv = document.createElement('div');
-                    function escapeHtml(unsafe) { if (!unsafe) return ''; return unsafe.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;"); }
-                    const postDate = new Date(newItemData.timestamp_iso); const now = new Date(); const secondsAgo = Math.round((now - postDate) / 1000); let timesince = `${secondsAgo} seconds ago`; // Simplified timesince
-                    const profileUrl = `/user/${encodeURIComponent(newItemData.username)}/`; const listUrl = newItemData.list_url; const addCommentUrl = "{% url 'roulette:add_comment' %}"; const csrfTokenWS = '{{ csrf_token }}'; const currentUserImageUrlWS = "{{ user.profile.image.url }}";
-                    tempDiv.innerHTML = `
-                        <div class="feed-item bg-gray-700 p-4 rounded-lg shadow-md" data-item-id="${newItemData.obj_id}" data-ctype-id="${newItemData.ctype_id}">
-                            <div class="flex space-x-4"> <a href="${profileUrl}"><img src="${escapeHtml(newItemData.profile_image_url)}" class="w-12 h-12 rounded-full object-cover flex-shrink-0" alt="${escapeHtml(newItemData.username)}'s profile picture"></a>
-                                <div class="flex-1"> <div class="text-gray-300"> <a href="${profileUrl}" class="font-semibold text-white hover:underline">@${escapeHtml(newItemData.username)}</a> shared the list <a href="${escapeHtml(listUrl)}" class="font-semibold text-indigo-300 hover:underline">${escapeHtml(newItemData.list_name)}</a> <i class="fas fa-share text-blue-400 ml-1"></i> </div> <p class="text-gray-400 text-xs mb-2">${timesince}</p>
-                                    ${newItemData.share_message ? `<p class="text-gray-200 bg-gray-600 p-3 rounded-md">${escapeHtml(newItemData.share_message).replace(/\n/g, '<br>')}</p>` : ''}
-                                    ${newItemData.list_description ? `<div class="mt-2 text-sm text-gray-400 border-l-2 border-gray-600 pl-2 italic"> ${escapeHtml(newItemData.list_description.substring(0, 100))} ${newItemData.list_description.length > 100 ? '...' : ''} </div>` : ''}
-                                    <div class="mt-3 pt-3 border-t border-gray-600 flex items-center space-x-6 text-gray-400 text-sm"> <button class="like-button flex items-center hover:text-red-500 transition-colors" data-ctype-id="${newItemData.ctype_id}" data-obj-id="${newItemData.obj_id}"> <i class="fas fa-heart mr-1"></i> <span class="like-count">0</span> <span class="ml-1"> Like</span> </button> <span class="comment-count-display flex items-center"> <i class="fas fa-comment mr-1"></i> <span class="count-number">0</span>&nbsp;Comment<span class="plural-s">s</span> </span> </div>
-                                    <div class="comments-list mt-4 space-y-3"></div>
-                                    <div class="mt-4"> <form class="add-comment-form flex items-center space-x-2" method="POST" action="${addCommentUrl}"> <input type="hidden" name="csrfmiddlewaretoken" value="${csrfTokenWS}"> <input type="hidden" name="content_type_id" value="${newItemData.ctype_id}"> <input type="hidden" name="object_id" value="${newItemData.obj_id}"> <input type="hidden" name="next" value="${window.location.pathname}"> <img src="${currentUserImageUrlWS}" class="w-8 h-8 rounded-full object-cover flex-shrink-0" alt="Your profile picture"> <div class="flex-grow"> <textarea name="text" rows="2" placeholder="Add a comment..." class="w-full px-3 py-2 border border-gray-600 bg-gray-900 rounded-md placeholder-gray-500 text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 text-sm" maxlength="500" required id="id_text_${newItemData.obj_id}_ws"></textarea> <div class="comment-form-errors text-xs text-red-400 mt-1"></div> </div> <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1 px-3 rounded text-sm">Post</button> </form> </div>
-                                </div> </div> </div> `.trim();
-                    // End copied code
-                    const newItemElement = tempDiv.firstChild;
-                    if (newItemElement) {
-                        feedContainer.insertBefore(newItemElement, feedContainer.firstChild);
-                        // Re-attach listeners for the NEW comment form
-                        attachCommentSubmitListeners(newItemElement); // Use helper
-                        window.showToast("New post added to feed!", "info"); // Changed message slightly
-                    } else { console.error("Failed to create HTML element for new item."); }
+                     // (Your existing code to build and insert HTML for new shared list item)
+                     // This section is copied VERBATIM from your provided feed.html
+                     const tempDiv = document.createElement('div');
+                     function escapeHtml(unsafe) { if (!unsafe) return ''; return unsafe.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;"); }
+                     const postDate = new Date(newItemData.timestamp_iso); const now = new Date(); const secondsAgo = Math.round((now - postDate) / 1000); let timesince = `${secondsAgo} seconds ago`; // Simplified timesince
+                     const profileUrl = `/user/${encodeURIComponent(newItemData.username)}/`; const listUrl = newItemData.list_url; const addCommentUrl = "{% url 'roulette:add_comment' %}"; const csrfTokenWS = '{{ csrf_token }}'; const currentUserImageUrlWS = "{{ user.profile.image.url }}";
+                     tempDiv.innerHTML = `
+                         <div class="feed-item bg-gray-700 p-4 rounded-lg shadow-md" data-item-id="${newItemData.obj_id}" data-ctype-id="${newItemData.ctype_id}">
+                             <div class="flex space-x-4"> <a href="${profileUrl}"><img src="${escapeHtml(newItemData.profile_image_url)}" class="w-12 h-12 rounded-full object-cover flex-shrink-0" alt="${escapeHtml(newItemData.username)}'s profile picture"></a>
+                                 <div class="flex-1"> <div class="text-gray-300"> <a href="${profileUrl}" class="font-semibold text-white hover:underline">@${escapeHtml(newItemData.username)}</a> shared the list <a href="${escapeHtml(listUrl)}" class="font-semibold text-indigo-300 hover:underline">${escapeHtml(newItemData.list_name)}</a> <i class="fas fa-share text-blue-400 ml-1"></i> </div> <p class="text-gray-400 text-xs mb-2">${timesince}</p>
+                                     ${newItemData.share_message ? `<p class="text-gray-200 bg-gray-600 p-3 rounded-md">${escapeHtml(newItemData.share_message).replace(/\n/g, '<br>')}</p>` : ''}
+                                     ${newItemData.list_description ? `<div class="mt-2 text-sm text-gray-400 border-l-2 border-gray-600 pl-2 italic"> ${escapeHtml(newItemData.list_description.substring(0, 100))} ${newItemData.list_description.length > 100 ? '...' : ''} </div>` : ''}
+                                     <div class="mt-3 pt-3 border-t border-gray-600 flex items-center space-x-6 text-gray-400 text-sm"> <button class="like-button flex items-center hover:text-red-500 transition-colors" data-ctype-id="${newItemData.ctype_id}" data-obj-id="${newItemData.obj_id}"> <i class="fas fa-heart mr-1"></i> <span class="like-count">0</span> <span class="ml-1"> Like</span> </button> <span class="comment-count-display flex items-center"> <i class="fas fa-comment mr-1"></i> <span class="count-number">0</span>&nbsp;Comment<span class="plural-s">s</span> </span> </div>
+                                     <div class="comments-list mt-4 space-y-3"></div>
+                                     <div class="mt-4"> <form class="add-comment-form flex items-center space-x-2" method="POST" action="${addCommentUrl}"> <input type="hidden" name="csrfmiddlewaretoken" value="${csrfTokenWS}"> <input type="hidden" name="content_type_id" value="${newItemData.ctype_id}"> <input type="hidden" name="object_id" value="${newItemData.obj_id}"> <input type="hidden" name="next" value="${window.location.pathname}"> <img src="${currentUserImageUrlWS}" class="w-8 h-8 rounded-full object-cover flex-shrink-0" alt="Your profile picture"> <div class="flex-grow"> <textarea name="text" rows="2" placeholder="Add a comment..." class="w-full px-3 py-2 border border-gray-600 bg-gray-900 rounded-md placeholder-gray-500 text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 text-sm" maxlength="500" required id="id_text_${newItemData.obj_id}_ws"></textarea> <div class="comment-form-errors text-xs text-red-400 mt-1"></div> </div> <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1 px-3 rounded text-sm">Post</button> </form> </div>
+                                 </div> </div> </div> `.trim();
+                     // End copied code
+                     const newItemElement = tempDiv.firstChild;
+                     if (newItemElement) {
+                         feedContainer.insertBefore(newItemElement, feedContainer.firstChild);
+                         // Re-attach listeners for the NEW comment form
+                         attachCommentSubmitListeners(newItemElement); // Use helper
+                         window.showToast("New post added to feed!", "info"); // Changed message slightly
+                     } else { console.error("Failed to create HTML element for new item."); }
                  } catch (error) { console.error("Error building or inserting new feed item HTML:", error); window.showToast("Error adding new item to feed.", "error"); }
-                // --- End Existing 'share' item handling code ---
+                 // --- End Existing 'share' item handling code ---
 
-             } else if (message.type === 'new_comment') { // <<< --- HANDLE New Comment ---
+             // --- *** MODIFIED: Handle New Comment (using comment_id check) *** ---
+             } else if (message.type === 'new_comment') {
                  const commentData = message.data;
                  console.log("JS: Received new comment data:", commentData);
 
@@ -351,29 +353,19 @@ document.addEventListener('DOMContentLoaded', function() {
                  const targetFeedItem = feedContainer.querySelector(`.feed-item[data-ctype-id="${commentData.ctype_id}"][data-item-id="${commentData.obj_id}"]`);
 
                  if (targetFeedItem) {
-                    // Check if the commenter is the current user. If so, don't add duplicate HTML.
-                    if (commentData.commenter_id === currentUserId) {
-                        console.log("JS: Skipping self-comment update via WebSocket.");
-                        // Still update the count display for self-comments
-                        updateCommentCountDisplay(targetFeedItem);
-                        return; // Stop processing this message
-                    }
+                      // Check if comment already exists (using comment_id added in signal)
+                      const existingComment = targetFeedItem.querySelector(`.comment-item[data-comment-id="${commentData.comment_id}"]`);
+                      if (!existingComment) { // Only add if it doesn't exist
+                           const commentsList = targetFeedItem.querySelector('.comments-list');
+                           if (commentsList && commentData.comment_html) {
+                               commentsList.insertAdjacentHTML('beforeend', commentData.comment_html);
+                               updateCommentCountDisplay(targetFeedItem);
+                           } else { console.error("Could not find comments list or missing comment HTML for item:", commentData.ctype_id, commentData.obj_id); }
+                      } else { console.log("JS: Skipping duplicate comment update via WebSocket (comment already exists)."); }
+                 } else { console.warn("Could not find target feed item for new comment:", commentData.ctype_id, commentData.obj_id); }
 
-                    // --- If it's another user's comment, add it ---
-                    const commentsList = targetFeedItem.querySelector('.comments-list');
-                    if (commentsList && commentData.comment_html) {
-                        // Append the new comment HTML
-                        commentsList.insertAdjacentHTML('beforeend', commentData.comment_html);
-                        // Update the comment count display
-                        updateCommentCountDisplay(targetFeedItem);
-                    } else {
-                        console.error("Could not find comments list or missing comment HTML for item:", commentData.ctype_id, commentData.obj_id);
-                    }
-                 } else {
-                      console.warn("Could not find target feed item for new comment:", commentData.ctype_id, commentData.obj_id);
-                 }
-
-             } else if (message.type === 'like_update') { // <<< --- HANDLE Like Update ---
+             // --- Handle Like Update (Keep as is) ---
+             } else if (message.type === 'like_update') {
                  const likeData = message.data;
                  console.log("JS: Received like update data:", likeData);
 
@@ -397,22 +389,47 @@ document.addEventListener('DOMContentLoaded', function() {
                  } else {
                      console.warn("Could not find target feed item for like update:", likeData.ctype_id, likeData.obj_id);
                  }
-             }
-             // Handle other original 'new_item' types if necessary (you had an else if for this)
-             else if (message.type === 'new_item') {
+
+             // --- *** NEW: Handle Comment Deletion *** ---
+             } else if (message.type === 'delete_comment') {
+                 const deleteData = message.data;
+                 console.log("JS: Received delete comment data:", deleteData);
+
+                 // Find the target feed item
+                 const targetFeedItem = feedContainer.querySelector(`.feed-item[data-ctype-id="${deleteData.ctype_id}"][data-item-id="${deleteData.obj_id}"]`);
+
+                 if (targetFeedItem) {
+                     // Find the specific comment element within that feed item using comment_id
+                     const commentElement = targetFeedItem.querySelector(`.comment-item[data-comment-id="${deleteData.comment_id}"]`);
+                     if (commentElement) {
+                         console.log("JS: Removing comment element:", commentElement);
+                         commentElement.remove();
+                         // Update the comment count display after removal
+                         updateCommentCountDisplay(targetFeedItem);
+                     } else {
+                         // This is not necessarily an error; the user who deleted
+                         // it already removed it via AJAX.
+                         console.log("JS: Comment to delete not found (likely already removed):", deleteData.comment_id);
+                     }
+                 } else {
+                     console.warn("Could not find target feed item for comment deletion:", deleteData.ctype_id, deleteData.obj_id);
+                 }
+
+             // --- Handle other original 'new_item' types (Keep as is) ---
+             } else if (message.type === 'new_item') {
                  console.log("Received new non-share item type:", message.data.type);
                  // You would need similar HTML-building logic here for those types if needed
              }
-         };
-         // --- END MODIFIED onmessage handler ---
+        };
+        // --- END MODIFIED onmessage handler ---
 
         feedSocket.onclose = function(e) {
             console.error('Feed WebSocket closed unexpectedly. Attempting to reconnect...', e);
              if (e.code !== 1000 && e.code !== 1008) {
-                // Use the correct function name for reconnection
-                setTimeout(connectFeedWebSocket, 5000 + Math.random() * 1000); // Reconnect after 5-6s
+                 // Use the correct function name for reconnection
+                 setTimeout(connectFeedWebSocket, 5000 + Math.random() * 1000); // Reconnect after 5-6s
              } else {
-                 console.log("Feed WebSocket closed normally or due to policy violation.");
+                  console.log("Feed WebSocket closed normally or due to policy violation.");
              }
         };
 
