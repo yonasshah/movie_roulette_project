@@ -74,7 +74,7 @@
 </head>
 <body class="min-h-screen flex flex-col items-center p-4 md:p-8">
 
-    {# --- Navbar --- (No changes needed) #}
+    {# --- Navbar --- #}
     <nav class="fixed top-0 left-0 right-0 z-50 bg-gray-900 border-b border-indigo-700 shadow-lg">
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16">
@@ -95,13 +95,16 @@
                         <button type="submit" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500"> <i class="fas fa-search"></i> </button>
                     </form>
                     {% if user.is_authenticated %}
-                        {# Notifications Icon #}
-                         <a href="{% url 'roulette:notifications' %}" class="relative text-gray-300 hover:text-white transition-colors text-lg" title="Notifications">
+                        {# --- MODIFIED Notifications Icon --- #}
+                         <a href="{% url 'roulette:notifications' %}" id="navbar-notifications-link" class="relative text-gray-300 hover:text-white transition-colors text-lg" title="Notifications">
                             <i class="fas fa-bell"></i>
-                            {% if unread_notifications_count > 0 %}
-                            <span class="absolute -top-1 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-xs font-bold text-white"> {{ unread_notifications_count }} </span>
-                            {% endif %}
+                            {# Use an ID to target the count span #}
+                            <span id="navbar-unread-count" class="absolute -top-1 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-xs font-bold text-white {% if unread_notifications_count == 0 %}hidden{% endif %}">
+                                {{ unread_notifications_count }}
+                            </span>
                         </a>
+                        {# --- END MODIFICATION --- #}
+
                         {# User Dropdown #}
                         <div class="relative dropdown">
                             <button id="user-menu-button" type="button" class="flex items-center text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-indigo-500" aria-expanded="false" aria-haspopup="true">
@@ -130,7 +133,7 @@
                  </div>
             </div>
         </div>
-        {# Mobile Menu Content #}
+        {# --- MODIFIED Mobile Menu Content --- #}
         <div id="mobile-menu" class="hidden md:hidden">
             <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
                 {# Mobile links matching desktop #}
@@ -140,18 +143,17 @@
                 <a href="{% url 'roulette:feed' %}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700">Feed</a>
                 <a href="{% url 'roulette:discover' %}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700">Discover</a>
 
-
                 {# Mobile Auth/User Links #}
                 {% if user.is_authenticated %}
-            
-                            <span class="inline-flex items-center justify-center ml-2 px-2 py-0.5 text-xs font-bold leading-none text-red-100 bg-red-600 rounded-full">{{ unread_notifications_count }}</span>
-                        {% endif %}
-                    </a>
-                   
-                    <a href="{% url 'roulette:user_profile' username=user.username %}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700">My Profile</a>
-                    <a href="{% url 'roulette:notifications' %}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700">
+                    {# --- ADD Mobile Notifications Link/Count --- #}
+                    <a href="{% url 'roulette:notifications' %}" class="relative block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700">
                         Notifications
-                        {% if unread_notifications_count > 0 %}
+                        <span id="mobile-unread-count" class="absolute top-1 right-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-xs font-bold text-white {% if unread_notifications_count == 0 %}hidden{% endif %}">
+                           {{ unread_notifications_count }}
+                        </span>
+                    </a>
+                    {# --- END ADD --- #}
+                    <a href="{% url 'roulette:user_profile' username=user.username %}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700">My Profile</a>
                     <a href="{% url 'roulette:list_all' %}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700">My Lists</a>
                     <a href="{% url 'users:account_settings' %}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700">Account Settings</a>
                      <form action="{% url 'users:logout' %}" method="post">
@@ -164,7 +166,7 @@
                 {% endif %}
             </div>
         </div>
-        {# End Mobile Menu Content #}
+        {# --- END Mobile Menu Modification --- #}
     </nav>
     {# --- End Navbar --- #}
 
@@ -172,7 +174,6 @@
     <main class="w-full max-w-4xl pt-20">
         {# --- Script to embed Django messages as JSON --- #}
         {% if messages %}
-            {# Iterate over messages directly to build the JSON list #}
             <script id="django-messages-data" type="application/json">
             [
                 {% for message in messages %}
@@ -249,17 +250,14 @@
                     toast.className = `toast ${type}`; // Add type class for styling
                     toastContainer.appendChild(toast);
 
-                    // Trigger reflow to enable transition
                     requestAnimationFrame(() => {
                         requestAnimationFrame(() => {
                            toast.classList.add('show');
                         });
                     });
 
-                    // Remove the toast after a delay
                     setTimeout(() => {
                         toast.classList.remove('show');
-                        // Remove from DOM after transition ends
                         toast.addEventListener('transitionend', () => {
                              if (toast && toast.parentNode === toastContainer) {
                                 toast.remove();
@@ -278,15 +276,10 @@
                     try {
                         const messagesData = JSON.parse(messagesDataElement.textContent);
                         messagesData.forEach(msg => {
-                            // Map Django message tags to toast types
-                            let type = 'info'; // Default type
-                            if (msg.tags.includes('success')) {
-                                type = 'success';
-                            } else if (msg.tags.includes('error')) {
-                                type = 'error';
-                            } else if (msg.tags.includes('warning')) {
-                                type = 'info'; // Or create a 'warning' style if needed
-                            }
+                            let type = 'info';
+                            if (msg.tags.includes('success')) type = 'success';
+                            else if (msg.tags.includes('error')) type = 'error';
+                            else if (msg.tags.includes('warning')) type = 'info';
                             window.showToast(msg.message, type);
                         });
                     } catch (e) {
@@ -294,6 +287,84 @@
                     }
                 }
                 // --- END Django message processing ---
+
+                // --- ADD Elements for Notification Count Update ---
+                const navbarUnreadCountSpan = document.getElementById('navbar-unread-count');
+                const mobileUnreadCountSpan = document.getElementById('mobile-unread-count'); // If you added it
+                // --- END ADD ---
+
+                // --- Function to update the notification count display ---
+                function updateNotificationDisplay(count) {
+                    const countToShow = parseInt(count) || 0;
+                    console.log("JS: Updating notification display to count:", countToShow); // Logging
+
+                    if (navbarUnreadCountSpan) {
+                        navbarUnreadCountSpan.textContent = countToShow;
+                        navbarUnreadCountSpan.classList.toggle('hidden', countToShow === 0);
+                    }
+                    // Update mobile count if it exists
+                    if (mobileUnreadCountSpan) {
+                         mobileUnreadCountSpan.textContent = countToShow;
+                         mobileUnreadCountSpan.classList.toggle('hidden', countToShow === 0);
+                    }
+                }
+                // --- END Function ---
+
+                // --- ADD WebSocket Connection for Notifications ---
+                {% if user.is_authenticated %} // Only connect if user is logged in
+                    const notificationSocketProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                    // Make sure the path matches your routing.py
+                    const notificationSocketURL = `${notificationSocketProtocol}//${window.location.host}/ws/notifications/`;
+                    let notificationSocket = null;
+
+                    function connectNotificationWebSocket() {
+                        console.log("Attempting to connect Notification WebSocket...");
+                        notificationSocket = new WebSocket(notificationSocketURL);
+
+                        notificationSocket.onopen = function(e) {
+                            console.log("Notification WebSocket connection established.");
+                        };
+
+                        notificationSocket.onmessage = function(e) {
+                            const message = JSON.parse(e.data);
+                            console.log("Notification WebSocket Message received:", message);
+
+                            if (message.type === 'notification_count_update') {
+                                // Update the bell icon count
+                                updateNotificationDisplay(message.unread_count);
+
+                                // Optionally show a toast for the new notification message
+                                if (message.new_message) {
+                                    // Avoid showing toast if it's just the initial count update on connect
+                                    // (unless the backend specifically sends a message then)
+                                    // You might need a flag or check if message.new_message is not a generic "count updated" text
+                                    window.showToast(message.new_message, 'info'); // Use 'info' style
+                                }
+                            }
+                        };
+
+                        notificationSocket.onclose = function(e) {
+                            console.error('Notification WebSocket closed unexpectedly. Reconnecting...', e);
+                            // Avoid reconnect loops if the server deliberately closes (e.g., unauthorized)
+                            if (e.code !== 1000 && e.code !== 1008) { // 1000 = Normal Closure, 1008 = Policy Violation
+                               setTimeout(connectNotificationWebSocket, 5000 + Math.random() * 1000); // Reconnect after 5-6s
+                            } else {
+                                console.log("Notification WebSocket closed normally or due to policy violation.");
+                            }
+                        };
+
+                        notificationSocket.onerror = function(err) {
+                            console.error('Notification WebSocket error:', err);
+                            // Don't automatically reconnect on error, let onclose handle it
+                            // notificationSocket.close(); // Close might trigger onclose
+                        };
+                    }
+
+                    // Initial connection attempt
+                    connectNotificationWebSocket();
+
+                {% endif %} // End if user.is_authenticated
+                // --- END WebSocket Connection for Notifications ---
 
             }); // End DOMContentLoaded
         </script>

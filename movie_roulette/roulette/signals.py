@@ -3,11 +3,11 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
-# Remove render_to_string import if not used elsewhere
-# from django.template.loader import render_to_string
-from .models import SharedListPost
+# Import Notification model
+from .models import SharedListPost, Notification # <<< ADDED Notification
 from django.contrib.contenttypes.models import ContentType # Import ContentType
 
+# --- Receiver for SharedListPost ---
 @receiver(post_save, sender=SharedListPost)
 def broadcast_new_feed_item(sender, instance, created, **kwargs):
     if created:
@@ -48,4 +48,36 @@ def broadcast_new_feed_item(sender, instance, created, **kwargs):
             }
         )
 
-# --- Add receivers for other models (Review, Comment, Like) here later if needed ---
+# --- NEW: Receiver for Notification ---
+@receiver(post_save, sender=Notification)
+def send_notification_update(sender, instance, created, **kwargs):
+    # Only send for new, unread notifications where recipient isn't the actor (avoid self-notify)
+    if created and not instance.read and instance.recipient != instance.actor:
+        channel_layer = get_channel_layer()
+        # Create a user-specific group name (e.g., "notifications_user_5")
+        user_specific_group = f'notifications_user_{instance.recipient.id}'
+
+        print(f"Signal: Sending notification update for user {instance.recipient.id} to group {user_specific_group}") # Logging
+
+        # Send a simple message indicating a new notification and the current unread count
+        # Calculate count within the async context for accuracy
+        unread_count = Notification.objects.filter(recipient=instance.recipient, read=False).count()
+
+        # Construct a basic message text
+        actor_name = instance.actor.username if instance.actor else 'System'
+        message_text = f"New notification: {actor_name} {instance.verb}."
+        # You could enhance this message based on notification.target/action_object later
+
+        async_to_sync(channel_layer.group_send)(
+            user_specific_group,
+            {
+                'type': 'user.notification', # Method name in the NotificationConsumer
+                'data': {
+                    'unread_count': unread_count,
+                    'message': message_text
+                }
+            }
+        )
+        print(f"Signal: Sent update to group {user_specific_group}") # Logging
+
+# --- Add receivers for other models (Comment, Like) here later if needed ---
