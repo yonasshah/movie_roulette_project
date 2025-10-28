@@ -84,6 +84,7 @@ CHANNEL_LAYERS = {
         "CONFIG": {
             # In production, this pulls the secure URL from Render's environment
             "hosts": [os.environ.get('REDIS_URL', 'redis://localhost:6379')],
+            
         },
     },
 }
