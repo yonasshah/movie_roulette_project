@@ -13,11 +13,10 @@
             {% if comment.user == request.user %}
             {# Removed the form tag, using a button with data attributes #}
             <button type="button" class="delete-comment-btn text-red-500 hover:text-red-400 text-xs ml-2"
-                    data-comment-id="{{ comment.id }}"
-                    data-delete-url="{% url 'roulette:delete_comment' comment_id=comment.id %}"
-                    title="Delete Comment">
-                <i class="fas fa-trash"></i>
-            </button>
+                    data-comment-id="{{ comment.id }}" 
+                    data-delete-url="{% url 'roulette:delete_comment' comment.id %}"
+                     {% if comment.user != request.user %}style="display: none;"{% endif %}>
+    <i class="fas fa-trash"></i>
             {% endif %}
             {# --- End Modification --- #}
         </div>
