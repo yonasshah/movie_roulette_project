@@ -42,4 +42,6 @@ urlpatterns = [
     path('comment/<int:comment_id>/delete/', views.delete_comment_view, name='delete_comment'), # Handles comment deletion (AJAX or form POST)
     path('like/toggle/', views.toggle_like_view, name='toggle_like'), # API for liking (AJAX)
     path('notifications/', views.notifications_view, name='notifications'),
+    path('vote/toggle/', views.toggle_vote_view, name='toggle_vote'),
+    path('comment/<int:comment_id>/edit/', views.edit_comment_view, name='edit_comment'),
 ]

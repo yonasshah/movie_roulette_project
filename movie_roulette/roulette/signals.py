@@ -4,44 +4,41 @@ from django.dispatch import receiver
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from django.template.loader import render_to_string
-from .models import SharedListPost # Import the model here
+from .models import SharedListPost
 
-@receiver(post_save, sender=SharedListPost) # Adjust sender model if needed later
+@receiver(post_save, sender=SharedListPost)
 def broadcast_new_feed_item(sender, instance, created, **kwargs):
-    if created: # Only broadcast newly created items
+    if created:
         channel_layer = get_channel_layer()
         group_name = 'feed_updates'
+        item_html = None # Initialize item_html
 
-        # Render HTML on the backend
-        # Note: Rendering templates outside requests needs care, context might be limited
         try:
-            # Add basic context; adjust if your template needs more
+            # --- Attempt Rendering ---
+            # NOTE: This rendering might still fail silently because the required
+            # context (comment_form, fetched_ attributes) isn't fully available here.
+            # A more robust solution would be to send JSON data instead of HTML,
+            # but this change focuses on preventing the view's error message.
             context = {'item': instance}
-            # If your template snippet requires the 'request' object (e.g., for request.user),
-            # you might need to reconsider sending JSON instead, or simplify the snippet.
-            # context['request'] = None # Or find a way to pass a mock request if absolutely necessary
             item_html = render_to_string('roulette/_feed_item_shared_list.html', context)
-        except Exception as e:
-            print(f"Error rendering template for signal: {e}")
-            item_html = None # Avoid sending broken HTML
 
-        if item_html: # Only send if rendering was successful
-            async_to_sync(channel_layer.group_send)(
-                group_name,
-                {
-                    'type': 'feed.update', # Corresponds to method name in consumer (feed_update)
-                    'html': item_html # Send pre-rendered HTML
-                }
-            )
-        else:
-             print(f"Signal for SharedListPost {instance.id} skipped due to template render error.")
+            # --- Attempt Sending (only if rendering succeeded) ---
+            if item_html:
+                async_to_sync(channel_layer.group_send)(
+                    group_name,
+                    {
+                        'type': 'feed.update', # Corresponds to method name in consumer
+                        'html': item_html
+                    }
+                )
+            else:
+                # Log the rendering failure if item_html is None
+                print(f"Signal for SharedListPost {instance.id} skipped sending due to template render error.")
+
+        except Exception as e:
+            # Catch errors during rendering OR sending to channel layer
+            print(f"ERROR in broadcast_new_feed_item signal for SharedListPost {instance.id}: {e}")
+            # IMPORTANT: Do not re-raise the exception. Just log it.
+            # This allows the main view function to return its success response.
 
 # --- Add receivers for other models (Review, Comment, Like) here later if needed ---
-# Example:
-# @receiver(post_save, sender=Comment)
-# def broadcast_new_comment(sender, instance, created, **kwargs):
-#     if created:
-#         # ... similar logic to get channel_layer, group_name ...
-#         # ... determine target feed item, render comment HTML ...
-#         # ... send message via channel_layer.group_send ...
-#         pass

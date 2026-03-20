@@ -5,297 +5,232 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Movie Roulette{% endblock %}</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        cx: {
+                            bg: '#050507',
+                            nav: '#0c0c12',
+                            surface: '#0f1017',
+                            card: '#131420',
+                            elevated: '#1a1b2e',
+                            border: 'rgba(255,255,255,0.06)',
+                            'border-h': 'rgba(255,255,255,0.1)',
+                            glow: '#6366f1',
+                            'glow-soft': 'rgba(99,102,241,0.15)',
+                            'glow-text': '#818cf8',
+                            amber: '#fbbf24',
+                            red: '#ef4444',
+                            green: '#22c55e',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
         html { overflow-y: scroll; }
-        body { font-family: 'Poppins', sans-serif; background-color: #111827; color: #f3f4f6; }
-        .list-item { transition: background-color 0.2s; } /* Corrected typo O.2s -> 0.2s */
-
-        .custom-scrollbar::-webkit-scrollbar {
-            display: none;
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background-color: #050507;
+            color: #e8e6e3;
         }
-        /* Hide scrollbar for IE, Edge and Firefox */
-        .custom-scrollbar {
-            -ms-overflow-style: none;  /* IE and Edge */
-            scrollbar-width: none;  /* Firefox */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            height: 500px;
+            background: radial-gradient(ellipse 70% 45% at 50% 0%, rgba(99,102,241,0.1) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
         }
-
-        /* --- ADDED FOR RATING STARS --- */
+        .font-display { font-family: 'Space Grotesk', sans-serif; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.12); }
+        .custom-scrollbar::-webkit-scrollbar { display: none; }
+        .custom-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         .star-rating { display: inline-flex; flex-direction: row-reverse; justify-content: flex-end; }
         .star-rating input[type="radio"] { display: none; }
-        .star-rating label { font-size: 1.5rem; color: #4b5563; cursor: pointer; transition: color 0.2s; }
+        .star-rating label { font-size: 1.5rem; color: #374151; cursor: pointer; transition: color 0.2s; }
         .star-rating input[type="radio"]:checked ~ label,
         .star-rating label:hover,
-        .star-rating label:hover ~ label { color: #f59e0b; }
-        /* --- END ADDED --- */
-
-        /* --- ADDED FOR DROPDOWN --- */
+        .star-rating label:hover ~ label { color: #fbbf24; }
         .dropdown-menu { display: none; }
         .dropdown.open .dropdown-menu { display: block; }
-        /* --- END ADDED --- */
-
-        /* --- ADD Styles for Toast Notifications --- */
         #toast-container {
-            position: fixed;
-            bottom: 1.5rem; /* 24px */
-            right: 1.5rem; /* 24px */
-            z-index: 100; /* Ensure it's above other content */
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem; /* 8px */
-            align-items: flex-end;
-            max-width: 320px; /* Optional: constrain width */
-            pointer-events: none; /* Allow clicks through container */
+            position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 200;
+            display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-end;
+            max-width: 360px; pointer-events: none;
         }
         .toast {
-            padding: 0.75rem 1.25rem; /* 12px 20px */
-            border-radius: 0.375rem; /* 6px */
-            color: white;
-            font-size: 0.875rem; /* 14px */
-            font-weight: 500;
-            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-            opacity: 0;
-            transform: translateX(100%);
-            transition: opacity 0.3s ease, transform 0.3s ease;
-            pointer-events: auto; /* Enable clicks on toast itself if needed */
+            padding: 12px 20px; border-radius: 10px; color: white; font-size: 13px; font-weight: 500;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.06);
+            opacity: 0; transform: translateX(100%); transition: opacity 0.3s ease, transform 0.3s ease;
+            pointer-events: auto;
         }
-        .toast.show {
-            opacity: 1;
-            transform: translateX(0);
+        .toast.show { opacity: 1; transform: translateX(0); }
+        .toast.success { background: rgba(34,197,94,0.9); }
+        .toast.error { background: rgba(239,68,68,0.9); }
+        .toast.info { background: rgba(99,102,241,0.9); }
+        .cx-card {
+            background: rgba(255,255,255,0.025);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 14px;
         }
-        .toast.success { background-color: #16a34a; /* green-600 */ }
-        .toast.error { background-color: #dc2626; /* red-600 */ }
-        .toast.info { background-color: #2563eb; /* blue-600 */ } /* Optional info style */
-        /* --- END Toast Styles --- */
-
+        .nav-pill-group {
+            display: flex; gap: 2px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 8px; padding: 3px;
+        }
+        .nav-pill {
+            padding: 6px 16px; border-radius: 6px;
+            font-size: 13px; font-weight: 500; color: #6b7280;
+            transition: all 0.15s; text-decoration: none;
+        }
+        .nav-pill:hover { color: #d1d5db; }
+        .nav-pill-active { background: rgba(255,255,255,0.06); color: #fff !important; }
         {% block style %}{% endblock %}
     </style>
 </head>
-<body class="min-h-screen flex flex-col items-center p-4 md:p-8">
+<body class="min-h-screen flex flex-col relative">
 
-    {# --- Navbar --- (No changes needed) #}
-    <nav class="fixed top-0 left-0 right-0 z-50 bg-gray-900 border-b border-indigo-700 shadow-lg">
+    {# =============== NAVBAR =============== #}
+    <nav class="fixed top-0 left-0 right-0 z-50 bg-[#0c0c12] border-b border-white/[0.06]">
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-16">
-                {# --- Left Side --- #}
-                <div class="flex items-center space-x-8">
-                    <a href="{% url 'roulette:roulette_view' %}" class="text-2xl font-bold text-white hover:text-indigo-400 transition-colors">
-                        🎲 Roulette
+            <div class="flex items-center justify-between h-14">
+                <div class="flex items-center gap-8">
+                    <a href="{% url 'roulette:roulette_view' %}" class="font-display font-bold text-lg tracking-tight">
+                        <span class="bg-gradient-to-r from-indigo-400 to-indigo-500 bg-clip-text text-transparent">ROULETTE</span>
                     </a>
-                    <div class="hidden md:flex items-center space-x-6">
-                        <a href="{% url 'roulette:feed' %}" class="text-gray-300 hover:text-white transition-colors text-sm font-semibold"> <i class="fas fa-users mr-1"></i> Feed </a>
-                        <a href="{% url 'roulette:discover' %}" class="text-gray-300 hover:text-white transition-colors text-sm font-semibold"> <i class="fas fa-search mr-1"></i> Discover </a>
+                    <div class="hidden md:flex nav-pill-group">
+                        <a href="{% url 'roulette:roulette_view' %}" class="nav-pill {% block nav_home %}{% endblock %}">Home</a>
+                        <a href="{% url 'roulette:feed' %}" class="nav-pill {% block nav_feed %}{% endblock %}">Feed</a>
+                        <a href="{% url 'roulette:discover' %}" class="nav-pill {% block nav_discover %}{% endblock %}">Discover</a>
                     </div>
                 </div>
-                {# --- Right Side --- #}
-                <div class="hidden md:flex items-center space-x-4">
-                    <form action="{% url 'roulette:search_results' %}" method="GET" class="relative">
-                        <input type="text" name="q" placeholder="Search..." class="bg-gray-800 border border-gray-700 rounded-full py-1 pl-4 pr-10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-48">
-                        <button type="submit" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500"> <i class="fas fa-search"></i> </button>
+                <div class="hidden md:flex items-center gap-2">
+                    <form action="{% url 'roulette:search_results' %}" method="GET">
+                        <input type="text" name="q" placeholder="Search films..."
+                               class="w-48 bg-white/[0.04] border border-white/[0.06] rounded-lg py-[7px] pl-3.5 pr-9 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500/40 focus:bg-white/[0.06] transition-all">
                     </form>
                     {% if user.is_authenticated %}
-                        {# Notifications Icon #}
-                         <a href="{% url 'roulette:notifications' %}" class="relative text-gray-300 hover:text-white transition-colors text-lg" title="Notifications">
-                            <i class="fas fa-bell"></i>
-                            {% if unread_notifications_count > 0 %}
-                            <span class="absolute -top-1 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-xs font-bold text-white"> {{ unread_notifications_count }} </span>
-                            {% endif %}
+                        <a href="{% url 'roulette:notifications' %}" id="navbar-notifications-link"
+                           class="relative w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 hover:text-gray-300 hover:bg-white/[0.05] transition-all">
+                            <i class="fas fa-bell text-sm"></i>
+                            <span id="navbar-unread-count" class="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500 {% if unread_notifications_count == 0 %}hidden{% endif %}"></span>
                         </a>
-                        {# User Dropdown #}
                         <div class="relative dropdown">
-                            <button id="user-menu-button" type="button" class="flex items-center text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-indigo-500" aria-expanded="false" aria-haspopup="true">
-                                <span class="sr-only">Open user menu</span>
-                                <img src="{{ user.profile.image.url }}" class="w-8 h-8 rounded-full object-cover">
+                            <button id="user-menu-button" type="button"
+                                    class="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-xs font-semibold text-white ring-2 ring-indigo-500/30 cursor-pointer hover:ring-indigo-500/50 transition-all overflow-hidden"
+                                    aria-expanded="false" aria-haspopup="true">
+                                {% if user.profile.image and user.profile.image.url != '/media/default.jpg' %}
+                                    <img src="{{ user.profile.image.url }}" class="w-full h-full rounded-full object-cover" alt="">
+                                {% else %}
+                                    {{ user.username|first|upper }}
+                                {% endif %}
                             </button>
-                            <div id="user-menu" class="dropdown-menu origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-gray-800 ring-1 ring-black ring-opacity-5 focus:outline-none" role="menu" aria-orientation="vertical" aria-labelledby="user-menu-button" tabindex="-1">
-                                <a href="{% url 'roulette:user_profile' username=user.username %}" class="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white" role="menuitem" tabindex="-1">My Profile</a>
-                                <a href="{% url 'roulette:list_all' %}" class="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white" role="menuitem" tabindex="-1">My Lists</a>
-                                <a href="{% url 'users:account_settings' %}" class="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white" role="menuitem" tabindex="-1">Account Settings</a>
-                                <form action="{% url 'users:logout' %}" method="post" class="inline">
-                                    {% csrf_token %}
-                                    <button type="submit" class="block w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white" role="menuitem" tabindex="-1"> Logout </button>
-                                </form>
+                            <div id="user-menu" class="dropdown-menu origin-top-right absolute right-0 mt-2 w-52 rounded-xl py-1.5 bg-[#131420] border border-white/[0.08] shadow-2xl shadow-black/50" role="menu" tabindex="-1">
+                                <div class="px-4 py-2.5 border-b border-white/[0.06]">
+                                    <p class="text-sm font-medium text-white truncate">@{{ user.username }}</p>
+                                    <p class="text-xs text-gray-600 truncate">{{ user.email }}</p>
+                                </div>
+                                <a href="{% url 'roulette:user_profile' username=user.username %}" class="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-400 hover:bg-white/[0.04] hover:text-white transition-colors" role="menuitem"><i class="fas fa-user text-xs text-gray-600 w-4"></i>My profile</a>
+                                <a href="{% url 'roulette:list_all' %}" class="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-400 hover:bg-white/[0.04] hover:text-white transition-colors" role="menuitem"><i class="fas fa-list text-xs text-gray-600 w-4"></i>My lists</a>
+                                <a href="{% url 'users:account_settings' %}" class="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-400 hover:bg-white/[0.04] hover:text-white transition-colors" role="menuitem"><i class="fas fa-cog text-xs text-gray-600 w-4"></i>Settings</a>
+                                <div class="border-t border-white/[0.06] mt-1 pt-1">
+                                    <form action="{% url 'users:logout' %}" method="post">{% csrf_token %}
+                                        <button type="submit" class="flex items-center gap-3 w-full text-left px-4 py-2.5 text-sm text-gray-500 hover:bg-white/[0.04] hover:text-gray-300 transition-colors" role="menuitem"><i class="fas fa-sign-out-alt text-xs text-gray-600 w-4"></i>Log out</button>
+                                    </form>
+                                </div>
                             </div>
                         </div>
                     {% else %}
-                        {# Auth Links #}
-                        <a href="{% url 'users:login' %}" class="text-gray-300 hover:text-white transition-colors text-sm font-semibold">Log In</a>
-                        <a href="{% url 'users:signup' %}" class="bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors text-sm font-semibold">Sign Up</a>
+                        <a href="{% url 'users:login' %}" class="px-3 py-1.5 rounded-lg text-sm text-gray-400 hover:text-white transition-colors">Log in</a>
+                        <a href="{% url 'users:signup' %}" class="px-4 py-1.5 rounded-lg text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 transition-colors">Sign up</a>
                     {% endif %}
                 </div>
-                {# Mobile Menu Button #}
-                 <div class="md:hidden flex items-center">
-                     <button id="mobile-menu-button" class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 focus:outline-none"> <i class="fas fa-bars text-2xl"></i> </button>
-                 </div>
+                <button id="mobile-menu-button" class="md:hidden w-9 h-9 flex items-center justify-center rounded-lg text-gray-400 hover:text-white hover:bg-white/[0.05] transition-all">
+                    <i class="fas fa-bars text-lg"></i>
+                </button>
             </div>
         </div>
-        {# Mobile Menu Content #}
-        <div id="mobile-menu" class="hidden md:hidden">
-            <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
-                {# Mobile links matching desktop #}
-                <form action="{% url 'roulette:search_results' %}" method="GET" class="px-3 py-2">
-                    <input type="text" name="q" placeholder="Search..." class="w-full bg-gray-800 border border-gray-700 rounded-md py-1 px-3 text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+        <div id="mobile-menu" class="hidden md:hidden border-t border-white/[0.04] bg-[#0c0c12]">
+            <div class="px-4 py-3 space-y-1">
+                <form action="{% url 'roulette:search_results' %}" method="GET" class="mb-3">
+                    <input type="text" name="q" placeholder="Search films..." class="w-full bg-white/[0.04] border border-white/[0.06] rounded-lg py-2 px-3.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500/40 transition-all">
                 </form>
-                <a href="{% url 'roulette:feed' %}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700">Feed</a>
-                <a href="{% url 'roulette:discover' %}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700">Discover</a>
-
-
-                {# Mobile Auth/User Links #}
+                <a href="{% url 'roulette:roulette_view' %}" class="block px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-white/[0.04]">Home</a>
+                <a href="{% url 'roulette:feed' %}" class="block px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-white/[0.04]">Feed</a>
+                <a href="{% url 'roulette:discover' %}" class="block px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-white/[0.04]">Discover</a>
                 {% if user.is_authenticated %}
-            
-                            <span class="inline-flex items-center justify-center ml-2 px-2 py-0.5 text-xs font-bold leading-none text-red-100 bg-red-600 rounded-full">{{ unread_notifications_count }}</span>
-                        {% endif %}
-                    </a>
-                   
-                    <a href="{% url 'roulette:user_profile' username=user.username %}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700">My Profile</a>
-                    <a href="{% url 'roulette:notifications' %}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700">
-                        Notifications
-                        {% if unread_notifications_count > 0 %}
-                    <a href="{% url 'roulette:list_all' %}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700">My Lists</a>
-                    <a href="{% url 'users:account_settings' %}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700">Account Settings</a>
-                     <form action="{% url 'users:logout' %}" method="post">
-                         {% csrf_token %}
-                         <button type="submit" class="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700">Logout</button>
-                     </form>
+                    <div class="h-px bg-white/[0.04] my-2"></div>
+                    <a href="{% url 'roulette:notifications' %}" class="relative block px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-white/[0.04]">Notifications <span id="mobile-unread-count" class="absolute top-2.5 right-3 w-2 h-2 rounded-full bg-red-500 {% if unread_notifications_count == 0 %}hidden{% endif %}"></span></a>
+                    <a href="{% url 'roulette:user_profile' username=user.username %}" class="block px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-white/[0.04]">My profile</a>
+                    <a href="{% url 'roulette:list_all' %}" class="block px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-white/[0.04]">My lists</a>
+                    <a href="{% url 'users:account_settings' %}" class="block px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-white/[0.04]">Settings</a>
+                    <div class="h-px bg-white/[0.04] my-2"></div>
+                    <form action="{% url 'users:logout' %}" method="post">{% csrf_token %}
+                        <button type="submit" class="block w-full text-left px-3 py-2.5 rounded-lg text-sm text-gray-500 hover:text-white hover:bg-white/[0.04]">Log out</button>
+                    </form>
                 {% else %}
-                    <a href="{% url 'users:login' %}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700">Log In</a>
-                    <a href="{% url 'users:signup' %}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700">Sign Up</a>
+                    <div class="h-px bg-white/[0.04] my-2"></div>
+                    <a href="{% url 'users:login' %}" class="block px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-white/[0.04]">Log in</a>
+                    <a href="{% url 'users:signup' %}" class="block px-3 py-2.5 rounded-lg text-sm font-semibold text-indigo-400 hover:bg-white/[0.04]">Sign up</a>
                 {% endif %}
             </div>
         </div>
-        {# End Mobile Menu Content #}
     </nav>
-    {# --- End Navbar --- #}
 
-    {# --- Main Content Area --- #}
-    <main class="w-full max-w-4xl pt-20">
-        {# --- Script to embed Django messages as JSON --- #}
+    <main class="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16 relative z-">
         {% if messages %}
-            {# Iterate over messages directly to build the JSON list #}
             <script id="django-messages-data" type="application/json">
-            [
-                {% for message in messages %}
-                    {
-                        "message": "{{ message.message|escapejs }}",
-                        "tags": "{{ message.tags }}",
-                        "level": {{ message.level }}
-                    }{% if not forloop.last %},{% endif %}
-                {% endfor %}
-            ]
+            [{% for message in messages %}{"message":"{{ message.message|escapejs }}","tags":"{{ message.tags }}","level":{{ message.level }}}{% if not forloop.last %},{% endif %}{% endfor %}]
             </script>
         {% endif %}
-        {# --- End Message Handling Change --- #}
-
-        {# --- Content Block --- #}
-        {% block content %}
-        {% endblock %}
+        {% block content %}{% endblock %}
     </main>
-    {# --- End Main Content --- #}
 
-    {# --- ADD Toast Container --- #}
     <div id="toast-container"></div>
-    {# --- END Toast Container --- #}
-
 
     {% block scripts %}
-        <script>
-            document.addEventListener('DOMContentLoaded', function() {
-                // --- Mobile Menu Toggle ---
-                const menuButton = document.getElementById('mobile-menu-button');
-                const mobileMenu = document.getElementById('mobile-menu');
-                if (menuButton && mobileMenu) {
-                    menuButton.addEventListener('click', function() {
-                        mobileMenu.classList.toggle('hidden');
-                    });
-                }
-
-                // --- User Dropdown Toggle ---
-                const userMenuButton = document.getElementById('user-menu-button');
-                const userMenu = document.getElementById('user-menu');
-                const dropdownDiv = userMenuButton ? userMenuButton.closest('.dropdown') : null;
-
-                if (userMenuButton && userMenu && dropdownDiv) {
-                    userMenuButton.addEventListener('click', function(event) {
-                        event.stopPropagation();
-                        dropdownDiv.classList.toggle('open');
-                        const isExpanded = userMenuButton.getAttribute('aria-expanded') === 'true';
-                        userMenuButton.setAttribute('aria-expanded', !isExpanded);
-                    });
-                    document.addEventListener('click', function(event) {
-                        if (!dropdownDiv.contains(event.target) && dropdownDiv.classList.contains('open')) {
-                            dropdownDiv.classList.remove('open');
-                            userMenuButton.setAttribute('aria-expanded', 'false');
-                        }
-                    });
-                     document.addEventListener('keydown', function(event) {
-                         if (event.key === 'Escape' && dropdownDiv.classList.contains('open')) {
-                             dropdownDiv.classList.remove('open');
-                             userMenuButton.setAttribute('aria-expanded', 'false');
-                         }
-                    });
-                }
-
-                // --- Toast Notification Function (Global) ---
-                function showToast(message, type = 'success') {
-                    const toastContainer = document.getElementById('toast-container');
-                    if (!toastContainer) {
-                        console.error("Toast container not found!");
-                        return;
-                    }
-
-                    const toast = document.createElement('div');
-                    toast.textContent = message;
-                    toast.className = `toast ${type}`; // Add type class for styling
-                    toastContainer.appendChild(toast);
-
-                    // Trigger reflow to enable transition
-                    requestAnimationFrame(() => {
-                        requestAnimationFrame(() => {
-                           toast.classList.add('show');
-                        });
-                    });
-
-                    // Remove the toast after a delay
-                    setTimeout(() => {
-                        toast.classList.remove('show');
-                        // Remove from DOM after transition ends
-                        toast.addEventListener('transitionend', () => {
-                             if (toast && toast.parentNode === toastContainer) {
-                                toast.remove();
-                            }
-                        }, { once: true });
-                    }, 4000); // Show for 4 seconds
-                }
-                // --- END Toast Function ---
-
-                // Make showToast globally accessible
-                 window.showToast = showToast;
-
-                // --- Process Django messages as toasts ---
-                const messagesDataElement = document.getElementById('django-messages-data');
-                if (messagesDataElement) {
-                    try {
-                        const messagesData = JSON.parse(messagesDataElement.textContent);
-                        messagesData.forEach(msg => {
-                            // Map Django message tags to toast types
-                            let type = 'info'; // Default type
-                            if (msg.tags.includes('success')) {
-                                type = 'success';
-                            } else if (msg.tags.includes('error')) {
-                                type = 'error';
-                            } else if (msg.tags.includes('warning')) {
-                                type = 'info'; // Or create a 'warning' style if needed
-                            }
-                            window.showToast(msg.message, type);
-                        });
-                    } catch (e) {
-                        console.error("Error parsing Django messages for toasts:", e);
-                    }
-                }
-                // --- END Django message processing ---
-
-            }); // End DOMContentLoaded
-        </script>
+    <script>
+    (function() {
+        'use strict';
+        var mBtn = document.getElementById('mobile-menu-button'), mMenu = document.getElementById('mobile-menu');
+        if (mBtn && mMenu) mBtn.addEventListener('click', function() { mMenu.classList.toggle('hidden'); });
+        var uBtn = document.getElementById('user-menu-button'), dd = uBtn ? uBtn.closest('.dropdown') : null;
+        if (uBtn && dd) {
+            uBtn.addEventListener('click', function(e) { e.stopPropagation(); dd.classList.toggle('open'); uBtn.setAttribute('aria-expanded', dd.classList.contains('open')); });
+            document.addEventListener('click', function(e) { if (!dd.contains(e.target) && dd.classList.contains('open')) { dd.classList.remove('open'); uBtn.setAttribute('aria-expanded','false'); }});
+            document.addEventListener('keydown', function(e) { if (e.key==='Escape' && dd.classList.contains('open')) { dd.classList.remove('open'); uBtn.setAttribute('aria-expanded','false'); }});
+        }
+        function showToast(msg, type) {
+            type = type || 'success';
+            var c = document.getElementById('toast-container'); if (!c) return;
+            var t = document.createElement('div'); t.textContent = msg; t.className = 'toast ' + type; c.appendChild(t);
+            requestAnimationFrame(function(){requestAnimationFrame(function(){t.classList.add('show');});});
+            setTimeout(function(){ t.classList.remove('show'); t.addEventListener('transitionend',function(){if(t.parentNode===c)t.remove();},{once:true}); },4000);
+        }
+        window.showToast = showToast;
+        var mEl = document.getElementById('django-messages-data');
+        if (mEl) { try { JSON.parse(mEl.textContent).forEach(function(m){ var tp='info'; if(m.tags.indexOf('success')!==-1)tp='success'; else if(m.tags.indexOf('error')!==-1)tp='error'; showToast(m.message,tp); }); } catch(e){} }
+        var navB=document.getElementById('navbar-unread-count'), mobB=document.getElementById('mobile-unread-count');
+        function updateNotif(c){ var n=parseInt(c)||0; [navB,mobB].forEach(function(el){if(el)el.classList.toggle('hidden',n===0);}); }
+        {% if user.is_authenticated %}
+        (function cWS(){ var p=location.protocol==='https:'?'wss:':'ws:', ws=new WebSocket(p+'//'+location.host+'/ws/notifications/');
+            ws.onmessage=function(e){ var m=JSON.parse(e.data); if(m.type==='notification_count_update'){updateNotif(m.unread_count);if(m.new_message)showToast(m.new_message,'info');} };
+            ws.onclose=function(e){ if(e.code!==1000&&e.code!==1008)setTimeout(cWS,5e3+Math.random()*1e3); };
+            ws.onerror=function(e){console.error('WS err:',e);};
+        })();
+        {% endif %}
+    })();
+    </script>
     {% endblock %}
+</body>
 </html>

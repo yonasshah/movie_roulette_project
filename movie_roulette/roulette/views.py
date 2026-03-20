@@ -13,7 +13,7 @@ from django.utils.safestring import mark_safe # Import mark_safe
 from django.utils.html import escape # Import escape
 from django.contrib.contenttypes.models import ContentType
 from .forms import ShareListForm, UserListForm, ReviewForm, CommentForm # Add CommentForm
-from .models import Notification, SharedListPost, UserContent, UserFollow, UserList, UserReview, Comment, Like, SharedListPost # Add Comment, Like
+from .models import Notification, SharedListPost, UserContent, UserFollow, UserList, UserReview, Comment, Like, SharedListPost, Vote # Add Comment, Like
 import random
 from django.contrib.auth import get_user_model
 from django.db.models import Q, Count, Avg
@@ -30,38 +30,30 @@ def feed_view(request):
     followed_user_ids = list(request.user.following.values_list('followed_id', flat=True))
     user_ids_to_include = followed_user_ids + [request.user.id]
 
-    # Get ContentTypes for models that appear in the feed or can be liked/commented on
     review_ct = ContentType.objects.get_for_model(UserReview)
     usercontent_ct = ContentType.objects.get_for_model(UserContent)
-    sharedlistpost_ct = ContentType.objects.get_for_model(SharedListPost) # Use SharedListPost
+    sharedlistpost_ct = ContentType.objects.get_for_model(SharedListPost)
+    comment_ct = ContentType.objects.get_for_model(Comment)
 
-    # Fetch Reviews created by followed users or self
     reviews = UserReview.objects.filter(
         user_id__in=user_ids_to_include
     ).select_related('user', 'user__profile')
 
-    # Fetch non-History List Items added by followed users or self
     list_items = UserContent.objects.filter(
         user_id__in=user_ids_to_include
     ).exclude(
         list_type=UserContent.ListType.HISTORY
     ).select_related('user', 'user__profile', 'custom_list')
 
-    # Fetch SharedListPost objects by followed users or self
     shared_posts = SharedListPost.objects.filter(
         user_id__in=user_ids_to_include
-    ).select_related(
-        'user', 'user__profile', 'list' # Eager load related objects
-    )
+    ).select_related('user', 'user__profile', 'list')
 
-    # Combine items into a single list
     raw_feed_items = []
-    # Process reviews and list_items
     for item in reviews:
         item.type = 'review'
         item.ctype_id = review_ct.id
         item.obj_id = item.id
-        # Ensure item.user is set (it should be from the query)
         item.user = item.user if hasattr(item, 'user') else None
         raw_feed_items.append(item)
 
@@ -69,34 +61,27 @@ def feed_view(request):
         item.type = 'list_item'
         item.ctype_id = usercontent_ct.id
         item.obj_id = item.id
-        # Ensure item.user is set
         item.user = item.user if hasattr(item, 'user') else None
         raw_feed_items.append(item)
 
-    # Process SharedListPost objects
     for item in shared_posts:
-        # Skip if the associated list was deleted
         if not item.list:
             continue
-        item.type = 'share' # Assign type
-        # Set ctype_id and obj_id to the SharedListPost itself
+        item.type = 'share'
         item.ctype_id = sharedlistpost_ct.id
         item.obj_id = item.id
-        # Ensure item.user is set (it should be from the query's select_related)
         item.user = item.user if hasattr(item, 'user') else None
         raw_feed_items.append(item)
 
-    # Sort all items chronologically
     raw_feed_items.sort(key=attrgetter('timestamp'), reverse=True)
-    feed_items_limited = raw_feed_items[:50] # Limit the feed size
+    feed_items_limited = raw_feed_items[:50]
 
-    # --- Pre-fetch comments and likes for relevant items ---
+    # --- Pre-fetch comments, likes, and votes for feed items ---
     item_lookup = {}
     content_type_ids = set()
     object_ids_by_ctype = {}
 
     for item in feed_items_limited:
-        # Process reviews, list_items, AND shares for potential likes/comments
         if item.ctype_id and item.obj_id:
             lookup_key = (item.ctype_id, item.obj_id)
             item_lookup[lookup_key] = item
@@ -105,59 +90,101 @@ def feed_view(request):
                 object_ids_by_ctype[item.ctype_id] = set()
             object_ids_by_ctype[item.ctype_id].add(item.obj_id)
 
-            # --- Use DIFFERENT attribute names to avoid TypeError ---
-            item.fetched_comments = [] # Use fetched_comments instead of comments
-            item.fetched_like_count = 0 # Use fetched_like_count instead of like_count
-            item.fetched_user_liked = False # Use fetched_user_liked instead of user_liked
-            # --- END CHANGE ---
+            item.fetched_comments = []
+            item.fetched_like_count = 0
+            item.fetched_user_liked = False
+            item.fetched_up_count = 0
+            item.fetched_down_count = 0
+            item.fetched_user_vote = 0
 
-    # Fetching comments (includes comments on Reviews, ListItems, SharedListPosts)
-    if content_type_ids: # Only query if there are items to fetch for
-        # Flatten object IDs needed for the query
+    if content_type_ids:
         all_object_ids = {oid for ctid in content_type_ids for oid in object_ids_by_ctype.get(ctid, set())}
 
+        # --- Fetch comments ---
         comments_qs = Comment.objects.filter(
             content_type_id__in=content_type_ids,
             object_id__in=all_object_ids
         ).select_related('user', 'user__profile')
 
-        # Efficiently group comments by their target object
         comments_by_target = {}
+        all_comment_ids = []
         for comment in comments_qs:
             key = (comment.content_type_id, comment.object_id)
             if key not in comments_by_target:
                 comments_by_target[key] = []
             comments_by_target[key].append(comment)
+            all_comment_ids.append(comment.id)
 
-        # Assign comments to feed items using the new attribute name
         for key, item in item_lookup.items():
-            item.fetched_comments = comments_by_target.get(key, []) # Assign to fetched_comments
+            item.fetched_comments = comments_by_target.get(key, [])
 
-        # Fetching likes (includes likes on Reviews, ListItems, SharedListPosts)
+        # --- Fetch votes on COMMENTS ---
+        if all_comment_ids:
+            comment_votes_qs = Vote.objects.filter(
+                content_type=comment_ct,
+                object_id__in=all_comment_ids
+            )
+
+            # Upvote counts per comment
+            comment_up_counts = comment_votes_qs.filter(vote_type=1).values('object_id').annotate(count=Count('id'))
+            comment_up_lookup = {d['object_id']: d['count'] for d in comment_up_counts}
+
+            # Downvote counts per comment
+            comment_down_counts = comment_votes_qs.filter(vote_type=-1).values('object_id').annotate(count=Count('id'))
+            comment_down_lookup = {d['object_id']: d['count'] for d in comment_down_counts}
+
+            # User's votes on comments
+            user_comment_votes = comment_votes_qs.filter(user=request.user).values_list('object_id', 'vote_type')
+            user_comment_vote_lookup = {oid: vt for oid, vt in user_comment_votes}
+
+            # Attach vote data to each comment object
+            for comment_list in comments_by_target.values():
+                for comment in comment_list:
+                    comment.fetched_up_count = comment_up_lookup.get(comment.id, 0)
+                    comment.fetched_down_count = comment_down_lookup.get(comment.id, 0)
+                    comment.fetched_user_vote = user_comment_vote_lookup.get(comment.id, 0)
+
+        # --- Fetch likes (kept for content detail compatibility) ---
         likes_qs = Like.objects.filter(
-             content_type_id__in=content_type_ids,
-             object_id__in=all_object_ids
+            content_type_id__in=content_type_ids,
+            object_id__in=all_object_ids
         )
-
-        # Calculate like counts and user liked status efficiently
         likes_by_item = likes_qs.values('content_type_id', 'object_id').annotate(count=Count('id')).values('content_type_id', 'object_id', 'count')
         user_liked_items_qs = likes_qs.filter(user=request.user).values_list('content_type_id', 'object_id')
         user_liked_items = set(user_liked_items_qs)
-
-        # Create lookups for counts
         like_counts_lookup = {(d['content_type_id'], d['object_id']): d['count'] for d in likes_by_item}
 
-        # Assign like data to feed items using the new attribute names
         for key, item in item_lookup.items():
-            item.fetched_like_count = like_counts_lookup.get(key, 0) # Assign to fetched_like_count
-            item.fetched_user_liked = key in user_liked_items # Assign to fetched_user_liked
-    # --- End pre-fetching ---
+            item.fetched_like_count = like_counts_lookup.get(key, 0)
+            item.fetched_user_liked = key in user_liked_items
 
-    comment_form = CommentForm() # Form for adding new comments
+        # --- Fetch votes on FEED ITEMS (posts) ---
+        votes_qs = Vote.objects.filter(
+            content_type_id__in=content_type_ids,
+            object_id__in=all_object_ids
+        )
+
+        up_counts = votes_qs.filter(vote_type=1).values('content_type_id', 'object_id').annotate(count=Count('id'))
+        up_lookup = {(d['content_type_id'], d['object_id']): d['count'] for d in up_counts}
+
+        down_counts = votes_qs.filter(vote_type=-1).values('content_type_id', 'object_id').annotate(count=Count('id'))
+        down_lookup = {(d['content_type_id'], d['object_id']): d['count'] for d in down_counts}
+
+        user_votes_qs = votes_qs.filter(user=request.user).values_list('content_type_id', 'object_id', 'vote_type')
+        user_votes_lookup = {(ct, oid): vt for ct, oid, vt in user_votes_qs}
+
+        for key, item in item_lookup.items():
+            item.fetched_up_count = up_lookup.get(key, 0)
+            item.fetched_down_count = down_lookup.get(key, 0)
+            item.fetched_user_vote = user_votes_lookup.get(key, 0)
+
+    comment_form = CommentForm()
+    comment_ctype_id = ContentType.objects.get_for_model(Comment).id
 
     context = {
         'feed_items': feed_items_limited,
         'comment_form': comment_form,
+        'comment_ctype_id': comment_ctype_id,
     }
     return render(request, 'roulette/feed.html', context)
 
@@ -238,7 +265,7 @@ def fetch_tmdb_data(endpoint):
         return []
 
 # --- NEW DISCOVER VIEW ---
-@login_required
+
 def discover_view(request):
     context = {
         'popular_movies': fetch_tmdb_data('movie/popular'),
@@ -265,10 +292,8 @@ def content_detail_view(request, content_type, tmdb_id):
         detail_res.raise_for_status()
         content_details = detail_res.json()
 
-        # Safely access the nested provider data
         streaming_providers = content_details.get('watch/providers', {}).get('results', {}).get('US', {}).get('flatrate', [])
 
-        # Find the YouTube trailer key
         trailer_key = None
         videos = content_details.get('videos', {}).get('results', [])
         for video in videos:
@@ -286,23 +311,35 @@ def content_detail_view(request, content_type, tmdb_id):
             content_type=model_content_type
         ).exists()
 
-        # --- ADDED FOR REVIEWS ---
+        # --- REVIEWS LOGIC ---
         all_reviews = UserReview.objects.filter(
             tmdb_id=tmdb_id, content_type=model_content_type
         ).select_related('user', 'user__profile').order_by('-timestamp')
 
+        # 1. Get the ContentType ID for UserReview (Crucial for JS)
+        from django.contrib.contenttypes.models import ContentType
+        review_ctype = ContentType.objects.get_for_model(UserReview)
+
+        # 2. Attach vote data to each review
+        from .models import Vote # Ensure you import your Vote model
+        for review in all_reviews:
+            # Get counts
+            review.fetched_up_count = Vote.objects.filter(content_type=review_ctype, object_id=review.id, vote_type=1).count()
+            review.fetched_down_count = Vote.objects.filter(content_type=review_ctype, object_id=review.id, vote_type=-1).count()
+            
+            # Check if current user voted
+            user_v = Vote.objects.filter(content_type=review_ctype, object_id=review.id, user=request.user).first()
+            review.fetched_user_vote = user_v.vote_type if user_v else 0
+
         user_review = all_reviews.filter(user=request.user).first()
 
-        # Calculate average rating
         avg_rating_data = all_reviews.aggregate(Avg('rating'))
         avg_rating = avg_rating_data['rating__avg']
 
         if user_review:
-            # If user already has a review, pre-fill the form
             review_form = ReviewForm(instance=user_review)
         else:
             review_form = ReviewForm()
-        # --- END ADDED ---
 
         context = {
             'content': content_details,
@@ -311,13 +348,13 @@ def content_detail_view(request, content_type, tmdb_id):
             'is_watchlist': is_watchlist,
             'streaming_providers': streaming_providers,
             'trailer_key': trailer_key,
-            # --- ADDED TO CONTEXT ---
             'reviews': all_reviews,
             'user_review': user_review,
             'review_form': review_form,
             'avg_rating': avg_rating,
             'review_count': all_reviews.count(),
-            # --- END ADDED ---
+            # 3. Add this to context so JavaScript can see it
+            'review_content_type_id': review_ctype.id,
         }
         return render(request, 'roulette/content_detail.html', context)
 
@@ -346,6 +383,7 @@ def add_review(request, content_type, tmdb_id):
         # Get title/poster from hidden form fields (or request.POST)
         review.title = request.POST.get('title', 'N/A')
         review.poster_path = request.POST.get('poster_path', '')
+        review.overview = request.POST.get('overview', '')
 
         review.save()
         messages.success(request, 'Your review has been saved!')
@@ -490,6 +528,7 @@ def get_random_content(request):
                 'title': content_details.get(title_key, 'N/A'),
                 'poster_path': content_details.get('poster_path', ''),
                 'release_year': content_details.get(date_key, '----')[:4],
+                'overview': content_details.get('overview', ''),
             }
         )
 
@@ -577,7 +616,8 @@ def toggle_favorite(request):
             content_type=model_content_type,
             title=title,
             poster_path=poster_path,
-            release_year=release_year
+            release_year=release_year,
+            overview=request.POST.get('overview', ''),
         )
         is_favorite = True
 
@@ -621,7 +661,8 @@ def toggle_watchlist(request):
             content_type=model_content_type,
             title=title,
             poster_path=poster_path,
-            release_year=release_year
+            release_year=release_year,
+            overview=request.POST.get('overview', ''),
         )
         is_watchlist = True
 
@@ -709,13 +750,15 @@ def list_detail_view(request, list_id):
     try:
         user_list = UserList.objects.select_related('user', 'user__profile').get(id=list_id)
     except UserList.DoesNotExist:
-        raise Http404("List not found.")
+        raise Http404("List not found.") # Corrected Http404 usage
 
     is_owner = user_list.user == request.user
 
+    # If the list is private and the current user is not the owner, show a specific template
     if not is_owner and not user_list.is_public:
         return render(request, 'roulette/private_list.html', {'list_owner': user_list.user}, status=403)
 
+    # --- Fetch items, form, URLs etc. ---
     list_items = UserContent.objects.filter(
         custom_list=user_list,
         list_type=UserContent.ListType.CUSTOM
@@ -723,23 +766,23 @@ def list_detail_view(request, list_id):
 
     share_form = ShareListForm()
 
-    # --- Build absolute URL in the view ---
     try:
-        # get_absolute_url() gives relative path like /list/28/
         list_relative_url = user_list.get_absolute_url()
-        # build_absolute_uri makes it http://127.0.0.1:8000/list/28/
         list_absolute_url = request.build_absolute_uri(list_relative_url)
     except Exception as e:
-        print(f"Error building absolute URL for list {list_id}: {e}") # Add error logging
-        list_absolute_url = "" # Provide a fallback
-    # --- End build ---
+        print(f"Error building absolute URL for list {list_id}: {e}")
+        list_absolute_url = ""
+
+    # Anyone who can view this page (passed the privacy check above) can share.
+    can_share = True
 
     context = {
         'list': user_list,
         'items': list_items,
         'is_owner': is_owner,
         'share_form': share_form,
-        'list_absolute_url': list_absolute_url, # Pass the full URL to the template
+        'list_absolute_url': list_absolute_url,
+        'can_share': can_share, # Pass the updated variable
     }
     return render(request, 'roulette/list_detail.html', context)
 
@@ -805,7 +848,8 @@ def add_to_custom_list_view(request):
         content_type=model_content_type,
         title=title,
         poster_path=poster_path,
-        release_year=release_year
+        release_year=release_year,
+        overview=request.POST.get('overview', ''),
     )
 
     return JsonResponse({'success': True, 'message': f"Added '{title}' to '{user_list.name}'."})
@@ -1081,3 +1125,97 @@ def share_list_to_feed_view(request, list_id):
         else:
              messages.error(request, error_msg)
              return redirect(user_list.get_absolute_url())
+         
+@login_required
+@require_POST
+def toggle_vote_view(request):
+    """Handle upvote/downvote on feed items. AJAX only."""
+    content_type_id = request.POST.get('content_type_id')
+    object_id = request.POST.get('object_id')
+    vote_type_str = request.POST.get('vote_type')  # '1' for up, '-1' for down
+ 
+    if not content_type_id or not object_id or vote_type_str not in ('1', '-1'):
+        return JsonResponse({'success': False, 'error': 'Invalid data.'}, status=400)
+ 
+    vote_type = int(vote_type_str)
+ 
+    try:
+        content_type = ContentType.objects.get_for_id(content_type_id)
+        existing_vote = Vote.objects.filter(
+            user=request.user,
+            content_type=content_type,
+            object_id=object_id
+        ).first()
+ 
+        if existing_vote:
+            if existing_vote.vote_type == vote_type:
+                # Same vote again = remove it (toggle off)
+                existing_vote.delete()
+                user_vote = 0
+            else:
+                # Switch vote direction
+                existing_vote.vote_type = vote_type
+                existing_vote.save(update_fields=['vote_type'])
+                user_vote = vote_type
+        else:
+            # New vote
+            Vote.objects.create(
+                user=request.user,
+                content_type=content_type,
+                object_id=object_id,
+                vote_type=vote_type
+            )
+            user_vote = vote_type
+ 
+        # Count upvotes and downvotes separately
+        up_count = Vote.objects.filter(
+            content_type=content_type, object_id=object_id, vote_type=1
+        ).count()
+        down_count = Vote.objects.filter(
+            content_type=content_type, object_id=object_id, vote_type=-1
+        ).count()
+ 
+        return JsonResponse({
+            'success': True,
+            'user_vote': user_vote,  # 1, -1, or 0 (no vote)
+            'up_count': up_count,
+            'down_count': down_count,
+        })
+ 
+    except ContentType.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Invalid content type.'}, status=400)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+    
+@login_required
+@require_POST
+def edit_comment_view(request, comment_id):
+    """Edit a comment's text. AJAX only."""
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+    comment = get_object_or_404(Comment, id=comment_id)
+ 
+    if request.user != comment.user:
+        if is_ajax:
+            return JsonResponse({'success': False, 'error': 'Not authorized.'}, status=403)
+        return HttpResponseForbidden("Not authorized.")
+ 
+    new_text = request.POST.get('text', '').strip()
+    if not new_text:
+        if is_ajax:
+            return JsonResponse({'success': False, 'error': 'Comment cannot be empty.'}, status=400)
+        messages.error(request, 'Comment cannot be empty.')
+        return redirect('roulette:feed')
+ 
+    if len(new_text) > 500:
+        if is_ajax:
+            return JsonResponse({'success': False, 'error': 'Comment too long (max 500 characters).'}, status=400)
+        messages.error(request, 'Comment too long.')
+        return redirect('roulette:feed')
+ 
+    comment.text = new_text
+    comment.save(update_fields=['text'])
+ 
+    if is_ajax:
+        return JsonResponse({'success': True, 'text': comment.text})
+    messages.success(request, 'Comment updated.')
+    return redirect(request.POST.get('next', 'roulette:feed'))

@@ -1,26 +1,45 @@
-{% comment %} Renders a single comment item {% endcomment %}
-<div class="comment-item flex space-x-3 text-sm" data-comment-id="{{ comment.id }}"> {# Keep data-comment-id #}
-    <a href="{% url 'roulette:user_profile' username=comment.user.username %}">
-        <img src="{{ comment.user.profile.image.url }}" class="w-8 h-8 rounded-full object-cover flex-shrink-0" alt="{{ comment.user.username }}'s profile picture">
+<div class="comment-item flex gap-2 mt-2.5" data-comment-id="{{ comment.id }}">
+    <a href="{% url 'roulette:user_profile' username=comment.user.username %}" class="flex-shrink-0">
+        <img src="{{ comment.user.profile.image.url }}" class="w-5 h-5 rounded-full object-cover mt-0.5" alt="">
     </a>
-    <div class="flex-1 bg-gray-600 rounded-lg p-2">
-        <div class="flex justify-between items-start">
-            <div>
-                <a href="{% url 'roulette:user_profile' username=comment.user.username %}" class="font-semibold text-white hover:underline">@{{ comment.user.username }}</a>
-                <p class="text-gray-300">{{ comment.text|linebreaksbr }}</p>
+    <div class="flex-1 min-w-0">
+        <div class="flex items-start justify-between gap-2">
+            <div class="min-w-0 flex-1">
+                <span class="text-[11px] font-semibold text-gray-300">{{ comment.user.username }}</span>
+                <span class="text-[10px] text-gray-700 ml-1">&middot; {{ comment.timestamp|timesince }} ago</span>
+
+                <div class="comment-display">
+                    <p class="text-xs text-gray-400 mt-0.5 leading-relaxed comment-text-content">{{ comment.text|linebreaksbr }}</p>
+                </div>
+
+                <div class="comment-edit-form hidden mt-1">
+                    <textarea class="edit-textarea w-full bg-white/[0.025] border border-white/[0.06] rounded-lg px-3 py-[6px] text-xs text-gray-200 outline-none resize-none focus:border-indigo-500/40 transition-colors" style="font-family:inherit" rows="2" maxlength="500">{{ comment.text }}</textarea>
+                    <div class="flex items-center gap-2 mt-1.5">
+                        <button type="button" class="save-edit-btn px-3 py-1 rounded-md text-[10px] font-semibold bg-indigo-600 text-white border-none cursor-pointer hover:bg-indigo-500 transition-colors" data-comment-id="{{ comment.id }}" data-edit-url="{% url 'roulette:edit_comment' comment.id %}">Save</button>
+                        <button type="button" class="cancel-edit-btn px-3 py-1 rounded-md text-[10px] text-gray-500 border border-white/[0.06] cursor-pointer hover:text-gray-300 hover:bg-white/[0.03] transition-colors">Cancel</button>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3 mt-1.5">
+                    <button class="comment-vote-btn cvote-up {% if comment.fetched_user_vote == 1 %}active{% endif %}" data-comment-id="{{ comment.id }}" data-vote="1">
+                        <i class="fas fa-thumbs-up"></i> <span class="cup-count">{{ comment.fetched_up_count|default:"0" }}</span>
+                    </button>
+                    <button class="comment-vote-btn cvote-down {% if comment.fetched_user_vote == -1 %}active{% endif %}" data-comment-id="{{ comment.id }}" data-vote="-1">
+                        <i class="fas fa-thumbs-down"></i> <span class="cdown-count">{{ comment.fetched_down_count|default:"0" }}</span>
+                    </button>
+                </div>
             </div>
-            {# --- Modified Delete Button/Form --- #}
+
             {% if comment.user == request.user %}
-            {# Removed the form tag, using a button with data attributes #}
-            <button type="button" class="delete-comment-btn text-red-500 hover:text-red-400 text-xs ml-2"
-                    data-comment-id="{{ comment.id }}"
-                    data-delete-url="{% url 'roulette:delete_comment' comment_id=comment.id %}"
-                    title="Delete Comment">
-                <i class="fas fa-trash"></i>
-            </button>
+            <div class="flex items-center gap-1 flex-shrink-0 comment-owner-actions">
+                <button type="button" class="edit-comment-btn text-gray-700 hover:text-indigo-400 text-[10px] opacity-0 transition-all" data-comment-id="{{ comment.id }}" title="Edit">
+                    <i class="fas fa-pen"></i>
+                </button>
+                <button type="button" class="delete-comment-btn text-gray-700 hover:text-red-400 text-[10px] opacity-0 transition-all" data-comment-id="{{ comment.id }}" data-delete-url="{% url 'roulette:delete_comment' comment.id %}" title="Delete">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
             {% endif %}
-            {# --- End Modification --- #}
         </div>
-        <p class="text-xs text-gray-500 mt-1">{{ comment.timestamp|timesince }} ago</p>
     </div>
 </div>

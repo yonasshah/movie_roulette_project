@@ -1,393 +1,491 @@
 {% extends 'roulette/base.html' %}
 
-{% block title %}{{ profile_user.username }}'s Profile - Content Roulette{% endblock %}
+{% block title %}{{ profile_user.username }}'s Profile{% endblock %}
+
+{% block style %}
+.prof-avatar {
+    width: 80px; height: 80px; border-radius: 50%; object-fit: cover;
+    border: 3px solid rgba(99,102,241,0.25); flex-shrink: 0;
+    cursor: pointer; transition: border-color 0.2s, transform 0.2s;
+}
+.prof-avatar:hover { border-color: rgba(99,102,241,0.5); transform: scale(1.03); }
+
+.stat-pill {
+    flex: 1; text-align: center; padding: 14px 8px;
+    background: rgba(255,255,255,0.025); border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px; transition: border-color 0.15s; cursor: pointer;
+}
+.stat-pill:hover { border-color: rgba(255,255,255,0.12); }
+.stat-pill.social:hover { border-color: rgba(99,102,241,0.3); }
+.stat-n { font-family: 'Space Grotesk', sans-serif; font-size: 18px; font-weight: 700; color: #e5e7eb; }
+.stat-l { font-size: 11px; color: #4b5563; margin-top: 2px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+.follow-btn {
+    padding: 8px 28px; border-radius: 10px; font-size: 13px; font-weight: 600;
+    cursor: pointer; border: none; transition: all 0.15s;
+}
+.follow-btn.is-following { background: rgba(255,255,255,0.06); color: #9ca3af; }
+.follow-btn.is-following:hover { background: rgba(239,68,68,0.1); color: #ef4444; }
+.follow-btn.not-following { background: #6366f1; color: #fff; }
+.follow-btn.not-following:hover { background: #5558e6; }
+
+.profile-tab {
+    padding: 12px 24px; font-size: 13px; font-weight: 500;
+    color: #4b5563; border-bottom: 2px solid transparent;
+    cursor: pointer; transition: all 0.2s; margin-bottom: -1px; white-space: nowrap;
+}
+.profile-tab:hover { color: #9ca3af; }
+.profile-tab.active { color: #e5e7eb; border-bottom-color: #6366f1; }
+
+.poster-item {
+    border-radius: 8px; overflow: hidden; position: relative;
+    border: 1px solid rgba(255,255,255,0.04);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.poster-item:hover { transform: scale(1.04); box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+.poster-item .poster-title {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    padding: 8px 10px; font-size: 11px; font-weight: 500; color: #e5e7eb;
+    background: linear-gradient(transparent, rgba(0,0,0,0.85));
+    opacity: 0; transition: opacity 0.2s;
+}
+.poster-item:hover .poster-title { opacity: 1; }
+
+.profile-review {
+    display: flex; gap: 14px; padding: 16px;
+    background: rgba(255,255,255,0.025); border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px; transition: border-color 0.2s;
+}
+.profile-review:hover { border-color: rgba(255,255,255,0.1); }
+
+/* Social modal — hidden by default, no layout impact */
+.social-modal-bg {
+    position: fixed; inset: 0; z-index: 60;
+    background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
+    display: none; align-items: center; justify-content: center;
+    padding: 16px;
+}
+.social-modal-bg.open { display: flex; }
+.social-modal {
+    background: #0f1017; border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 16px; width: 100%; max-width: 380px; max-height: 520px;
+    display: flex; flex-direction: column;
+    animation: modalSlideUp 0.2s ease-out;
+}
+@keyframes modalSlideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+.social-modal-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 20px; border-bottom: 1px solid rgba(255,255,255,0.06); flex-shrink: 0;
+}
+.social-modal-head h3 { font-family: 'Space Grotesk', sans-serif; font-size: 16px; font-weight: 600; color: #fff; }
+.social-modal-close {
+    background: none; border: none; color: #4b5563; font-size: 20px;
+    cursor: pointer; padding: 4px; transition: color 0.15s; line-height: 1;
+}
+.social-modal-close:hover { color: #e5e7eb; }
+.social-modal-search {
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 8px; padding: 8px 12px; color: #e5e7eb; font-size: 13px;
+    outline: none; margin: 12px 16px 4px; flex-shrink: 0;
+}
+.social-modal-search::placeholder { color: #374151; }
+.social-modal-search:focus { border-color: rgba(99,102,241,0.4); }
+.social-modal-body { flex: 1; overflow-y: auto; padding: 4px 12px 12px; }
+.social-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 8px; border-radius: 8px; transition: background 0.15s;
+    text-decoration: none; color: inherit;
+}
+.social-row:hover { background: rgba(255,255,255,0.04); }
+
+/* Photo modal */
+.photo-modal {
+    position: fixed; inset: 0; z-index: 70;
+    background: rgba(0,0,0,0.85);
+    display: none; align-items: center; justify-content: center;
+    padding: 16px;
+}
+.photo-modal.open { display: flex; }
+.photo-modal img {
+    max-width: 90vw; max-height: 80vh; border-radius: 12px;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+    animation: modalSlideUp 0.3s ease-out;
+}
+{% endblock %}
 
 {% block content %}
-    {# --- ADD Styles for the Modal --- #}
-    <style>
-        .modal-overlay {
-            transition: opacity 0.3s ease;
-        }
-        .modal-image {
-            max-width: 90vw; /* Limit width */
-            max-height: 80vh; /* Limit height */
-            transition: transform 0.3s ease;
-        }
-        /* Start hidden/small for animation */
-        .modal-container.hidden .modal-image {
-             transform: scale(0.9);
-        }
-        /* Animate to full size when shown */
-         .modal-container:not(.hidden) .modal-image {
-            transform: scale(1);
-        }
-    </style>
-    {# --- END Styles --- #}
+<div class="max-w-3xl mx-auto">
 
-    <main class="w-full max-w-4xl bg-gray-800 p-6 md:p-8 rounded-lg shadow-2xl pt-20"> {# Adjusted padding for mobile #}
-
-        <div class="border-b border-gray-700 pb-6 mb-6">
-            {# --- MODIFIED: Changed flex direction for mobile --- #}
-            <div class="flex flex-col md:flex-row items-center md:items-start md:justify-between space-y-4 md:space-y-0">
-
-                {# --- Left side content (Image, Username, Stats) --- #}
-                <div class="flex flex-col items-center md:flex-row md:items-start space-y-4 md:space-y-0 md:space-x-4">
-                    {# --- ADD ID and cursor-pointer --- #}
-                    <img id="profile-picture-main" src="{{ profile_user.profile.image.url }}"
-                         class="w-20 h-20 md:w-24 md:h-24 rounded-full object-cover border-2 border-indigo-500 flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
-                         alt="{{ profile_user.username }}'s profile picture">
-                    {# --- END Change --- #}
-
-                    <div class="flex flex-col items-center md:items-start space-y-1 md:space-y-2 pt-2 text-center md:text-left">
-                        {# --- Adjusted text size for mobile --- #}
-                        <h2 class="text-3xl md:text-4xl font-extrabold text-white break-all">@{{ profile_user.username }}</h2>
-                        <div class="flex space-x-4 text-base md:text-lg text-gray-400">
-                            <span id="followers-count" class="hover:text-white transition-colors cursor-default">{{ followers_count }} Followers</span>
-                            <span id="following-count" class="hover:text-white transition-colors cursor-default">{{ following_count }} Following</span>
-                        </div>
-                    </div>
-                </div>
-
-                {# --- Right side content (Button) - Now appears below on mobile --- #}
-                <div class="w-full md:w-auto flex justify-center md:justify-end mt-4 md:mt-0"> {# Added centering for mobile button #}
-                    {% if not is_owner %}
-                        <div id="follow-container" class="text-center">
-                            <button
-                                id="follow-btn"
-                                data-user-id="{{ profile_user.id }}"
-                                class="font-semibold py-2 px-5 rounded-full transition-colors
-                                {% if is_following %}bg-gray-600 hover:bg-red-500 text-white{% else %}bg-indigo-600 hover:bg-indigo-700 text-white{% endif %}"
-                            >
-                                {% if is_following %}Unfollow{% else %}Follow{% endif %}
-                            </button>
-                            <p id="follow-message" class="text-sm mt-2 text-center"></p>
-                        </div>
-                    {% else %}
-                        <a href="{% url 'users:profile_settings' %}" class="font-semibold py-2 px-5 rounded-full transition-colors bg-gray-600 hover:bg-gray-700 text-white">
-                            Edit Profile
-                        </a>
-                    {% endif %}
-                </div>
-            </div>
-
+    {# ===== PROFILE HEADER ===== #}
+    <div class="flex items-center gap-5 mb-7">
+        <img id="profile-picture-main" src="{{ profile_user.profile.image.url }}"
+             class="prof-avatar" alt="{{ profile_user.username }}">
+        <div class="flex-1 min-w-0">
+            <h1 class="font-display text-2xl font-bold tracking-tight text-white">{{ profile_user.username }}</h1>
             {% if profile_user.profile.bio %}
-                <div class="mt-4 pt-4 border-t border-gray-700 text-center md:text-left"> {# Centered bio text on mobile #}
-                    <p class="text-gray-300">{{ profile_user.profile.bio|linebreaksbr }}</p>
-                </div>
+                <p class="text-sm text-gray-400 mt-1 leading-relaxed">{{ profile_user.profile.bio|linebreaksbr }}</p>
             {% endif %}
         </div>
-
-        {# --- TABS FOR LISTS/REVIEWS (No changes needed here for layout) --- #}
-        <div class="mb-6 border-b border-gray-700">
-            <nav class="flex space-x-4 md:space-x-6 justify-center md:justify-start" aria-label="Tabs"> {# Centered tabs on mobile #}
-                <button id="tab-favorites" class="tab-btn text-white border-b-2 border-indigo-500 py-3 px-1 text-base md:text-lg font-medium">
-                    Favorites
+        <div class="flex-shrink-0">
+            {% if not is_owner %}
+                <button id="follow-btn" data-user-id="{{ profile_user.id }}"
+                        class="follow-btn {% if is_following %}is-following{% else %}not-following{% endif %}">
+                    {% if is_following %}Following{% else %}Follow{% endif %}
                 </button>
-                <button id="tab-watchlist" class="tab-btn text-gray-400 border-b-2 border-transparent hover:border-gray-500 hover:text-gray-200 py-3 px-1 text-base md:text-lg font-medium transition-colors">
-                    Watchlist
-                </button>
-                <button id="tab-reviews" class="tab-btn text-gray-400 border-b-2 border-transparent hover:border-gray-500 hover:text-gray-200 py-3 px-1 text-base md:text-lg font-medium transition-colors">
-                    Reviews ({{ user_reviews.count }})
-                </button>
-            </nav>
-        </div>
-
-        {# --- FAVORITES CONTENT --- #}
-        <div id="content-favorites" class="tab-content">
-             {# --- Adjusted grid columns for better mobile view --- #}
-            <div id="favorite-list-content" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 md:gap-4">
-                {% comment %} JavaScript will render favorites here using favorite-data {% endcomment %}
-            </div>
-            {% if is_private %}
-                <div class="text-center p-8 bg-gray-700 rounded-lg">
-                    <i class="fas fa-lock text-4xl text-gray-400 mb-2"></i>
-                    <p class="text-gray-400">This user's favorites are private.</p>
-                </div>
+            {% else %}
+                <a href="{% url 'users:profile_settings' %}"
+                   class="inline-flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-medium text-gray-400 border border-white/[0.06] hover:bg-white/[0.04] hover:text-white transition-all">
+                    <i class="fas fa-pen text-xs"></i>Edit profile
+                </a>
             {% endif %}
         </div>
+    </div>
 
-        {# --- WATCHLIST CONTENT --- #}
-        <div id="content-watchlist" class="tab-content hidden">
-             {# --- Adjusted grid columns --- #}
-            <div id="watchlist-list-content" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 md:gap-4">
-                {% if is_private %}
-                    <div class="text-center p-8 bg-gray-700 rounded-lg col-span-full">
-                        <i class="fas fa-lock text-4xl text-gray-400 mb-2"></i>
-                        <p class="text-gray-400">This user's watchlist is private.</p>
-                    </div>
-                {% else %}
-                    {% for item in watchlist_list %}
-                        <div class="bg-gray-700 rounded-lg shadow-lg overflow-hidden transform hover:scale-105 transition-transform duration-200">
-                            <a href="{% url 'roulette:content_detail' content_type=item.content_type|lower tmdb_id=item.tmdb_id %}">
-                                {% if item.poster_path %}
-                                    <img src="https://image.tmdb.org/t/p/w342{{ item.poster_path }}" alt="Poster for {{ item.title }}" class="w-full object-cover" style="aspect-ratio: 2/3;">
-                                {% else %}
-                                    <div class="w-full h-full bg-gray-900 flex items-center justify-center" style="aspect-ratio: 2/3;">
-                                        <span class="text-gray-500 text-xs text-center p-2">{{ item.title }}</span>
-                                    </div>
-                                {% endif %}
-                            </a>
-                        </div>
-                    {% empty %}
-                        <p class="text-center text-gray-500 col-span-full">This user hasn't added any items to their watchlist yet.</p>
-                    {% endfor %}
-                {% endif %}
-            </div>
+    {# ===== STAT PILLS ===== #}
+    <div class="flex gap-2 mb-7">
+        <div class="stat-pill" data-tab="favorites">
+            <div class="stat-n">{{ favorite_list|length }}</div>
+            <div class="stat-l">Favorites</div>
         </div>
+        <div class="stat-pill" data-tab="watchlist">
+            <div class="stat-n">{{ watchlist_list|length }}</div>
+            <div class="stat-l">Watchlist</div>
+        </div>
+        <div class="stat-pill" data-tab="reviews">
+            <div class="stat-n">{{ user_reviews.count }}</div>
+            <div class="stat-l">Reviews</div>
+        </div>
+        <div class="stat-pill social" data-modal="followers-modal">
+            <div class="stat-n" id="followers-count">{{ followers_count }}</div>
+            <div class="stat-l">Followers</div>
+        </div>
+        <div class="stat-pill social" data-modal="following-modal">
+            <div class="stat-n" id="following-count">{{ following_count }}</div>
+            <div class="stat-l">Following</div>
+        </div>
+    </div>
 
-        {# --- REVIEWS CONTENT --- #}
-        <div id="content-reviews" class="tab-content hidden">
-            <div class="space-y-6">
-                {% for review in user_reviews %}
-                     {# --- Adjusted layout slightly for smaller screens --- #}
-                    <div class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 p-4 bg-gray-700 rounded-lg">
-                        <a href="{% url 'roulette:content_detail' content_type=review.content_type|lower tmdb_id=review.tmdb_id %}" class="flex-shrink-0 mx-auto sm:mx-0">
-                             {# --- Made image slightly smaller on mobile --- #}
-                            <img src="https://image.tmdb.org/t/p/w154/{{ review.poster_path }}" class="w-24 sm:w-20 h-auto rounded-md object-cover" alt="{{ review.title }} poster">
-                        </a>
-                        <div class="flex-1 text-center sm:text-left">
-                            <div class="flex flex-col sm:flex-row items-center justify-between">
-                                <a href="{% url 'roulette:content_detail' content_type=review.content_type|lower tmdb_id=review.tmdb_id %}" class="text-lg font-semibold text-white hover:underline mb-1 sm:mb-0">{{ review.title }}</a>
-                                <span class="text-xl font-bold text-indigo-400">{{ review.rating }}/10</span>
+    {# ===== TABS ===== #}
+    <div class="flex border-b border-white/[0.06] mb-5 overflow-x-auto">
+        <button id="tab-favorites" class="profile-tab active">Favorites</button>
+        <button id="tab-watchlist" class="profile-tab">Watchlist</button>
+        <button id="tab-reviews" class="profile-tab">Reviews</button>
+    </div>
+
+    {# ===== FAVORITES ===== #}
+    <div id="content-favorites" class="tab-content">
+        {% if is_private %}
+            <div class="text-center py-16">
+                <div class="text-gray-700 text-3xl mb-2"><i class="fas fa-lock"></i></div>
+                <p class="text-gray-600 text-sm">This user's favorites are private.</p>
+            </div>
+        {% else %}
+            <div id="favorite-list-content" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3"></div>
+        {% endif %}
+    </div>
+
+    {# ===== WATCHLIST ===== #}
+    <div id="content-watchlist" class="tab-content hidden">
+        {% if is_private %}
+            <div class="text-center py-16">
+                <div class="text-gray-700 text-3xl mb-2"><i class="fas fa-lock"></i></div>
+                <p class="text-gray-600 text-sm">This user's watchlist is private.</p>
+            </div>
+        {% else %}
+            <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+                {% for item in watchlist_list %}
+                    <a href="{% url 'roulette:content_detail' content_type=item.content_type|lower tmdb_id=item.tmdb_id %}" class="poster-item block">
+                        {% if item.poster_path %}
+                            <img src="https://image.tmdb.org/t/p/w342{{ item.poster_path }}" alt="{{ item.title }}" class="w-full object-cover" style="aspect-ratio: 2/3;">
+                        {% else %}
+                            <div class="w-full bg-white/[0.03] flex items-center justify-center" style="aspect-ratio: 2/3;">
+                                <span class="text-gray-700 text-xs text-center px-2">{{ item.title }}</span>
                             </div>
-                            <p class="text-gray-400 text-xs mb-2">{{ review.timestamp|timesince }} ago</p>
-                            {% if review.review_text %}
-                                <p class="text-gray-300">{{ review.review_text|linebreaksbr }}</p>
-                            {% else %}
-                                <p class="text-gray-500 italic">This user just left a rating.</p>
-                            {% endif %}
-                        </div>
-                    </div>
+                        {% endif %}
+                        <div class="poster-title">{{ item.title }}</div>
+                    </a>
                 {% empty %}
-                    <p class="text-center text-gray-500 col-span-full">This user hasn't reviewed any content yet.</p>
+                    <p class="text-gray-600 text-sm col-span-full text-center py-12">No items in watchlist yet.</p>
                 {% endfor %}
             </div>
-        </div>
-
-        {# --- Followers/Following List --- #}
-        {# --- Adjusted columns for mobile --- #}
-        <div class="mt-10 grid grid-cols-1 md:grid-cols-2 gap-8">
-
-            <div>
-                <h4 class="text-xl font-semibold mb-3 text-gray-300">Followers ({{ followers_count }})</h4>
-                <div class="space-y-2 max-h-60 md:max-h-96 overflow-y-auto pr-2 custom-scrollbar"> {# Reduced max height on mobile #}
-                     {# --- INTEGRATED FIX: Loop through followers_follows queryset --- #}
-                    {% for follow_relation in followers_follows %}
-                    <a href="{% url 'roulette:user_profile' username=follow_relation.follower.username %}" class="flex items-center p-2 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors">
-                        {# --- INTEGRATED FIX: Access image via follow_relation.follower.profile.image.url --- #}
-                        <img src="{{ follow_relation.follower.profile.image.url }}" class="w-8 h-8 rounded-full mr-3 object-cover" alt="{{ follow_relation.follower.username }}'s profile picture">
-                        <span class="font-medium text-sm md:text-base">@{{ follow_relation.follower.username }}</span>
-                    </a>
-                    {% empty %}
-                    <p class="text-gray-500 text-sm">No one is following {{ profile_user.username }} yet.</p>
-                    {% endfor %}
-                </div>
-            </div>
-
-            <div>
-                <h4 class="text-xl font-semibold mb-3 text-gray-300">Following ({{ following_count }})</h4>
-                <div class="space-y-2 max-h-60 md:max-h-96 overflow-y-auto pr-2 custom-scrollbar"> {# Reduced max height on mobile #}
-                     {# --- INTEGRATED FIX: Loop through following_follows queryset --- #}
-                    {% for follow_relation in following_follows %}
-                    <a href="{% url 'roulette:user_profile' username=follow_relation.followed.username %}" class="flex items-center p-2 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors">
-                        {# --- INTEGRATED FIX: Access image via follow_relation.followed.profile.image.url --- #}
-                         <img src="{{ follow_relation.followed.profile.image.url }}" class="w-8 h-8 rounded-full mr-3 object-cover" alt="{{ follow_relation.followed.username }}'s profile picture">
-                        <span class="font-medium text-sm md:text-base">@{{ follow_relation.followed.username }}</span>
-                    </a>
-                    {% empty %}
-                    <p class="text-gray-500 text-sm">{{ profile_user.username }} isn't following anyone yet.</p>
-                    {% endfor %}
-                </div>
-            </div>
-        </div>
-    </main>
-
-    {# --- ADD PROFILE PICTURE MODAL --- #}
-    <div id="profile-pic-modal" class="modal-container hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[100] p-4"> {# Increased z-index #}
-        <div class="modal-overlay fixed inset-0 opacity-0"></div> {# Starts transparent #}
-        <button id="modal-close-btn" class="absolute top-4 right-4 text-white text-4xl z-[101] hover:text-gray-400 transition-colors">&times;</button>
-        <img id="modal-image-content" src="" alt="Profile picture preview" class="modal-image rounded-lg shadow-lg z-[101]">
+        {% endif %}
     </div>
-    {# --- END MODAL --- #}
+
+    {# ===== REVIEWS ===== #}
+    <div id="content-reviews" class="tab-content hidden">
+        <div class="space-y-3">
+            {% for review in user_reviews %}
+                <div class="profile-review">
+                    <a href="{% url 'roulette:content_detail' content_type=review.content_type|lower tmdb_id=review.tmdb_id %}" class="flex-shrink-0">
+                        {% if review.poster_path %}
+                            <img src="https://image.tmdb.org/t/p/w154/{{ review.poster_path }}" class="w-12 h-[72px] rounded-lg object-cover" alt="{{ review.title }}">
+                        {% else %}
+                            <div class="w-12 h-[72px] rounded-lg bg-white/[0.03] flex items-center justify-center">
+                                <span class="text-gray-700 text-[10px]">N/A</span>
+                            </div>
+                        {% endif %}
+                    </a>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center justify-between mb-0.5">
+                            <a href="{% url 'roulette:content_detail' content_type=review.content_type|lower tmdb_id=review.tmdb_id %}" class="text-sm font-medium text-white hover:underline truncate">{{ review.title }}</a>
+                            <span class="text-amber-400 font-semibold text-sm flex items-center gap-1 flex-shrink-0 ml-2">
+                                <i class="fas fa-star text-[10px]"></i>{{ review.rating }}/10
+                            </span>
+                        </div>
+                        <p class="text-xs text-gray-700 mb-1">{{ review.timestamp|timesince }} ago</p>
+                        {% if review.review_text %}
+                            <p class="text-sm text-gray-400 leading-relaxed">{{ review.review_text|linebreaksbr }}</p>
+                        {% else %}
+                            <p class="text-sm text-gray-600 italic">Rating only.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            {% empty %}
+                <p class="text-gray-600 text-sm text-center py-12">No reviews yet.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+</div>
+
+{# ===== FOLLOWERS MODAL ===== #}
+<div class="social-modal-bg" id="followers-modal">
+    <div class="social-modal">
+        <div class="social-modal-head">
+            <h3>Followers</h3>
+            <button class="social-modal-close" data-close-modal="followers-modal">&times;</button>
+        </div>
+        <input class="social-modal-search" placeholder="Search followers..." data-search-list="followers-list">
+        <div class="social-modal-body" id="followers-list">
+            {% for rel in followers_follows %}
+                <a href="{% url 'roulette:user_profile' username=rel.follower.username %}" class="social-row" data-name="{{ rel.follower.username|lower }}">
+                    <img src="{{ rel.follower.profile.image.url }}" class="w-9 h-9 rounded-full object-cover flex-shrink-0" alt="">
+                    <span class="text-sm font-medium text-gray-200">@{{ rel.follower.username }}</span>
+                </a>
+            {% empty %}
+                <p class="text-gray-600 text-sm text-center py-8">No followers yet.</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+{# ===== FOLLOWING MODAL ===== #}
+<div class="social-modal-bg" id="following-modal">
+    <div class="social-modal">
+        <div class="social-modal-head">
+            <h3>Following</h3>
+            <button class="social-modal-close" data-close-modal="following-modal">&times;</button>
+        </div>
+        <input class="social-modal-search" placeholder="Search following..." data-search-list="following-list">
+        <div class="social-modal-body" id="following-list">
+            {% for rel in following_follows %}
+                <a href="{% url 'roulette:user_profile' username=rel.followed.username %}" class="social-row" data-name="{{ rel.followed.username|lower }}">
+                    <img src="{{ rel.followed.profile.image.url }}" class="w-9 h-9 rounded-full object-cover flex-shrink-0" alt="">
+                    <span class="text-sm font-medium text-gray-200">@{{ rel.followed.username }}</span>
+                </a>
+            {% empty %}
+                <p class="text-gray-600 text-sm text-center py-8">Not following anyone yet.</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+{# ===== PHOTO MODAL ===== #}
+<div id="photo-modal" class="photo-modal">
+    <button id="photo-modal-close" class="absolute top-4 right-4 text-white text-3xl hover:text-gray-400 transition-colors z-[71]">&times;</button>
+    <img id="photo-modal-img" src="" alt="Profile picture">
+</div>
 
 {% endblock %}
 
 {% block scripts %}
-{# --- Ensure profile images are passed to context in view for followers/following --- #}
-{# The existing JavaScript should still work, but you'll need to update the view #}
-{# to pass the profile image URLs for followers and following lists if you want to display them #}
 {{ block.super }}
-    {{ favorite_list|json_script:"favorite-data" }}
+{{ favorite_list|json_script:"favorite-data" }}
+<script>
+(function() {
+    'use strict';
+    var csrfToken = '{{ csrf_token }}';
+    function $(s) { return document.querySelector(s); }
+    function $$(s) { return document.querySelectorAll(s); }
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const followBtn = document.getElementById('follow-btn');
-            const followMessage = document.getElementById('follow-message');
-            const csrfToken = '{{ csrf_token }}';
-            const tabButtons = document.querySelectorAll('.tab-btn');
-            const tabContents = document.querySelectorAll('.tab-content');
+    // =========================================================
+    // TABS
+    // =========================================================
+    var tabs = $$('.profile-tab');
+    var contents = $$('.tab-content');
 
-            // --- ADD Modal variables ---
-            const profilePicMain = document.getElementById('profile-picture-main');
-            const modal = document.getElementById('profile-pic-modal');
-            const modalImage = document.getElementById('modal-image-content');
-            const modalCloseBtn = document.getElementById('modal-close-btn');
-            const modalOverlay = modal.querySelector('.modal-overlay');
-            // --- END Modal variables ---
+    function switchTab(tabName) {
+        tabs.forEach(function(t) { t.classList.remove('active'); });
+        contents.forEach(function(c) { c.classList.add('hidden'); });
+        var targetTab = document.getElementById('tab-' + tabName);
+        var targetContent = document.getElementById('content-' + tabName);
+        if (targetTab) targetTab.classList.add('active');
+        if (targetContent) targetContent.classList.remove('hidden');
+    }
 
-            if (followBtn) {
-                followBtn.addEventListener('click', function() {
-                    toggleFollowStatus(this.dataset.userId);
-                });
-            }
-
-            async function toggleFollowStatus(userId) {
-                const formData = new FormData();
-                formData.append('user_id', userId);
-
-                try {
-                    const response = await fetch('{% url "roulette:toggle_follow" %}', {
-                        method: 'POST',
-                        headers: { 'X-CSRFToken': csrfToken },
-                        body: formData,
-                    });
-
-                    if (response.status === 403) {
-                        window.location.href = "{% url 'users:login' %}?next={{ request.path|urlencode }}"; // Ensure next path is encoded
-                        return;
-                    }
-
-                    const data = await response.json();
-
-                    if (data.success) {
-                        if (data.is_following) {
-                            followBtn.textContent = 'Unfollow';
-                            followBtn.className = 'font-semibold py-2 px-5 rounded-full transition-colors bg-gray-600 hover:bg-red-500 text-white'; // Added text-white
-                        } else {
-                            followBtn.textContent = 'Follow';
-                            followBtn.className = 'font-semibold py-2 px-5 rounded-full transition-colors bg-indigo-600 hover:bg-indigo-700 text-white'; // Added text-white
-                        }
-                        // Update counts directly without reload
-                        document.getElementById('followers-count').textContent = `${data.followers_count} Followers`;
-                        // Note: The 'following-count' on the *profile* page shows the *profile user's* following count,
-                        // which doesn't change when the *viewer* follows/unfollows them.
-                    } else {
-                        followMessage.textContent = data.error || "An unknown error occurred.";
-                        followMessage.className = 'text-sm mt-2 text-red-500';
-                    }
-                } catch (error) {
-                    console.error("API Request Failed:", error);
-                    followMessage.textContent = "Network error or API failure.";
-                    followMessage.className = 'text-sm mt-2 text-red-500';
-                }
-            }
-
-            function renderFavoriteList() {
-                const favoriteListContent = document.getElementById('favorite-list-content');
-                if (!favoriteListContent) return; // Exit if element not found
-                if ({{ is_private|yesno:"true,false" }}) {
-                    return; // Don't render if private
-                }
-
-                const itemsJson = document.getElementById('favorite-data')?.textContent;
-                let items = [];
-                try {
-                    items = itemsJson ? JSON.parse(itemsJson) : [];
-                } catch (e) {
-                    console.error("Error parsing favorite data:", e);
-                    favoriteListContent.innerHTML = `<p class="text-center text-red-500 col-span-full">Error loading favorites.</p>`;
-                    return;
-                }
-
-
-                if (!items || items.length === 0) {
-                    favoriteListContent.innerHTML = `<p class="text-center text-gray-500 col-span-full py-4">This user hasn't added any favorites yet.</p>`;
-                    return;
-                }
-
-                favoriteListContent.innerHTML = ''; // Clear previous content
-
-                items.forEach(item => {
-                    const posterUrl = item.poster_path ? `https://image.tmdb.org/t/p/w342${item.poster_path}` : 'https://placehold.co/342x513/1f2937/374151?text=N/A'; // Placeholder with background color
-                    const detailUrl = `/content/${item.content_type.toLowerCase()}/${item.tmdb_id}/`;
-                    const title = item.title || 'Untitled'; // Fallback title
-
-                    const el = document.createElement('div');
-                    el.className = 'bg-gray-700 rounded-lg shadow-lg overflow-hidden transform hover:scale-105 transition-transform duration-200';
-                    el.innerHTML = `
-                        <a href="${detailUrl}">
-                             {# --- Added aspect ratio and background color for consistency --- #}
-                            <div class="aspect-[2/3] bg-gray-900">
-                                <img src="${posterUrl}" alt="Poster for ${title.replace(/"/g, '&quot;')}" class="w-full h-full object-cover">
-                            </div>
-                        </a>
-                    `;
-                    favoriteListContent.appendChild(el);
-                });
-            }
-
-            renderFavoriteList();
-
-            // --- TAB SWITCHING LOGIC ---
-            tabButtons.forEach(button => {
-                button.addEventListener('click', () => {
-                    tabButtons.forEach(btn => {
-                        btn.classList.remove('text-white', 'border-indigo-500');
-                        btn.classList.add('text-gray-400', 'border-transparent', 'hover:border-gray-500', 'hover:text-gray-200');
-                    });
-
-                    button.classList.add('text-white', 'border-indigo-500');
-                    button.classList.remove('text-gray-400', 'border-transparent', 'hover:border-gray-500', 'hover:text-gray-200');
-
-                    tabContents.forEach(content => {
-                        content.classList.add('hidden');
-                    });
-
-                    const targetId = button.id.replace('tab-', 'content-');
-                    const targetContent = document.getElementById(targetId);
-                    if (targetContent) {
-                         targetContent.classList.remove('hidden');
-                    }
-                });
-            });
-            // --- END TAB LOGIC ---
-
-             // --- ADD Modal Event Listeners ---
-            if (profilePicMain && modal && modalImage && modalCloseBtn && modalOverlay) {
-                // Open modal
-                profilePicMain.addEventListener('click', function() {
-                    modalImage.src = this.src; // Set modal image source to clicked image source
-                    modal.classList.remove('hidden');
-                    // Add small delay for transition effect after display:flex is applied
-                    requestAnimationFrame(() => {
-                         requestAnimationFrame(() => { // Double rAF ensures rendering before transition starts
-                            modalOverlay.classList.add('opacity-100'); // Fade in overlay
-                            modalOverlay.classList.remove('opacity-0');
-                         });
-                    });
-                });
-
-                // Close modal function
-                function closeModal() {
-                    modalOverlay.classList.remove('opacity-100'); // Fade out overlay
-                    modalOverlay.classList.add('opacity-0');
-                     // Wait for transition before hiding container
-                    setTimeout(() => modal.classList.add('hidden'), 300); // 300ms matches transition duration
-                }
-
-                // Close modal via button or overlay click
-                modalCloseBtn.addEventListener('click', closeModal);
-                modalOverlay.addEventListener('click', closeModal); // Click on overlay closes
-
-                 // Close modal via Escape key
-                document.addEventListener('keydown', function(event) {
-                    if (event.key === 'Escape' && !modal.classList.contains('hidden')) {
-                        closeModal();
-                    }
-                });
-            }
-            // --- END Modal Event Listeners ---
-
+    tabs.forEach(function(tab) {
+        tab.addEventListener('click', function() {
+            var name = tab.id.replace('tab-', '');
+            switchTab(name);
         });
-    </script>
+    });
+
+    // =========================================================
+    // STAT PILLS → open tabs or modals
+    // =========================================================
+    $$('.stat-pill').forEach(function(pill) {
+        pill.addEventListener('click', function() {
+            var tabName = pill.getAttribute('data-tab');
+            var modalId = pill.getAttribute('data-modal');
+            if (tabName) {
+                switchTab(tabName);
+                // Scroll to tabs
+                var tabBar = document.querySelector('.profile-tab');
+                if (tabBar) tabBar.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            } else if (modalId) {
+                var modal = document.getElementById(modalId);
+                if (modal) openModal(modal);
+            }
+        });
+    });
+
+    // =========================================================
+    // SOCIAL MODALS
+    // =========================================================
+    function openModal(modal) {
+        modal.classList.add('open');
+        var search = modal.querySelector('.social-modal-search');
+        if (search) { search.value = ''; filterList(search); }
+    }
+
+    function closeModal(modal) {
+        modal.classList.remove('open');
+    }
+
+    function filterList(searchInput) {
+        var listId = searchInput.getAttribute('data-search-list');
+        var list = document.getElementById(listId);
+        if (!list) return;
+        var q = searchInput.value.toLowerCase();
+        list.querySelectorAll('.social-row').forEach(function(row) {
+            var name = row.getAttribute('data-name') || '';
+            row.style.display = name.indexOf(q) !== -1 ? '' : 'none';
+        });
+    }
+
+    // Close buttons
+    $$('.social-modal-close').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var modalId = btn.getAttribute('data-close-modal');
+            var modal = document.getElementById(modalId);
+            if (modal) closeModal(modal);
+        });
+    });
+
+    // Backdrop click
+    $$('.social-modal-bg').forEach(function(bg) {
+        bg.addEventListener('click', function(e) {
+            if (e.target === bg) closeModal(bg);
+        });
+    });
+
+    // Search inputs
+    $$('.social-modal-search').forEach(function(input) {
+        input.addEventListener('input', function() { filterList(this); });
+    });
+
+    // Escape key closes any open modal
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            $$('.social-modal-bg.open').forEach(function(m) { closeModal(m); });
+            var pm = $('#photo-modal');
+            if (pm && pm.classList.contains('open')) pm.classList.remove('open');
+        }
+    });
+
+    // =========================================================
+    // FAVORITES GRID (from JSON)
+    // =========================================================
+    (function() {
+        var cont = $('#favorite-list-content');
+        if (!cont) return;
+        if ({{ is_private|yesno:"true,false" }}) return;
+        var dataEl = document.getElementById('favorite-data');
+        var items = [];
+        try { items = dataEl ? JSON.parse(dataEl.textContent) : []; } catch(e) { return; }
+        if (!items.length) {
+            cont.innerHTML = '<p class="text-gray-600 text-sm col-span-full text-center py-12">No favorites yet.</p>';
+            return;
+        }
+        cont.innerHTML = '';
+        items.forEach(function(item) {
+            var poster = item.poster_path ? 'https://image.tmdb.org/t/p/w342' + item.poster_path : '';
+            var url = '/content/' + item.content_type.toLowerCase() + '/' + item.tmdb_id + '/';
+            var a = document.createElement('a');
+            a.href = url; a.className = 'poster-item block';
+            a.innerHTML = poster
+                ? '<img src="' + poster + '" alt="" class="w-full object-cover" style="aspect-ratio:2/3"><div class="poster-title">' + (item.title || '') + '</div>'
+                : '<div class="w-full bg-white/[0.03] flex items-center justify-center" style="aspect-ratio:2/3"><span class="text-gray-700 text-xs px-2 text-center">' + (item.title || 'Untitled') + '</span></div>';
+            cont.appendChild(a);
+        });
+    })();
+
+    // =========================================================
+    // FOLLOW BUTTON
+    // =========================================================
+    var followBtn = $('#follow-btn');
+    if (followBtn) {
+        followBtn.addEventListener('click', function() {
+            var fd = new FormData();
+            fd.append('user_id', followBtn.dataset.userId);
+            fetch('{% url "roulette:toggle_follow" %}', {
+                method: 'POST', headers: { 'X-CSRFToken': csrfToken }, body: fd
+            })
+            .then(function(r) {
+                if (r.status === 403) { window.location.href = "{% url 'users:login' %}?next={{ request.path|urlencode }}"; return; }
+                return r.json();
+            })
+            .then(function(d) {
+                if (!d) return;
+                if (d.success) {
+                    if (d.is_following) {
+                        followBtn.textContent = 'Following';
+                        followBtn.className = 'follow-btn is-following';
+                    } else {
+                        followBtn.textContent = 'Follow';
+                        followBtn.className = 'follow-btn not-following';
+                    }
+                    var fc = $('#followers-count');
+                    if (fc) fc.textContent = d.followers_count;
+                }
+            })
+            .catch(function() { window.showToast('Network error.', 'error'); });
+        });
+        followBtn.addEventListener('mouseenter', function() {
+            if (followBtn.classList.contains('is-following')) followBtn.textContent = 'Unfollow';
+        });
+        followBtn.addEventListener('mouseleave', function() {
+            if (followBtn.classList.contains('is-following')) followBtn.textContent = 'Following';
+        });
+    }
+
+    // =========================================================
+    // PHOTO MODAL
+    // =========================================================
+    var avatar = $('#profile-picture-main');
+    var photoModal = $('#photo-modal');
+    var photoImg = $('#photo-modal-img');
+    var photoClose = $('#photo-modal-close');
+
+    if (avatar && photoModal && photoImg) {
+        avatar.addEventListener('click', function() {
+            photoImg.src = avatar.src;
+            photoModal.classList.add('open');
+        });
+        if (photoClose) photoClose.addEventListener('click', function() { photoModal.classList.remove('open'); });
+        photoModal.addEventListener('click', function(e) { if (e.target === photoModal) photoModal.classList.remove('open'); });
+    }
+
+})();
+</script>
 {% endblock %}

@@ -1,42 +1,95 @@
-{% comment %} Displays the main content text for a feed item {% endcomment %}
-
 {% if item.type == 'review' %}
-    <div class="text-gray-300">
-        <a href="{% url 'roulette:user_profile' username=item.user.username %}" class="font-semibold text-white hover:underline">@{{ item.user.username }}</a>
-        rated <a href="{% url 'roulette:content_detail' content_type=item.content_type|lower tmdb_id=item.tmdb_id %}" class="font-semibold text-indigo-300 hover:underline">{{ item.title }}</a>
-        <span class="text-lg font-bold text-indigo-400 ml-2">{{ item.rating }}/10</span>
+    <div class="fc-action-line">
+        <a href="{% url 'roulette:user_profile' username=item.user.username %}">
+            <img src="{{ item.user.profile.image.url }}" class="fc-inline-av" alt="">
+        </a>
+        <div>
+            <span class="text-[13px] text-gray-400">
+                <a href="{% url 'roulette:user_profile' username=item.user.username %}" class="font-semibold text-gray-200 hover:underline">{{ item.user.username }}</a>
+                rated <a href="{% url 'roulette:content_detail' content_type=item.content_type|lower tmdb_id=item.tmdb_id %}" class="text-indigo-400 hover:underline font-medium">{{ item.title }}</a>
+                <span class="feed-badge badge-review"><i class="fas fa-star text-[7px]"></i> {{ item.rating }}/10</span>
+            </span>
+            <p class="text-[11px] text-gray-700 mt-0.5">{{ item.timestamp|timesince }} ago</p>
+        </div>
     </div>
-    <p class="text-gray-400 text-xs mb-2">{{ item.timestamp|timesince }} ago</p>
+
+    <a href="{% url 'roulette:content_detail' content_type=item.content_type|lower tmdb_id=item.tmdb_id %}" class="poster-row">
+        {% if item.poster_path %}
+            <img src="https://image.tmdb.org/t/p/w154{{ item.poster_path }}" alt="{{ item.title }}">
+        {% else %}
+            <div class="poster-ph"></div>
+        {% endif %}
+        <div class="poster-info">
+            <div class="pi-title">{{ item.title }}</div>
+            <div class="pi-meta">{{ item.release_year }}{% if item.content_type == 'MOVIE' %} &middot; Movie{% else %} &middot; TV Show{% endif %}</div>
+            {% if item.overview %}
+    <div class="pi-desc">{{ item.overview|truncatewords:25 }}</div>
+{% endif %}
+        </div>
+    </a>
     {% if item.review_text %}
-        <p class="text-gray-200 bg-gray-600 p-3 rounded-md">{{ item.review_text|linebreaksbr }}</p>
-    {% endif %}
+    <div class="review-block clamped">
+        <div class="review-text">{{ item.review_text|linebreaksbr }}</div>
+        <span class="review-see-more hidden">See more...</span>
+    </div>
+{% endif %}
+
 
 {% elif item.type == 'list_item' %}
-    <div class="text-gray-300">
-        <a href="{% url 'roulette:user_profile' username=item.user.username %}" class="font-semibold text-white hover:underline">@{{ item.user.username }}</a>
-
-        {% if item.list_type == 'FAVORITE' %}
-            added <a href="{% url 'roulette:content_detail' content_type=item.content_type|lower tmdb_id=item.tmdb_id %}" class="font-semibold text-indigo-300 hover:underline">{{ item.title }}</a> to Favorites
-            <i class="fas fa-heart text-red-500 ml-1"></i> {# Reduced margin #}
-        {% elif item.list_type == 'WATCHLIST' %}
-            added <a href="{% url 'roulette:content_detail' content_type=item.content_type|lower tmdb_id=item.tmdb_id %}" class="font-semibold text-indigo-300 hover:underline">{{ item.title }}</a> to their Watchlist
-            <i class="fas fa-bookmark text-indigo-400 ml-1"></i> {# Reduced margin #}
-        {% elif item.list_type == 'CUSTOM' and item.custom_list %}
-            added <a href="{% url 'roulette:content_detail' content_type=item.content_type|lower tmdb_id=item.tmdb_id %}" class="font-semibold text-indigo-300 hover:underline">{{ item.title }}</a>
-            to <a href="{% url 'roulette:list_detail' list_id=item.custom_list.id %}" class="font-semibold text-indigo-300 hover:underline">{{ item.custom_list.name }}</a>
-            <i class="fas fa-list-ul text-gray-400 ml-1"></i> {# Reduced margin #}
-        {% else %}
-             added <a href="{% url 'roulette:content_detail' content_type=item.content_type|lower tmdb_id=item.tmdb_id %}" class="font-semibold text-indigo-300 hover:underline">{{ item.title }}</a> (History) {# Fallback for history or unknown #}
-        {% endif %}
+    <div class="fc-action-line">
+        <a href="{% url 'roulette:user_profile' username=item.user.username %}">
+            <img src="{{ item.user.profile.image.url }}" class="fc-inline-av" alt="">
+        </a>
+        <div>
+            <span class="text-[13px] text-gray-400">
+                <a href="{% url 'roulette:user_profile' username=item.user.username %}" class="font-semibold text-gray-200 hover:underline">{{ item.user.username }}</a>
+                {% if item.list_type == 'FAVORITE' %}
+                    added <a href="{% url 'roulette:content_detail' content_type=item.content_type|lower tmdb_id=item.tmdb_id %}" class="text-indigo-400 hover:underline font-medium">{{ item.title }}</a> to favorites
+                    <span class="feed-badge badge-fav"><i class="fas fa-heart text-[7px]"></i></span>
+                {% elif item.list_type == 'WATCHLIST' %}
+                    added <a href="{% url 'roulette:content_detail' content_type=item.content_type|lower tmdb_id=item.tmdb_id %}" class="text-indigo-400 hover:underline font-medium">{{ item.title }}</a> to watchlist
+                    <span class="feed-badge badge-watch"><i class="fas fa-bookmark text-[7px]"></i></span>
+                {% elif item.list_type == 'CUSTOM' and item.custom_list %}
+                    added <a href="{% url 'roulette:content_detail' content_type=item.content_type|lower tmdb_id=item.tmdb_id %}" class="text-indigo-400 hover:underline font-medium">{{ item.title }}</a>
+                    to <a href="{% url 'roulette:list_detail' list_id=item.custom_list.id %}" class="text-indigo-400 hover:underline font-medium">{{ item.custom_list.name }}</a>
+                    <span class="feed-badge badge-list"><i class="fas fa-list-ul text-[7px]"></i></span>
+                {% else %}
+                    added <a href="{% url 'roulette:content_detail' content_type=item.content_type|lower tmdb_id=item.tmdb_id %}" class="text-indigo-400 hover:underline font-medium">{{ item.title }}</a>
+                {% endif %}
+            </span>
+            <p class="text-[11px] text-gray-700 mt-0.5">{{ item.timestamp|timesince }} ago</p>
+        </div>
     </div>
-    <p class="text-gray-400 text-xs">{{ item.timestamp|timesince }} ago</p>
+
+    <a href="{% url 'roulette:content_detail' content_type=item.content_type|lower tmdb_id=item.tmdb_id %}" class="poster-row">
+        {% if item.poster_path %}
+            <img src="https://image.tmdb.org/t/p/w154{{ item.poster_path }}" alt="{{ item.title }}">
+        {% else %}
+            <div class="poster-ph"></div>
+        {% endif %}
+        <div class="poster-info">
+            <div class="pi-title">{{ item.title }}</div>
+            <div class="pi-meta">{{ item.release_year }}{% if item.content_type == 'MOVIE' %} &middot; Movie{% else %} &middot; TV Show{% endif %}</div>
+        </div>
+    </a>
 
 {% elif item.type == 'follow' %}
-    <div class="text-gray-300">
-        <a href="{% url 'roulette:user_profile' username=item.follower.username %}" class="font-semibold text-white hover:underline">@{{ item.follower.username }}</a>
-        started following
-        <a href="{% url 'roulette:user_profile' username=item.followed.username %}" class="font-semibold text-white hover:underline">@{{ item.followed.username }}</a>
-        <i class="fas fa-user-plus text-green-500 ml-1"></i> {# Reduced margin #}
+    <div class="fc-action-line" style="padding-bottom:4px">
+        {% with actor=item.user %}
+        {% if actor %}
+        <a href="{% url 'roulette:user_profile' username=item.follower.username %}">
+            <img src="{{ actor.profile.image.url }}" class="fc-inline-av" alt="">
+        </a>
+        {% endif %}
+        {% endwith %}
+        <div>
+            <span class="text-[13px] text-gray-400">
+                <a href="{% url 'roulette:user_profile' username=item.follower.username %}" class="font-semibold text-gray-200 hover:underline">{{ item.follower.username }}</a>
+                started following
+                <a href="{% url 'roulette:user_profile' username=item.followed.username %}" class="font-semibold text-gray-200 hover:underline">{{ item.followed.username }}</a>
+                <span class="feed-badge badge-follow"><i class="fas fa-user-plus text-[7px]"></i></span>
+            </span>
+            <p class="text-[11px] text-gray-700 mt-0.5">{{ item.timestamp|timesince }} ago</p>
+        </div>
     </div>
-    <p class="text-gray-400 text-xs">{{ item.timestamp|timesince }} ago</p>
 {% endif %}

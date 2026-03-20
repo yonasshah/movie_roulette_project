@@ -17,7 +17,7 @@ class UserList(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='custom_lists')
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True, null=True, max_length=500, help_text="Optional: Describe your list.")
-    is_public = models.BooleanField(default=False, help_text="Make this list viewable by others?")
+    is_public = models.BooleanField(default=True, help_text="Make this list viewable by others?")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     class Meta:
@@ -59,6 +59,7 @@ class UserContent(models.Model):
         WATCHLIST = 'WATCHLIST', 'Watchlist'
         # --- ADD THIS CHOICE ---
         CUSTOM = 'CUSTOM', 'Custom' 
+        
 
     # This NEW class distinguishes between Movies and TV Shows.
     class ContentType(models.TextChoices):
@@ -66,6 +67,7 @@ class UserContent(models.Model):
         TV = 'TV', 'TV Show'
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    overview = models.TextField(blank=True, default='')
     
     tmdb_id = models.IntegerField() 
     
@@ -121,6 +123,7 @@ class UserReview(models.Model):
     # Store basic info for display in feeds, so we don't have to hit the API
     title = models.CharField(max_length=255, default='')
     poster_path = models.CharField(max_length=255, blank=True, null=True, default='')
+    overview = models.TextField(blank=True, default='')
 
     class Meta:
         unique_together = ('user', 'tmdb_id', 'content_type')
@@ -226,3 +229,24 @@ class SharedListPost(models.Model):
     def __str__(self):
         return f"Shared list '{self.list.name}' by @{self.user.username} at {self.timestamp.strftime('%Y-%m-%d %H:%M')}"
     
+
+class Vote(models.Model):
+    """Thumbs up/down votes on feed items (reviews, list items, shared posts)."""
+    class VoteType(models.IntegerChoices):
+        UPVOTE = 1, 'Upvote'
+        DOWNVOTE = -1, 'Downvote'
+ 
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='votes')
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.PositiveIntegerField()
+    content_object = GenericForeignKey('content_type', 'object_id')
+    vote_type = models.IntegerField(choices=VoteType.choices)
+    timestamp = models.DateTimeField(auto_now_add=True)
+ 
+    class Meta:
+        unique_together = ('user', 'content_type', 'object_id')
+        ordering = ['-timestamp']
+ 
+    def __str__(self):
+        label = 'Upvote' if self.vote_type == 1 else 'Downvote'
+        return f'{label} by {self.user.username} on {self.content_object}'

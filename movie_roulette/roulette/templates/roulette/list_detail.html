@@ -36,23 +36,31 @@
 
         {# --- Owner Controls Section (no changes needed) --- #}
         {% if is_owner %}
-        <div class="mb-6 p-4 bg-gray-700 rounded-lg space-y-4">
-            <h3 class="text-lg font-semibold border-b border-gray-600 pb-2">List Settings</h3>
-            <div class="flex items-center justify-between">
-                <label for="public-toggle" class="font-medium text-gray-300">Public List:</label>
-                <div class="relative"> <input type="checkbox" id="public-toggle" class="toggle-checkbox sr-only" {% if list.is_public %}checked{% endif %}> <label for="public-toggle" class="toggle-label"></label> </div>
-            </div>
-            <p id="public-toggle-message" class="text-sm text-center min-h-[20px]"></p> {# Kept for 'Updating...' text #}
-            <details class="bg-gray-800 rounded">
-                <summary class="cursor-pointer font-semibold p-3 hover:bg-gray-600 rounded-t transition-colors"> <i class="fas fa-share mr-2"></i> Share to Feed </summary>
-                <form id="share-list-form" action="{% url 'roulette:list_share_feed' list_id=list.id %}" method="POST" class="p-3 border-t border-gray-700 space-y-3">
-                    {% csrf_token %}
-                    <div> {{ share_form.message }} <div id="share-form-errors" class="text-xs text-red-400 mt-1"></div> </div>
-                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded text-sm"> Share Now </button>
-                </form>
-            </details>
+    <div class="mb-6 p-4 bg-gray-700 rounded-lg space-y-4">
+        <h3 class="text-lg font-semibold border-b border-gray-600 pb-2">List Settings</h3>
+        <div class="flex items-center justify-between">
+            <label for="public-toggle" class="font-medium text-gray-300">Public List:</label>
+            <div class="relative"> <input type="checkbox" id="public-toggle" class="toggle-checkbox sr-only" {% if list.is_public %}checked{% endif %}> <label for="public-toggle" class="toggle-label"></label> </div>
         </div>
-        {% endif %}
+        <p id="public-toggle-message" class="text-sm text-center min-h-[20px]"></p>
+        {# -- Moved Share Button Out -- #}
+    </div>
+    {% endif %}
+    {# --- End Owner-Specific Settings --- #}
+
+    {# --- Share Section (Visible to Owner OR if List is Public) --- #}
+    {% if can_share %}
+    <div class="mb-6 p-4 bg-gray-700 rounded-lg"> {# Optional: Keep styling or adjust #}
+         <details class="bg-gray-800 rounded">
+            <summary class="cursor-pointer font-semibold p-3 hover:bg-gray-600 rounded-t transition-colors"> <i class="fas fa-share mr-2"></i> Share to Feed </summary>
+            <form id="share-list-form" action="{% url 'roulette:list_share_feed' list_id=list.id %}" method="POST" class="p-3 border-t border-gray-700 space-y-3">
+                {% csrf_token %}
+                <div> {{ share_form.message }} <div id="share-form-errors" class="text-xs text-red-400 mt-1"></div> </div>
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded text-sm"> Share Now </button>
+            </form>
+        </details>
+    </div>
+    {% endif %}
         {# --- End Owner Controls --- #}
 
         {# --- REMOVED Django messages block --- #}

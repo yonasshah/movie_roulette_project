@@ -1,559 +1,450 @@
 {% extends 'roulette/base.html' %}
-{% load static %} {% comment %} Keep load static {% endcomment %}
+{% load static %}
 
-{% block title %}🎲 Movie Roulette{% endblock %}
+{% block title %}🎬 Movie Roulette{% endblock %}
+{% block nav_home %}nav-pill-active{% endblock %}
 
 {% block style %}
-        .movie-card { background-color: #1f2937; border: 1px solid #374151; transform: scale(0); transition: transform 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55); }
-        .movie-card.show { transform: scale(1); }
-        .spinner-container { perspective: 800px; }
-        .spinner { width: 150px; height: 150px; position: relative; transform-style: preserve-3d; animation: spin 8s infinite linear; display: none; }
-        .spinner.spinning { display: block; animation: spin 1s infinite linear; }
-        @keyframes spin { from { transform: rotateY(0deg); } to { transform: rotateY(360deg); } }
-        .tab { cursor: pointer; border-bottom: 2px solid transparent; }
-        .tab.active { border-bottom-color: #4f46e5; color: #f3f4f6; }
-        /* Toggle Switch Styles */
-        .toggle-label { display: inline-block; cursor: pointer; }
-        .toggle-label input { display: none; }
-        .toggle-slider { background-color: #374151; padding: 4px; border-radius: 9999px; display: flex; position: relative; }
-        .toggle-option { padding: 6px 16px; color: #9ca3af; font-weight: 600; z-index: 10; transition: color 0.2s; }
-        .toggle-label input:checked + .toggle-slider .toggle-option:first-child {
-        color: #f3f4f6; /* Sets Movies text to white */}
-        .toggle-label input:not(:checked) + .toggle-slider .toggle-option:last-child {
-        color: #f3f4f6; /* Sets TV Shows text to white */ }
-        .toggle-bg { position: absolute; top: 4px; left: 4px; width: calc(50% - 4px); height: calc(100% - 8px); background-color: #4f46e5; border-radius: 9999px; transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
-        .toggle-label input:not(:checked) + .toggle-slider .toggle-bg { transform: translateX(100%); }
+.result-card {
+    transform: scale(0.96);
+    opacity: 0;
+    transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.result-card.show { transform: scale(1); opacity: 1; }
+
+.spinner-box { width: 40px; height: 40px; display: none; }
+.spinner-box.spinning {
+    display: block;
+    animation: spinY 0.8s infinite linear;
+}
+@keyframes spinY { from { transform: rotateY(0deg); } to { transform: rotateY(360deg); } }
+
+/* Toggle */
+.toggle-pill { display: inline-flex; gap: 2px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 3px; }
+.toggle-opt { padding: 8px 28px; border-radius: 8px; font-size: 13px; font-weight: 500; color: #6b7280; cursor: pointer; transition: all 0.2s; user-select: none; }
+.toggle-opt.active { background: #6366f1; color: #fff; box-shadow: 0 0 20px rgba(99,102,241,0.3); }
+
+/* Tabs */
+.cx-tab { cursor: pointer; padding: 12px 24px; font-size: 13px; font-weight: 500; color: #4b5563; border-bottom: 2px solid transparent; transition: all 0.2s; margin-bottom: -1px; }
+.cx-tab:hover { color: #9ca3af; }
+.cx-tab.active { color: #e5e7eb; border-bottom-color: #6366f1; }
+
+/* Spin button */
+.spin-btn-wrap { position: relative; display: inline-block; }
+.spin-btn-wrap::before {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border-radius: 18px;
+    background: linear-gradient(135deg, #6366f1, #7c3aed);
+    opacity: 0.25;
+    filter: blur(24px);
+    transition: opacity 0.3s;
+    z-index: 0;
+}
+.spin-btn-wrap:hover::before { opacity: 0.45; }
+.spin-glow {
+    position: relative; z-index: 1;
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 16px 52px; border-radius: 14px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 18px; font-weight: 600; letter-spacing: -0.3px;
+    color: #fff;
+    background: linear-gradient(135deg, #6366f1, #7c3aed);
+    border: none; cursor: pointer;
+    box-shadow: 0 0 40px rgba(99,102,241,0.2), 0 0 80px rgba(99,102,241,0.08);
+    transition: all 0.2s;
+}
+.spin-glow:hover { transform: translateY(-2px); box-shadow: 0 0 50px rgba(99,102,241,0.3), 0 0 100px rgba(99,102,241,0.12); }
+.spin-glow:active { transform: translateY(0) scale(0.97); }
+.spin-glow:disabled { opacity: 0.6; cursor: wait; transform: none; }
+
+/* Action icons */
+.act-icon {
+    width: 40px; height: 40px; border-radius: 10px;
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; color: #6b7280; cursor: pointer; transition: all 0.15s;
+}
+.act-icon:hover { background: rgba(255,255,255,0.08); color: #e5e7eb; }
+.act-icon.fav-on { color: #ef4444; background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.2); }
+.act-icon.watch-on { color: #818cf8; background: rgba(99,102,241,0.1); border-color: rgba(99,102,241,0.2); }
+
+/* List rows */
+.list-row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 10px; transition: background 0.15s; }
+.list-row:hover { background: rgba(255,255,255,0.03); }
+.list-row .row-remove { opacity: 0; transition: opacity 0.15s; width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #4b5563; font-size: 11px; cursor: pointer; }
+.list-row:hover .row-remove { opacity: 1; }
+.list-row .row-remove:hover { background: rgba(239,68,68,0.1); color: #ef4444; }
+
+/* Filter */
+.filter-wrap summary { list-style: none; }
+.filter-wrap summary::-webkit-details-marker { display: none; }
+.filter-wrap[open] .chev { transform: rotate(180deg); }
+.fx-select {
+    width: 100%; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 8px; padding: 8px 12px; color: #e5e7eb; font-size: 13px; outline: none;
+    -webkit-appearance: none; transition: border-color 0.15s;
+}
+.fx-select:focus { border-color: rgba(99,102,241,0.4); }
+.fx-select option { background: #131420; color: #e5e7eb; }
 {% endblock %}
 
 {% block content %}
-        <div class="bg-gray-800 p-6 rounded-lg mb-6"> {% comment %} Removed data- attributes {% endcomment %}
+<div class="max-w-3xl mx-auto">
 
-            <div class="flex items-center justify-center mb-6">
-                <label class="toggle-label">
-                    <input type="checkbox" id="content-type-toggle" checked>
-                    <div class="toggle-slider">
-                        <div class="toggle-bg"></div>
-                        <div class="toggle-option">Movies</div>
-                        <div class="toggle-option">TV Shows</div>
-                    </div>
-                </label>
-            </div>
-            <details>
-                <summary class="cursor-pointer font-semibold text-white text-xl flex items-center p-2 rounded-md hover:bg-gray-700 transition-colors">
-                    <i class="fas fa-filter mr-3 text-indigo-400"></i>
-                    Filter Options
-                </summary>
+    {# ===== HERO ===== #}
+    <div class="text-center pt-6 pb-2">
+        <h1 class="font-display text-4xl md:text-5xl font-bold tracking-tight leading-tight mb-2">
+            What should you <span class="bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">watch tonight</span>?
+        </h1>
+        <p class="text-gray-500 text-[15px]">Spin the reel and discover your next obsession</p>
+    </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4 p-2">
-                    <div>
-                        <label for="region-select" class="block text-sm font-medium text-gray-300 mb-1">Region</label>
-                        <select id="region-select" class="w-full bg-gray-700 rounded-md p-2">
-                            <option value="US">United States</option>
-                            <option value="GB">United Kingdom</option>
-                            <option value="CA">Canada</option>
-                            <option value="AU">Australia</option>
-                            <option value="DE">Germany</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="genre-select" class="block text-sm font-medium text-gray-300 mb-1">Genre</label>
-                        <select id="genre-select" class="w-full bg-gray-700 rounded-md p-2"></select>
-                    </div>
-
-                    <div>
-                        <label for="year-select" class="block text-sm font-medium text-gray-300 mb-1">Released After</label>
-                        <input type="range" id="year-select" min="1950" max="2025" value="1990" class="w-full">
-                        <span id="year-label" class="text-center block text-sm text-gray-400">1990</span>
-                    </div>
-                    <div>
-                        <label for="rating-select" class="block text-sm font-medium text-gray-300 mb-1">Minimum Rating</label>
-                        <input type="range" id="rating-select" min="0" max="10" value="0" step="0.5" class="w-full">
-                        <span id="rating-label" class="text-center block text-sm text-gray-400">Any</span>
-                    </div>
-
-                    <div class="md:col-span-2">
-                        <label class="block text-sm font-medium text-gray-300 mb-2">Platform</label>
-                        <div id="platform-select" class="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-2">
-                            <label class="flex items-center space-x-2"><input type="checkbox" name="platform" value="8" class="form-checkbox bg-gray-900 border-gray-700 rounded text-indigo-600"><span>Netflix</span></label>
-                            <label class="flex items-center space-x-2"><input type="checkbox" name="platform" value="9" class="form-checkbox bg-gray-900 border-gray-700 rounded text-indigo-600"><span>Prime Video</span></label>
-                            <label class="flex items-center space-x-2"><input type="checkbox" name="platform" value="337" class="form-checkbox bg-gray-900 border-gray-700 rounded text-indigo-600"><span>Disney+</span></label>
-                            <label class="flex items-center space-x-2"><input type="checkbox" name="platform" value="384" class="form-checkbox bg-gray-900 border-gray-700 rounded text-indigo-600"><span>HBO Max</span></label>
-                        </div>
-                    </div>
-                </div>
-            </details>
+    {# ===== TOGGLE ===== #}
+    <div class="flex justify-center py-6">
+        <div class="toggle-pill" id="type-toggle">
+            <div class="toggle-opt active" data-val="movie">Movies</div>
+            <div class="toggle-opt" data-val="tv">TV Shows</div>
         </div>
+    </div>
 
-        <div class="text-center my-4">
-            <button id="spin-btn" class="bg-indigo-600 text-white font-bold py-3 px-8 rounded-full text-xl transform hover:scale-105 transition-transform"><i class="fas fa-dice-d20 mr-2"></i>Spin!</button>
-            <div class="spinner-container mt-2 h-20 flex justify-center items-center"><div id="spinner" class="spinner"></div></div>
-        </div>
-
-        <div id="movie-result" class="movie-card rounded-lg overflow-hidden shadow-2xl max-w-3xl mx-auto"></div>
-
-        <div class="mt-8 max-w-3xl mx-auto">
-            <div class="flex border-b border-gray-700">
-                <div id="tab-watchlist" class="tab text-gray-400 py-2 px-6 font-semibold active">Watchlist</div>
-                <div id="tab-favorites" class="tab text-gray-400 py-2 px-6 font-semibold">Favorites</div>
-                <div id="tab-history" class="tab text-gray-400 py-2 px-6 font-semibold">History</div>
-            </div>
-            <div id="favorites-content" class="py-4 hidden"></div>
-            <div id="watchlist-content" class="py-4"></div>
-            <div id="history-content" class="py-4 hidden"></div>
-        </div>
-
-        {# --- Add to List Modal --- #}
-        <div id="add-to-list-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden px-4">
-            <div class="bg-gray-800 p-6 rounded-lg shadow-xl max-w-sm w-full border border-gray-700">
-                <h3 class="text-xl font-semibold mb-5 text-white border-b border-gray-700 pb-3">Add to Custom List</h3>
-
-                <div class="mb-5">
-                    <label class="block text-sm font-medium text-gray-300 mb-2">Select an existing list:</label>
-                    <div id="custom-lists-container" class="custom-scrollbar space-y-2 max-h-40 overflow-y-auto border border-gray-600 bg-gray-900 rounded p-2">
-                        <p class="text-gray-400 text-sm p-2">Loading lists...</p>
+    {# ===== FILTERS ===== #}
+    <details class="filter-wrap cx-card mb-6">
+        <summary class="flex items-center justify-between cursor-pointer px-5 py-3.5 hover:bg-white/[0.015] rounded-[14px] transition-colors">
+            <span class="flex items-center gap-2 text-sm font-medium text-gray-400">
+                <i class="fas fa-sliders-h text-indigo-400 text-xs"></i>Filters
+            </span>
+            <i class="fas fa-chevron-down chev text-[10px] text-gray-600 transition-transform duration-200"></i>
+        </summary>
+        <div class="px-5 pb-5 pt-1">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label for="region-select" class="block text-[11px] text-gray-600 uppercase tracking-wider font-semibold mb-1.5">Region</label>
+                    <select id="region-select" class="fx-select">
+                        <option value="US">United States</option>
+                        <option value="GB">United Kingdom</option>
+                        <option value="CA">Canada</option>
+                        <option value="AU">Australia</option>
+                        <option value="DE">Germany</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="genre-select" class="block text-[11px] text-gray-600 uppercase tracking-wider font-semibold mb-1.5">Genre</label>
+                    <select id="genre-select" class="fx-select"></select>
+                </div>
+                <div>
+                    <label class="block text-[11px] text-gray-600 uppercase tracking-wider font-semibold mb-1.5">Year</label>
+                    <input type="range" id="year-select" min="1950" max="2025" value="1990" class="w-full accent-indigo-500">
+                    <span id="year-label" class="block text-center text-xs text-gray-600 mt-1">After 1990</span>
+                </div>
+                <div>
+                    <label class="block text-[11px] text-gray-600 uppercase tracking-wider font-semibold mb-1.5">Rating</label>
+                    <input type="range" id="rating-select" min="0" max="10" value="0" step="0.5" class="w-full accent-indigo-500">
+                    <span id="rating-label" class="block text-center text-xs text-gray-600 mt-1">Any</span>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-[11px] text-gray-600 uppercase tracking-wider font-semibold mb-2">Platform</label>
+                    <div id="platform-select" class="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-2">
+                        <label class="flex items-center gap-2 text-sm text-gray-400 cursor-pointer"><input type="checkbox" name="platform" value="8" class="accent-indigo-500 rounded"><span>Netflix</span></label>
+                        <label class="flex items-center gap-2 text-sm text-gray-400 cursor-pointer"><input type="checkbox" name="platform" value="9" class="accent-indigo-500 rounded"><span>Prime Video</span></label>
+                        <label class="flex items-center gap-2 text-sm text-gray-400 cursor-pointer"><input type="checkbox" name="platform" value="337" class="accent-indigo-500 rounded"><span>Disney+</span></label>
+                        <label class="flex items-center gap-2 text-sm text-gray-400 cursor-pointer"><input type="checkbox" name="platform" value="384" class="accent-indigo-500 rounded"><span>HBO Max</span></label>
                     </div>
-                </div>
-
-                <div class="mb-5 pt-5 border-t border-gray-700">
-                     <label for="new-list-name-input" class="block text-sm font-medium text-gray-300 mb-2">Or create a new list:</label>
-                     <div class="flex items-center space-x-2">
-                         <input type="text" id="new-list-name-input" placeholder="New list name..."
-                                class="flex-grow px-3 py-2 border border-gray-600 bg-gray-900 rounded-md placeholder-gray-500 text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 text-sm">
-                         <button id="create-and-add-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded text-sm whitespace-nowrap">
-                             Create & Add
-                         </button>
-                     </div>
-                </div>
-
-                {# Container for modal messages - primarily uses window.showToast now, but kept for temp 'info' messages #}
-                <div id="modal-message-container" class="mb-4 text-sm min-h-[20px]"></div>
-
-                <div class="flex justify-end pt-4 border-t border-gray-700">
-                    <button id="cancel-add-to-list" class="bg-transparent border border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white font-bold py-2 px-4 rounded text-sm transition-colors">Cancel</button>
                 </div>
             </div>
         </div>
-        {# --- END MODAL --- #}
+    </details>
+
+    {# ===== SPIN ===== #}
+    <div class="text-center py-8">
+        <div class="spin-btn-wrap">
+            <button id="spin-btn" class="spin-glow">
+                <i class="fas fa-dice-d20 text-xl"></i>Spin the reel
+            </button>
+        </div>
+        <div class="mt-5 h-12 flex justify-center items-center">
+            <div id="spinner" class="spinner-box">
+                <div class="w-full h-full rounded-lg bg-gradient-to-br from-indigo-500/30 to-purple-500/30 border border-indigo-500/40"></div>
+            </div>
+        </div>
+    </div>
+
+    {# ===== RESULT ===== #}
+    <div id="movie-result" class="result-card cx-card overflow-hidden"></div>
+
+    {# ===== TABS ===== #}
+    <div class="mt-12">
+        <div class="flex border-b border-white/[0.06]">
+            <div id="tab-watchlist" class="cx-tab active">Watchlist</div>
+            <div id="tab-favorites" class="cx-tab">Favorites</div>
+            <div id="tab-history" class="cx-tab">History</div>
+        </div>
+        <div id="watchlist-content" class="py-4"></div>
+        <div id="favorites-content" class="py-4 hidden"></div>
+        <div id="history-content" class="py-4 hidden"></div>
+    </div>
+</div>
+
+{# ===== MODAL ===== #}
+<div id="add-to-list-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 hidden px-4">
+    <div class="cx-card p-6 max-w-sm w-full" style="border-color:rgba(255,255,255,0.08);animation:slideUp .3s ease-out">
+        <h3 class="font-display text-lg font-semibold text-white mb-5 pb-3 border-b border-white/[0.06]">Add to list</h3>
+        <div class="mb-5">
+            <label class="block text-[11px] text-gray-600 uppercase tracking-wider font-semibold mb-2">Select a list</label>
+            <div id="custom-lists-container" class="custom-scrollbar space-y-1 max-h-40 overflow-y-auto bg-white/[0.02] border border-white/[0.06] rounded-lg p-2">
+                <p class="text-gray-600 text-sm p-2">Loading lists...</p>
+            </div>
+        </div>
+        <div class="mb-5 pt-4 border-t border-white/[0.06]">
+            <label class="block text-[11px] text-gray-600 uppercase tracking-wider font-semibold mb-2">Or create new</label>
+            <div class="flex items-center gap-2">
+                <input type="text" id="new-list-name-input" placeholder="List name..." class="flex-grow px-3 py-2 bg-white/[0.04] border border-white/[0.06] rounded-lg text-sm text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500/40 transition-colors">
+                <button id="create-and-add-btn" class="bg-green-600 hover:bg-green-500 text-white font-medium py-2 px-4 rounded-lg text-sm whitespace-nowrap transition-colors">Create & add</button>
+            </div>
+        </div>
+        <div id="modal-message-container" class="mb-4 text-sm min-h-[20px]"></div>
+        <div class="flex justify-end pt-3 border-t border-white/[0.06]">
+            <button id="cancel-add-to-list" class="px-5 py-2 rounded-lg text-sm text-gray-400 border border-white/[0.06] hover:bg-white/[0.04] hover:text-white transition-all">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<style>@keyframes slideUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}</style>
 {% endblock %}
 
 {% block scripts %}
-    {{ block.super }} {# Includes base.html script with window.showToast #}
+{{ block.super }}
+<script>
+(function() {
+    'use strict';
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Variables (keep as is)
-            const csrfToken = '{{ csrf_token }}';
-            const tmdbApiKey = '{{ settings.TMDB_API_KEY }}';
-            const spinBtn = document.getElementById('spin-btn');
-            const spinner = document.getElementById('spinner');
-            const movieResult = document.getElementById('movie-result');
-            const contentTypeToggle = document.getElementById('content-type-toggle');
-            const genreSelect = document.getElementById('genre-select');
-            const platformSelect = document.getElementById('platform-select');
-            const yearSelect = document.getElementById('year-select');
-            const yearLabel = document.getElementById('year-label');
-            const tabFavorites = document.getElementById('tab-favorites');
-            const tabWatchlist = document.getElementById('tab-watchlist');
-            const tabHistory = document.getElementById('tab-history');
-            const favoritesContent = document.getElementById('favorites-content');
-            const watchlistContent = document.getElementById('watchlist-content');
-            const historyContent = document.getElementById('history-content');
-            let currentContent = null;
-            const ratingSelect = document.getElementById('rating-select');
-            const ratingLabel = document.getElementById('rating-label');
-            const regionSelect = document.getElementById('region-select');
-            const modal = document.getElementById('add-to-list-modal');
-            const cancelBtn = document.getElementById('cancel-add-to-list');
-            const listsContainer = document.getElementById('custom-lists-container');
-            const modalMessageContainer = document.getElementById('modal-message-container'); // Keep for potential temporary messages
-            const newListNameInput = document.getElementById('new-list-name-input');
-            const createAndAddBtn = document.getElementById('create-and-add-btn');
+    var csrfToken = '{{ csrf_token }}';
+    var tmdbApiKey = '{{ settings.TMDB_API_KEY }}';
+    var URLS = {
+        login:"{% url 'users:login' %}", random:"{% url 'roulette:get_random_content' %}",
+        lists:"{% url 'roulette:get_user_lists' %}", favToggle:"{% url 'roulette:toggle_favorite' %}",
+        watchToggle:"{% url 'roulette:toggle_watchlist' %}", addItem:"{% url 'roulette:list_add_item' %}",
+        createList:"{% url 'roulette:list_create' %}", allLists:"{% url 'roulette:list_all' %}"
+    };
 
-            // --- fetchWithAuth (keep as is) ---
-            async function fetchWithAuth(url, options = {}) {
-                const response = await fetch(url, options);
-                if (response.status === 403) {
-                    window.location.href = "{% url 'users:login' %}?next={{ request.path }}";
-                }
-                return response;
+    function $(s){return document.querySelector(s)} function $$(s){return document.querySelectorAll(s)}
+
+    var spinBtn=$('#spin-btn'), spinner=$('#spinner'), result=$('#movie-result'),
+        genreSelect=$('#genre-select'), yearSelect=$('#year-select'), yearLabel=$('#year-label'),
+        ratingSelect=$('#rating-select'), ratingLabel=$('#rating-label'), regionSelect=$('#region-select'),
+        tabF=$('#tab-favorites'), tabW=$('#tab-watchlist'), tabH=$('#tab-history'),
+        cF=$('#favorites-content'), cW=$('#watchlist-content'), cH=$('#history-content'),
+        modal=$('#add-to-list-modal'), modalCancel=$('#cancel-add-to-list'),
+        listsCont=$('#custom-lists-container'), modalMsg=$('#modal-message-container'),
+        newInput=$('#new-list-name-input'), createBtn=$('#create-and-add-btn');
+
+    var contentType = 'movie';
+    var currentContent = null;
+
+    // Toggle
+    var togglePill = $('#type-toggle');
+    togglePill.addEventListener('click', function(e) {
+        var opt = e.target.closest('.toggle-opt');
+        if (!opt) return;
+        togglePill.querySelectorAll('.toggle-opt').forEach(function(o){ o.classList.remove('active'); });
+        opt.classList.add('active');
+        contentType = opt.dataset.val;
+        fetchGenres();
+    });
+
+    function fetchAuth(url, opts) {
+        return fetch(url, opts||{}).then(function(r){ if(r.status===403)window.location.href=URLS.login+'?next='+encodeURIComponent(location.pathname); return r; });
+    }
+    function esc(s){ if(!s)return''; var d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+    function contentInfo() {
+        if(!currentContent)return null;
+        var m=contentType==='movie', rd=m?currentContent.release_date:currentContent.first_air_date;
+        return {
+            id:currentContent.id, type:contentType,
+            title:m?currentContent.title:currentContent.name,
+            poster:currentContent.poster_path||'',
+            year:rd?new Date(rd).getFullYear().toString():'N/A',
+            overview:currentContent.overview||''
+        };
+    }
+
+    // Genres
+    function fetchGenres() {
+        fetch('https://api.themoviedb.org/3/genre/'+contentType+'/list?api_key='+tmdbApiKey+'&language=en-US')
+        .then(function(r){return r.json()}).then(function(d){
+            genreSelect.innerHTML='<option value="">Any genre</option>';
+            (d.genres||[]).forEach(function(g){ genreSelect.innerHTML+='<option value="'+g.id+'">'+esc(g.name)+'</option>'; });
+        }).catch(function(e){console.error(e);});
+    }
+
+    // Spin
+    function spin() {
+        spinner.classList.add('spinning'); result.classList.remove('show'); spinBtn.disabled=true;
+        var plats=Array.from($$('#platform-select input:checked')).map(function(c){return c.value}).join('|');
+        var url=URLS.random+'?content_type='+contentType+'&watch_region='+regionSelect.value+'&genre='+genreSelect.value
+            +'&with_watch_providers='+plats+'&primary_release_date.gte='+yearSelect.value+'&vote_average_gte='+ratingSelect.value;
+        fetchAuth(url).then(function(r){
+            if(!r.ok)return r.json().then(function(d){throw new Error(d.error||'No results.');});
+            return r.json();
+        }).then(function(d){ currentContent=d; showResult(d); updateLists(); })
+        .catch(function(e){ window.showToast(e.message,'error'); result.innerHTML=''; })
+        .finally(function(){ spinner.classList.remove('spinning'); spinBtn.disabled=false; });
+    }
+
+    // Display result
+    function showResult(c) {
+        var m=contentType==='movie', title=m?c.title:c.name, date=m?c.release_date:c.first_air_date,
+            rt=m?c.runtime:(c.episode_run_time?c.episode_run_time[0]:null),
+            poster=c.poster_path?'https://image.tmdb.org/t/p/w500'+c.poster_path:'',
+            trailer=(c.videos&&c.videos.results)?c.videos.results.find(function(v){return v.site==='YouTube'&&v.type==='Trailer'}):null,
+            region=regionSelect.value,
+            pd=c['watch/providers']&&c['watch/providers'].results&&c['watch/providers'].results[region],
+            provs=pd&&pd.flatrate?pd.flatrate.map(function(p){return'<img src="https://image.tmdb.org/t/p/w92'+p.logo_path+'" title="'+esc(p.provider_name)+'" class="w-8 h-8 rounded-lg">'}).join(''):'<span class="text-xs text-gray-600">Not available in '+region+'</span>',
+            detailUrl='/content/'+contentType+'/'+c.id+'/';
+
+        result.innerHTML=
+        '<div class="md:flex">'+
+            (poster?'<a href="'+detailUrl+'" class="block flex-shrink-0 relative overflow-hidden"><img class="w-full h-64 md:h-auto md:w-52 object-cover" src="'+poster+'" alt="'+esc(title)+'"><div class="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-[#050507]/80 hidden md:block"></div></a>':
+            '<div class="w-full md:w-52 h-64 bg-cx-surface flex items-center justify-center flex-shrink-0"><span class="text-gray-700 text-sm">No poster</span></div>')+
+            '<div class="p-5 md:p-6 flex flex-col justify-between flex-1">'+
+                '<div>'+
+                    '<a href="'+detailUrl+'" class="hover:underline decoration-indigo-400/50"><h2 class="font-display text-2xl font-bold tracking-tight text-white mb-1">'+esc(title)+'</h2></a>'+
+                    '<div class="flex items-center gap-3 text-sm text-gray-500 mb-3 flex-wrap">'+
+                        '<span>'+(date?new Date(date).getFullYear():'N/A')+'</span>'+
+                        (rt?'<span>'+rt+' min</span>':'')+
+                        '<span class="text-amber-400 font-semibold flex items-center gap-1"><i class="fas fa-star text-[10px]"></i>'+c.vote_average.toFixed(1)+'</span>'+
+                    '</div>'+
+                    '<p class="text-sm text-gray-400 leading-relaxed mb-4" style="display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">'+esc(c.overview)+'</p>'+
+                '</div>'+
+                '<div>'+
+                    '<p class="text-[11px] text-gray-600 uppercase tracking-wider font-semibold mb-2">Streaming in '+region+'</p>'+
+                    '<div class="flex items-center gap-2 mb-5">'+provs+'</div>'+
+                    '<div class="flex items-center gap-2 flex-wrap">'+
+                        (trailer?'<a href="https://www.youtube.com/watch?v='+trailer.key+'" target="_blank" class="flex items-center gap-2 bg-red-600 hover:bg-red-500 text-white font-semibold py-2.5 px-5 rounded-lg text-sm transition-colors"><i class="fab fa-youtube"></i>Trailer</a>':
+                        '<span class="bg-white/[0.04] text-gray-600 font-medium py-2.5 px-5 rounded-lg text-sm cursor-not-allowed">No trailer</span>')+
+                        '<button id="add-to-list-btn" class="act-icon" title="Add to list"><i class="fas fa-plus"></i></button>'+
+                        '<button id="watchlist-btn" class="act-icon" title="Watchlist"><i class="fas fa-bookmark"></i></button>'+
+                        '<button id="like-btn" class="act-icon" title="Favorite"><i class="fas fa-heart"></i></button>'+
+                        '<button id="spin-again-btn" class="act-icon" title="Spin again"><i class="fas fa-redo"></i></button>'+
+                    '</div>'+
+                '</div>'+
+            '</div>'+
+        '</div>';
+
+        result.classList.add('show');
+        var ab=$('#add-to-list-btn'); if(ab)ab.addEventListener('click',openModal);
+        $('#spin-again-btn').addEventListener('click',spin);
+        $('#like-btn').addEventListener('click',function(){toggleList('favorite')});
+        $('#watchlist-btn').addEventListener('click',function(){toggleList('watchlist')});
+    }
+
+    // Lists
+    function updateLists() {
+        var ci=contentInfo();
+        var url=URLS.lists+'?tmdb_id='+(ci?ci.id:'')+'&content_type='+(ci?ci.type:'');
+        fetchAuth(url).then(function(r){return r.json()}).then(function(d){
+            renderList(d.favorites,cF,'favorite'); renderList(d.watchlist,cW,'watchlist'); renderList(d.history,cH,false);
+            if(currentContent){
+                var lb=$('#like-btn'),wb=$('#watchlist-btn');
+                if(lb){lb.classList.toggle('fav-on',d.is_favorite);}
+                if(wb){wb.classList.toggle('watch-on',d.is_watchlist);}
             }
-
-            // --- spinRoulette (Updated to use window.showToast for errors) ---
-             async function spinRoulette() {
-                spinner.classList.add('spinning');
-                movieResult.classList.remove('show');
-                spinBtn.disabled = true;
-
-                const contentType = contentTypeToggle.checked ? 'movie' : 'tv';
-                const region = regionSelect.value;
-                const genre = genreSelect.value;
-                const selectedPlatforms = Array.from(platformSelect.querySelectorAll('input[name="platform"]:checked')).map(cb => cb.value).join('|');
-                const year = yearSelect.value;
-                const rating = ratingSelect.value;
-                const url = `{% url 'roulette:get_random_content' %}?content_type=${contentType}&watch_region=${region}&genre=${genre}&with_watch_providers=${selectedPlatforms}&primary_release_date.gte=${year}&vote_average_gte=${rating}`;
-
-                try {
-                    const response = await fetchWithAuth(url);
-                    if (!response.ok) {
-                        const errorData = await response.json();
-                        throw new Error(errorData.error || 'Failed to fetch content.');
-                    }
-                    const data = await response.json();
-                    currentContent = data;
-                    displayContent(data);
-                    updateUserLists(); // This updates buttons based on backend state
-                } catch (error) {
-                    console.error(error);
-                    // Use toast for error display instead of replacing movieResult HTML
-                    window.showToast(error.message, 'error'); // USE GLOBAL TOAST
-                    movieResult.innerHTML = ''; // Clear potential old result
-                } finally {
-                    spinner.classList.remove('spinning');
-                    spinBtn.disabled = false;
-                }
-            }
-
-
-            // --- fetchGenres (keep as is) ---
-            async function fetchGenres() {
-                const contentType = contentTypeToggle.checked ? 'movie' : 'tv';
-                try {
-                    const response = await fetch(`https://api.themoviedb.org/3/genre/${contentType}/list?api_key=${tmdbApiKey}&language=en-US`);
-                    const data = await response.json();
-                    genreSelect.innerHTML = '<option value="">Any Genre</option>';
-                    if (data.genres) {
-                        data.genres.forEach(genre => genreSelect.innerHTML += `<option value="${genre.id}">${genre.name}</option>`);
-                    } else { console.error("No genres found:", data); }
-                } catch (error) { console.error("Failed to fetch genres:", error); }
-            }
-
-            // --- updateUserLists (keep as is) ---
-            async function updateUserLists() {
-                const tmdbId = currentContent ? currentContent.id : null;
-                const contentType = currentContent ? currentContent.content_type : null;
-                const url = `{% url 'roulette:get_user_lists' %}?tmdb_id=${tmdbId || ''}&content_type=${contentType || ''}`;
-                const response = await fetchWithAuth(url);
-                if (!response.ok) return;
-                const data = await response.json();
-                renderList(data.favorites, favoritesContent, 'favorite');
-                renderList(data.watchlist, watchlistContent, 'watchlist');
-                renderList(data.history, historyContent, false);
-                if (currentContent) {
-                    updateLikeButton(data.is_favorite);
-                    updateWatchlistButton(data.is_watchlist);
-                }
-            }
-
-             // --- displayContent (keep as is) ---
-            function displayContent(content) {
-                const isMovie = content.content_type === 'movie';
-                const title = isMovie ? content.title : content.name;
-                const releaseDate = isMovie ? content.release_date : content.first_air_date;
-                const runtime = isMovie ? content.runtime : (content.episode_run_time ? content.episode_run_time[0] : null);
-                const posterUrl = content.poster_path ? `https://image.tmdb.org/t/p/w500${content.poster_path}` : 'https://placehold.co/500x750/1f2937/374151?text=No+Poster';
-                const trailer = content.videos?.results?.find(v => v.site === 'YouTube' && v.type === 'Trailer');
-                const region = regionSelect.value;
-                const providers = content['watch/providers']?.results?.[region]?.flatrate?.map(p => `<img src="https://image.tmdb.org/t/p/w92${p.logo_path}" title="${p.provider_name}" class="w-10 h-10 rounded-md">`).join('') || `<p class="text-sm text-gray-500">Not available for streaming in ${region}.</p>`;
-
-                movieResult.innerHTML = `
-                    <div class="md:flex">
-                        <img class="w-full h-96 md:h-auto md:w-64 object-cover" src="${posterUrl}">
-                        <div class="p-6 md:p-8 flex flex-col justify-between">
-                            <div>
-                                <h2 class="text-3xl font-bold mb-2">${title}</h2>
-                                <div class="flex items-center text-gray-400 text-sm mb-4 space-x-4">
-                                    <span>${releaseDate ? new Date(releaseDate).getFullYear() : 'N/A'}</span>
-                                    <span>${runtime ? `${runtime} min` : ''}</span>
-                                    <span><i class="fas fa-star text-yellow-400 mr-1"></i>${content.vote_average.toFixed(1)}</span>
-                                </div>
-                                <p class="text-gray-300 mb-4">${content.overview}</p>
-                            </div>
-                            <div>
-                                <p class="text-sm font-semibold text-gray-400 mb-2">Where to Watch (${region}):</p>
-                                <div class="flex items-center space-x-3 mb-6">${providers}</div>
-                                <div class="flex items-center space-x-4">
-                                    <a href="${trailer ? `https://www.youtube.com/watch?v=${trailer.key}` : '#'}" target="_blank" class="flex-1 bg-red-600 text-white text-center font-bold py-3 px-4 rounded-lg ${!trailer && 'opacity-50 cursor-not-allowed'}"><i class="fab fa-youtube mr-2"></i>Watch Trailer</a>
-                                    <button id="add-to-list-btn" class="text-2xl text-gray-400 hover:text-green-500" title="Add to Custom List"><i class="fas fa-plus-circle"></i></button>
-                                    <button id="watchlist-btn" class="text-2xl text-gray-400 hover:text-indigo-400"><i class="fas fa-bookmark"></i></button>
-                                    <button id="like-btn" class="text-2xl text-gray-400 hover:text-red-500"><i class="fas fa-heart"></i></button>
-                                    <button id="spin-again-btn" class="text-2xl text-gray-400 hover:text-indigo-400"><i class="fas fa-redo"></i></button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>`;
-                movieResult.classList.add('show');
-                const addBtn = document.getElementById('add-to-list-btn');
-                if (addBtn) addBtn.addEventListener('click', openAddToListModal);
-                document.getElementById('spin-again-btn').addEventListener('click', spinRoulette);
-                document.getElementById('like-btn').addEventListener('click', () => toggleList('favorite', false));
-                document.getElementById('watchlist-btn').addEventListener('click', () => toggleList('watchlist', false));
-            }
-
-            // --- renderList (keep as is) ---
-            function renderList(items, container, listType) {
-                let emptyMessage = 'No spin history yet.';
-                if (listType === 'favorite') emptyMessage = 'No favorites yet.';
-                if (listType === 'watchlist') emptyMessage = 'No items in watchlist yet.';
-                if (!items || items.length === 0) {
-                    container.innerHTML = `<p class="text-center text-gray-500">${emptyMessage}</p>`;
-                    return;
-                }
-                container.innerHTML = '';
-                items.forEach(item => {
-                    const el = document.createElement('div');
-                    el.className = 'flex items-center p-2 rounded-lg hover:bg-gray-800';
-                    let removeButton = '';
-                    if (listType === 'favorite') {
-                        removeButton = `<button data-tmdb-id="${item.tmdb_id}" data-content-type="${item.content_type}" class="remove-favorite-btn text-red-500 text-lg"><i class="fas fa-trash"></i></button>`;
-                    }
-                    if (listType === 'watchlist') {
-                        removeButton = `<button data-tmdb-id="${item.tmdb_id}" data-content-type="${item.content_type}" class="remove-watchlist-btn text-indigo-400 text-lg"><i class="fas fa-trash"></i></button>`;
-                    }
-                    el.innerHTML = `
-                        <img src="${item.poster_path ? `https://image.tmdb.org/t/p/w92${item.poster_path}` : 'https://placehold.co/92x138?text=N/A'}" class="w-10 h-16 object-cover rounded-md mr-4">
-                        <div class="flex-grow">
-                            <a href="/content/${item.content_type.toLowerCase()}/${item.tmdb_id}/" class="font-semibold hover:underline">${item.title}</a>
-                            <p class="text-sm text-gray-400">${item.release_year}</p>
-                        </div>
-                        ${removeButton}
-                    `;
-                    container.appendChild(el);
-                });
-            }
-
-            // --- updateLikeButton & updateWatchlistButton (keep as is) ---
-            function updateLikeButton(isFavorite) {
-                const likeBtnIcon = document.querySelector('#like-btn i');
-                if (likeBtnIcon) {
-                    likeBtnIcon.parentElement.classList.toggle('text-red-500', isFavorite);
-                    likeBtnIcon.parentElement.classList.toggle('text-gray-400', !isFavorite);
-                }
-            }
-            function updateWatchlistButton(isWatchlist) {
-                const watchlistBtnIcon = document.querySelector('#watchlist-btn i');
-                if (watchlistBtnIcon) {
-                    watchlistBtnIcon.parentElement.classList.toggle('text-indigo-400', isWatchlist);
-                    watchlistBtnIcon.parentElement.classList.toggle('text-gray-400', !isWatchlist);
-                }
-            }
-
-            // --- toggleList (Updated to optionally use window.showToast) ---
-            async function toggleList(listType, isRemove = false, tmdbId = null, contentType = null) {
-                const idToToggle = isRemove ? tmdbId : currentContent?.id;
-                if (!idToToggle) return;
-                const formData = new FormData();
-                formData.append('tmdb_id', idToToggle);
-                let url = '';
-                let successMessage = ''; // Define messages for toast
-                let failureMessage = '';
-
-                if (isRemove) {
-                    formData.append('content_type', contentType.toLowerCase());
-                } else if (currentContent) {
-                    const isMovie = currentContent.content_type === 'movie';
-                    const releaseDate = isMovie ? currentContent.release_date : currentContent.first_air_date;
-                    formData.append('content_type', currentContent.content_type);
-                    formData.append('title', isMovie ? currentContent.title : currentContent.name);
-                    formData.append('poster_path', currentContent.poster_path || '');
-                    formData.append('release_year', releaseDate ? new Date(releaseDate).getFullYear() : 'N/A');
-                } else { console.error("Cannot toggle list: currentContent is not defined."); return; }
-
-                if (listType === 'favorite') {
-                    url = `{% url 'roulette:toggle_favorite' %}`;
-                    successMessage = isRemove ? 'Removed from favorites' : 'Added to favorites';
-                    failureMessage = `Failed to toggle favorite`;
-                } else {
-                    url = `{% url 'roulette:toggle_watchlist' %}`;
-                    successMessage = isRemove ? 'Removed from watchlist' : 'Added to watchlist';
-                    failureMessage = `Failed to toggle watchlist`;
-                }
-
-                try {
-                    const response = await fetchWithAuth(url, { method: 'POST', headers: { 'X-CSRFToken': csrfToken }, body: formData });
-                    if (response.ok) {
-                        const data = await response.json();
-                        if (data.success) {
-                            updateUserLists(); // Still update visually
-                            // Show success toast only if NOT removing (visual feedback is enough for remove)
-                            if (!isRemove) {
-                                window.showToast(successMessage, 'success');
-                            }
-                        } else {
-                             window.showToast(data.error || failureMessage, 'error'); // Show specific error from backend or generic one
-                        }
-                    } else {
-                        // Handle non-OK HTTP responses (like 400, 500)
-                        window.showToast(`Error: ${response.statusText || failureMessage}`, 'error');
-                    }
-                } catch (error) {
-                    // Handle network errors
-                    console.error(`Network error toggling ${listType}:`, error);
-                    window.showToast('Network error occurred.', 'error');
-                }
-            }
-
-            // --- Modal Functions (open, close, load - keep as is) ---
-            function openAddToListModal() {
-                if (!currentContent) { window.showToast("Please spin first to get a movie or show.", "error"); return; } // Use toast instead of alert
-                newListNameInput.value = '';
-                modal.classList.remove('hidden');
-                loadUserLists();
-            }
-            function closeAddToListModal() {
-                modal.classList.add('hidden');
-                listsContainer.innerHTML = '<p class="text-gray-400">Loading lists...</p>';
-                if (modalMessageContainer) modalMessageContainer.innerHTML = ''; // Clear modal message container
-            }
-            async function loadUserLists() {
-                 try {
-                    const response = await fetch("{% url 'roulette:get_user_lists' %}");
-                    if (!response.ok) throw new Error('Failed to fetch lists');
-                    const data = await response.json();
-                    const customLists = data.custom_lists || [];
-                    listsContainer.innerHTML = '';
-                    if (customLists.length === 0) {
-                        listsContainer.innerHTML = '<p class="text-gray-400">You have no custom lists. <a href="{% url "roulette:list_all" %}" class="text-indigo-400 hover:underline">Create one?</a></p>';
-                    } else {
-                        customLists.forEach(list => {
-                            const button = document.createElement('button');
-                            button.textContent = list.name;
-                            button.dataset.listId = list.id;
-                            button.className = 'w-full text-left p-2 rounded hover:bg-gray-700 transition-colors';
-                            button.addEventListener('click', () => addItemToCustomList(list.id, list.name));
-                            listsContainer.appendChild(button);
-                        });
-                    }
-                } catch (error) {
-                    console.error("Error loading lists:", error);
-                    listsContainer.innerHTML = '<p class="text-red-400">Could not load your lists.</p>';
-                    window.showToast('Could not load your lists.', 'error'); // Inform user via toast
-                }
-            }
-
-            // --- addItemToCustomList (Updated to use window.showToast) ---
-            async function addItemToCustomList(listId, listName) {
-                 if (!currentContent) {
-                     window.showToast('No movie/show selected.', 'error'); // Use toast
-                     return;
-                 }
-                const formData = new FormData();
-                formData.append('list_id', listId);
-                const isMovie = currentContent.content_type === 'movie';
-                const releaseDate = isMovie ? currentContent.release_date : currentContent.first_air_date;
-                const title = isMovie ? currentContent.title : currentContent.name;
-                formData.append('tmdb_id', currentContent.id);
-                formData.append('content_type', currentContent.content_type);
-                formData.append('title', title);
-                formData.append('poster_path', currentContent.poster_path || '');
-                formData.append('release_year', releaseDate ? new Date(releaseDate).getFullYear() : 'N/A');
-
-                // Optional: show temporary message in modal while processing
-                if(modalMessageContainer) modalMessageContainer.innerHTML = `<div class="p-2 rounded text-center text-sm bg-blue-600 text-white">Adding '${title}' to '${listName}'...</div>`;
-
-                try {
-                    const response = await fetch("{% url 'roulette:list_add_item' %}", { method: 'POST', headers: { 'X-CSRFToken': csrfToken }, body: formData });
-                    const data = await response.json();
-                    window.showToast(data.message || data.error || 'An unknown error occurred.', data.success ? 'success' : 'error'); // Use toast
-                    if (data.success) {
-                        setTimeout(closeAddToListModal, 500); // Close quicker after toast appears
-                    } else {
-                        // Clear temporary modal message if error shown by toast
-                        if(modalMessageContainer) modalMessageContainer.innerHTML = '';
-                    }
-                } catch (error) {
-                    console.error("Error adding item:", error);
-                    window.showToast('A network error occurred while adding the item.', 'error'); // Use toast
-                    if(modalMessageContainer) modalMessageContainer.innerHTML = ''; // Clear temporary message
-                }
-            }
-
-            // --- createNewListAndAdd (Updated to use window.showToast) ---
-            async function createNewListAndAdd() {
-                const newName = newListNameInput.value.trim();
-                if (!newName) {
-                    window.showToast('Please enter a name for the new list.', 'error'); // Use toast
-                    return;
-                }
-                if (!currentContent) {
-                     window.showToast('Could not find content details to add.', 'error'); // Use toast
-                     return;
-                }
-
-                // Optional: show temporary message in modal
-                 if(modalMessageContainer) modalMessageContainer.innerHTML = `<div class="p-2 rounded text-center text-sm bg-blue-600 text-white">Creating list...</div>`;
-
-                const createFormData = new FormData();
-                createFormData.append('name', newName);
-
-                try {
-                    const createResponse = await fetch("{% url 'roulette:list_create' %}", { method: 'POST', headers: { 'X-CSRFToken': csrfToken }, body: createFormData });
-                    const createData = await createResponse.json();
-
-                    if (!createResponse.ok || !createData.success) {
-                        // Use error message from backend if available
-                        throw new Error(createData.error || 'Failed to create list.');
-                    }
-
-                    // Show success toast for creation
-                    window.showToast(createData.message, 'success');
-
-                    // Optional: Update temporary message before adding item
-                    if(modalMessageContainer) modalMessageContainer.innerHTML = `<div class="p-2 rounded text-center text-sm bg-blue-600 text-white">Now adding item...</div>`;
-                    await addItemToCustomList(createData.list.id, createData.list.name); // This function shows its own toasts
-
-                } catch (error) {
-                    console.error("Error creating list:", error);
-                    window.showToast(error.message || 'Could not create the list.', 'error'); // Use toast
-                     if(modalMessageContainer) modalMessageContainer.innerHTML = ''; // Clear temp message
-                }
-            }
-
-             // --- REMOVE displayModalMessage function ---
-
-            // --- Event Listener for remove buttons (keep as is) ---
-            document.body.addEventListener('click', function(event) {
-                const removeFavBtn = event.target.closest('.remove-favorite-btn');
-                if (removeFavBtn) {
-                    const tmdbId = removeFavBtn.dataset.tmdbId;
-                    const contentType = removeFavBtn.dataset.contentType;
-                    toggleList('favorite', true, tmdbId, contentType); // This function handles its own toasts
-                }
-                const removeWatchBtn = event.target.closest('.remove-watchlist-btn');
-                if (removeWatchBtn) {
-                    const tmdbId = removeWatchBtn.dataset.tmdbId;
-                    const contentType = removeWatchBtn.dataset.contentType;
-                    toggleList('watchlist', true, tmdbId, contentType); // This function handles its own toasts
-                }
-            });
-
-            // --- switchTab (keep as is) ---
-            function switchTab(tabName) {
-                tabFavorites.classList.remove('active', 'text-white'); tabFavorites.classList.add('text-gray-400');
-                tabWatchlist.classList.remove('active', 'text-white'); tabWatchlist.classList.add('text-gray-400');
-                tabHistory.classList.remove('active', 'text-white'); tabHistory.classList.add('text-gray-400');
-                favoritesContent.classList.add('hidden');
-                watchlistContent.classList.add('hidden');
-                historyContent.classList.add('hidden');
-                if (tabName === 'favorites') { tabFavorites.classList.add('active', 'text-white'); favoritesContent.classList.remove('hidden'); }
-                else if (tabName === 'watchlist') { tabWatchlist.classList.add('active', 'text-white'); watchlistContent.classList.remove('hidden'); }
-                else { tabHistory.classList.add('active', 'text-white'); historyContent.classList.remove('hidden'); }
-            }
-
-            // --- Event Listeners (keep as is) ---
-            yearSelect.addEventListener('input', () => yearLabel.textContent = `After ${yearSelect.value}`);
-            ratingSelect.addEventListener('input', () => { ratingLabel.textContent = ratingSelect.value > 0 ? `At least ${ratingSelect.value} / 10` : 'Any Rating'; });
-            spinBtn.addEventListener('click', spinRoulette);
-            tabFavorites.addEventListener('click', () => switchTab('favorites'));
-            tabWatchlist.addEventListener('click', () => switchTab('watchlist'));
-            tabHistory.addEventListener('click', () => switchTab('history'));
-            contentTypeToggle.addEventListener('change', fetchGenres);
-            if (cancelBtn) cancelBtn.addEventListener('click', closeAddToListModal);
-            if (createAndAddBtn) createAndAddBtn.addEventListener('click', createNewListAndAdd);
-            if (modal) { modal.addEventListener('click', function(event) { if (event.target === modal) { closeAddToListModal(); } }); }
-
-            // --- Initial calls (keep as is) ---
-            fetchGenres();
-            updateUserLists();
         });
-    </script>
+    }
+    function renderList(items,cont,type) {
+        var empty='No spin history yet.'; if(type==='favorite')empty='No favorites yet.'; if(type==='watchlist')empty='No items in watchlist yet.';
+        if(!items||!items.length){ cont.innerHTML='<p class="text-center text-gray-700 text-sm py-6">'+empty+'</p>'; return; }
+        cont.innerHTML='';
+        items.forEach(function(it){
+            var ps=it.poster_path?'https://image.tmdb.org/t/p/w92'+it.poster_path:'';
+            var du='/content/'+it.content_type.toLowerCase()+'/'+it.tmdb_id+'/';
+            var rm='';
+            if(type==='favorite')rm='<div class="row-remove" data-tmdb-id="'+it.tmdb_id+'" data-ct="'+it.content_type+'" data-type="favorite"><i class="fas fa-trash text-[10px]"></i></div>';
+            else if(type==='watchlist')rm='<div class="row-remove" data-tmdb-id="'+it.tmdb_id+'" data-ct="'+it.content_type+'" data-type="watchlist"><i class="fas fa-trash text-[10px]"></i></div>';
+            var el=document.createElement('div'); el.className='list-row';
+            el.innerHTML=(ps?'<img src="'+ps+'" class="w-9 h-[52px] object-cover rounded-md flex-shrink-0" alt="">':'<div class="w-9 h-[52px] bg-white/[0.03] rounded-md flex-shrink-0"></div>')+
+                '<div class="flex-grow min-w-0"><a href="'+du+'" class="text-sm font-medium text-gray-200 hover:text-indigo-400 transition-colors truncate block">'+esc(it.title)+'</a><p class="text-xs text-gray-600">'+esc(it.release_year)+'</p></div>'+rm;
+            cont.appendChild(el);
+        });
+    }
+
+    // Toggle fav/watchlist
+    function toggleList(type,isRm,tid,ct) {
+        var ci=contentInfo(), fd=new FormData();
+        if(isRm){fd.append('tmdb_id',tid);fd.append('content_type',ct.toLowerCase());}
+        else if(ci){fd.append('tmdb_id',ci.id);fd.append('content_type',ci.type);fd.append('title',ci.title);fd.append('poster_path',ci.poster);fd.append('release_year',ci.year);fd.append('overview',ci.overview);}
+        else return;
+        var url=(type==='favorite')?URLS.favToggle:URLS.watchToggle;
+        fetchAuth(url,{method:'POST',headers:{'X-CSRFToken':csrfToken},body:fd})
+        .then(function(r){return r.json()}).then(function(d){
+            if(d.success){updateLists();if(!isRm)window.showToast(type==='favorite'?(d.is_favorite?'Added to favorites':'Removed from favorites'):(d.is_watchlist?'Added to watchlist':'Removed from watchlist'),'success');}
+            else window.showToast(d.error||'Failed.','error');
+        }).catch(function(){window.showToast('Network error.','error');});
+    }
+
+    // Tabs
+    function switchTab(name) {
+        [tabF,tabW,tabH].forEach(function(t){t.classList.remove('active')});
+        [cF,cW,cH].forEach(function(c){c.classList.add('hidden')});
+        if(name==='favorites'){tabF.classList.add('active');cF.classList.remove('hidden');}
+        if(name==='watchlist'){tabW.classList.add('active');cW.classList.remove('hidden');}
+        if(name==='history'){tabH.classList.add('active');cH.classList.remove('hidden');}
+    }
+
+    // Modal
+    function openModal(){
+        if(!currentContent){window.showToast('Spin first to get something.','error');return;}
+        newInput.value=''; if(modalMsg)modalMsg.innerHTML=''; modal.classList.remove('hidden'); loadModalLists();
+    }
+    function closeModal(){ modal.classList.add('hidden'); listsCont.innerHTML='<p class="text-gray-600 text-sm p-2">Loading...</p>'; if(modalMsg)modalMsg.innerHTML=''; }
+    function loadModalLists(){
+        fetch(URLS.lists).then(function(r){return r.json()}).then(function(d){
+            var ls=d.custom_lists||[]; listsCont.innerHTML='';
+            if(!ls.length){listsCont.innerHTML='<p class="text-gray-600 text-sm p-2">No custom lists yet.</p>';return;}
+            ls.forEach(function(l){
+                var b=document.createElement('button'); b.textContent=l.name;
+                b.className='w-full text-left p-2.5 rounded-lg text-sm text-gray-400 hover:bg-white/[0.04] hover:text-white transition-colors';
+                b.addEventListener('click',function(){addToList(l.id,l.name)}); listsCont.appendChild(b);
+            });
+        }).catch(function(){listsCont.innerHTML='<p class="text-red-400 text-sm p-2">Error loading.</p>';});
+    }
+    function addToList(lid,lname){
+        var ci=contentInfo(); if(!ci)return;
+        var fd=new FormData(); fd.append('list_id',lid); fd.append('tmdb_id',ci.id); fd.append('content_type',ci.type); fd.append('title',ci.title); fd.append('poster_path',ci.poster); fd.append('release_year',ci.year); fd.append('overview',ci.overview);
+        if(modalMsg)modalMsg.innerHTML='<div class="p-2 rounded-lg text-center text-sm bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">Adding...</div>';
+        fetch(URLS.addItem,{method:'POST',headers:{'X-CSRFToken':csrfToken},body:fd}).then(function(r){return r.json()}).then(function(d){
+            window.showToast(d.message||d.error||'Done.',d.success?'success':'error');
+            if(d.success)setTimeout(closeModal,500); else if(modalMsg)modalMsg.innerHTML='';
+        }).catch(function(){window.showToast('Network error.','error');if(modalMsg)modalMsg.innerHTML='';});
+    }
+    function createAndAdd(){
+        var name=newInput.value.trim(); if(!name){window.showToast('Enter a list name.','error');return;} if(!currentContent){window.showToast('No content.','error');return;}
+        if(modalMsg)modalMsg.innerHTML='<div class="p-2 rounded-lg text-center text-sm bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">Creating...</div>';
+        var fd=new FormData(); fd.append('name',name);
+        fetch(URLS.createList,{method:'POST',headers:{'X-CSRFToken':csrfToken},body:fd}).then(function(r){return r.json()}).then(function(d){
+            if(!d.success)throw new Error(d.error||'Failed.'); window.showToast(d.message,'success'); return addToList(d.list.id,d.list.name);
+        }).catch(function(e){window.showToast(e.message||'Error.','error');if(modalMsg)modalMsg.innerHTML='';});
+    }
+
+    // Events
+    spinBtn.addEventListener('click',spin);
+    yearSelect.addEventListener('input',function(){yearLabel.textContent='After '+yearSelect.value});
+    ratingSelect.addEventListener('input',function(){ratingLabel.textContent=ratingSelect.value>0?'At least '+ratingSelect.value+' / 10':'Any'});
+    tabF.addEventListener('click',function(){switchTab('favorites')});
+    tabW.addEventListener('click',function(){switchTab('watchlist')});
+    tabH.addEventListener('click',function(){switchTab('history')});
+    modalCancel.addEventListener('click',closeModal);
+    createBtn.addEventListener('click',createAndAdd);
+    modal.addEventListener('click',function(e){if(e.target===modal)closeModal()});
+    document.body.addEventListener('click',function(e){
+        var rm=e.target.closest('.row-remove'); if(!rm)return;
+        toggleList(rm.dataset.type,true,rm.dataset.tmdbId,rm.dataset.ct);
+    });
+
+    // Init
+    fetchGenres();
+    updateLists();
+})();
+</script>
 {% endblock %}
