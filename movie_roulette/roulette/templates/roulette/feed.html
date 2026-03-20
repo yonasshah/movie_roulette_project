@@ -14,7 +14,6 @@
 }
 .feed-card:hover { border-color: rgba(255,255,255,0.1); }
 
-/* FIXED CLAMPING: Ensuring 3 full lines show (3 * 1.7 line-height = 5.1em) */
 .review-block {
     font-size: 14px; color: #9ca3af; line-height: 1.7;
     margin: 12px 20px 12px; padding: 12px 16px;
@@ -23,14 +22,12 @@
     border-radius: 0 8px 8px 0;
     position: relative;
 }
-
 .review-block.clamped .review-text {
     display: -webkit-box;
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
-    /* Math: 3 lines * 1.7 line-height = 5.1em */
-    max-height: 5.1em; 
+    max-height: 5.1em;
 }
 .review-see-more {
     display: inline;
@@ -40,8 +37,8 @@
     margin-top: 4px;
     font-weight: 500;
 }
+.review-see-more:hover { text-decoration: underline; }
 
-/* Ensure hidden elements stay hidden */
 .hidden { display: none; }
 
 .fc-action-line { display: flex; align-items: flex-start; gap: 10px; padding: 16px 20px 12px; }
@@ -184,14 +181,10 @@
                 {% endif %}
             </div>
         {% empty %}
-<<<<<<< HEAD
             <div id="empty-feed-message" class="text-center py-20">
                 <div class="text-gray-700 text-4xl mb-3"><i class="fas fa-film"></i></div>
                 <p class="text-gray-600 text-sm">Your feed is empty. Follow some people or add content to get started.</p>
             </div>
-=======
-            <p id="empty-feed-message" class="text-center text-gray-500 py-8">Your feed is empty...</p> {# Added ID #}
->>>>>>> 47f7da85ffcf76b154e70b1d624807f6b42973ee
         {% endfor %}
     </div>
 </div>
@@ -200,7 +193,6 @@
 {% block scripts %}
 {{ block.super }}
 <script>
-<<<<<<< HEAD
 (function() {
     'use strict';
     var csrfToken = '{{ csrf_token }}', userId = '{{ user.id|escapejs }}';
@@ -208,77 +200,24 @@
     var fc = document.getElementById('feed-container');
     if (!fc) return;
 
-    /* FIXED CLAMPING TRIGGER: Only shows "See more" if content overflows height */
+    // Review clamping
     function initReviewClamping() {
-    document.querySelectorAll('.review-block').forEach(function(rb) {
-        var textEl = rb.querySelector('.review-text');
-        var btn = rb.querySelector('.review-see-more');
-        
-        if (textEl && btn) {
-            // Only show the button if the text actually overflows the 3-line limit
-            if (textEl.scrollHeight > textEl.offsetHeight + 4) {
-                btn.classList.remove('hidden');
-=======
-document.addEventListener('DOMContentLoaded', function() {
-    const csrfToken = '{{ csrf_token }}';
-    const feedContainer = document.querySelector('.max-w-3xl.mx-auto > .space-y-6');
-    const globalMessageContainer = document.getElementById('feed-message-container');
-    // --- Get current user ID (needed to avoid self-comment duplication) ---
-    const currentUserId = "{{ user.id|escapejs }}";
-
-    // --- Like Click Handler ---
-    async function handleLikeClick(buttonElement) {
-        const ctypeId = buttonElement.dataset.ctypeId;
-        const objId = buttonElement.dataset.objId;
-        if (!ctypeId || !objId) { console.error("Like button missing data attributes"); return; }
-        const formData = new FormData();
-        formData.append('content_type_id', ctypeId);
-        formData.append('object_id', objId);
-        try {
-            const response = await fetch("{% url 'roulette:toggle_like' %}", {
-                method: 'POST',
-                headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
-                body: formData,
-            });
-            const data = await response.json();
-            if (response.ok && data.success) {
-                // Update button state visually immediately ONLY for the user who clicked
-                buttonElement.classList.toggle('text-red-500', data.user_liked);
-                // WebSocket broadcast will update the count text for everyone.
->>>>>>> 47f7da85ffcf76b154e70b1d624807f6b42973ee
-            } else {
-                rb.classList.remove('clamped');
-                btn.classList.add('hidden');
+        document.querySelectorAll('.review-block').forEach(function(rb) {
+            var textEl = rb.querySelector('.review-text');
+            var btn = rb.querySelector('.review-see-more');
+            if (textEl && btn) {
+                if (textEl.scrollHeight > textEl.offsetHeight + 4) {
+                    btn.classList.remove('hidden');
+                } else {
+                    rb.classList.remove('clamped');
+                    btn.classList.add('hidden');
+                }
             }
-        }
-    });
-}
-
-<<<<<<< HEAD
-    // Call on load
+        });
+    }
     window.addEventListener('load', initReviewClamping);
 
-    // preserved delegation for all click handlers
-    fc.addEventListener('click', function(e) {
-        var vb = e.target.closest('.vote-btn'); if (vb) { handleVote(vb); return; }
-        var cvb = e.target.closest('.comment-vote-btn'); if (cvb) { handleCommentVote(cvb); return; }
-        var ecb = e.target.closest('.edit-comment-btn'); if (ecb) { handleEditComment(ecb); return; }
-        var seb = e.target.closest('.save-edit-btn'); if (seb) { handleSaveEdit(seb); return; }
-        var ceb = e.target.closest('.cancel-edit-btn'); if (ceb) { handleCancelEdit(ceb); return; }
-        var dc = e.target.closest('.delete-comment-btn'); if (dc) { handleDeleteComment(dc); return; }
-        
-        var sm = e.target.closest('.review-see-more');
-        if (sm) {
-            var rb = sm.closest('.review-block');
-            if (rb) {
-                rb.classList.toggle('clamped');
-                sm.textContent = rb.classList.contains('clamped') ? 'See more...' : 'See less';
-            }
-            return;
-        }
-    });
-
-    //preserved vote on posts
+    // Vote on posts
     function handleVote(btn) {
         var fd = new FormData();
         fd.append('content_type_id', btn.dataset.ctypeId);
@@ -297,7 +236,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }).catch(function() { window.showToast('Network error.', 'error'); });
     }
 
-    //preserved vote on comments
+    // Vote on comments
     function handleCommentVote(btn) {
         var fd = new FormData();
         fd.append('content_type_id', commentCtypeId);
@@ -310,12 +249,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 var ci = btn.closest('.comment-item'); if (!ci) return;
                 var up = ci.querySelector('.cvote-up'), dn = ci.querySelector('.cvote-down');
                 if (up) { up.classList.toggle('active', d.user_vote === 1); var uc = up.querySelector('.cup-count'); if (uc) uc.textContent = d.up_count; }
-                if (dn) { dn.classList.toggle('active', d.user_vote === -1); var dc = dn.querySelector('.down-count'); if (dc) dc.textContent = d.down_count; }
+                if (dn) { dn.classList.toggle('active', d.user_vote === -1); var dc = dn.querySelector('.cdown-count'); if (dc) dc.textContent = d.down_count; }
             } else window.showToast(d.error || 'Failed.', 'error');
         }).catch(function() { window.showToast('Network error.', 'error'); });
     }
 
-    //preserved comment submit
+    // Comment submit
     function handleComment(form) {
         var ta = form.querySelector('textarea[name="text"]'), err = form.querySelector('.comment-form-errors'), btn = form.querySelector('button[type="submit"]');
         if (err) { err.textContent = ''; err.classList.add('hidden'); }
@@ -325,93 +264,22 @@ document.addEventListener('DOMContentLoaded', function() {
             if (d.success) {
                 if (ta) ta.value = '';
                 var fi = form.closest('.feed-item');
-                if (fi && d.comment_html) { 
-                    var cl = fi.querySelector('.comments-list'); 
-                    if (cl) cl.insertAdjacentHTML('beforeend', d.comment_html); 
-                    updCount(fi); 
-=======
-    // --- Comment Form Handler ---
-    async function handleCommentSubmit(formElement) {
-        const textArea = formElement.querySelector('textarea[name="text"]');
-        const errorsDiv = formElement.querySelector('.comment-form-errors');
-        const submitButton = formElement.querySelector('button[type="submit"]');
-        const ctypeIdInput = formElement.querySelector('input[name="content_type_id"]');
-        const objIdInput = formElement.querySelector('input[name="object_id"]');
-        if (!ctypeIdInput || !ctypeIdInput.value || !objIdInput || !objIdInput.value) {
-             console.error("Comment form missing ctype_id or object_id");
-             if(errorsDiv) errorsDiv.textContent = 'Cannot submit comment: Missing target information.';
-             return;
-        }
-        if(errorsDiv) errorsDiv.textContent = '';
-        if(submitButton) submitButton.disabled = true;
-        const formData = new FormData(formElement);
-        try {
-            const response = await fetch(formElement.action, {
-                method: 'POST',
-                headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
-                body: formData
-            });
-            const data = await response.json();
-            if (response.ok && data.success) {
-                // Clear the textarea upon successful AJAX submission
-                if(textArea) textArea.value = '';
-                // WebSocket broadcast will add the comment for everyone.
-                // The onmessage handler will update the count based on the broadcast.
-            } else {
-                if(errorsDiv) {
-                    errorsDiv.textContent = data.error || 'Could not post comment.';
-                    if (data.form_errors && data.form_errors.text) {
-                        errorsDiv.textContent = data.form_errors.text.join(' ');
-                    }
-                }
-                window.showToast(data.error || 'Could not post comment.', 'error');
-            }
-        } catch (error) {
-             console.error("Comment submit error:", error);
-             if(errorsDiv) errorsDiv.textContent = 'An unexpected network error occurred.';
-             window.showToast('An unexpected network error occurred.', 'error');
-        } finally {
-             if(submitButton) submitButton.disabled = false;
-        }
-    }
-
-    // --- Comment Delete Handler ---
-    async function handleCommentDelete(buttonElement) {
-        const commentId = buttonElement.dataset.commentId;
-        const deleteUrl = buttonElement.dataset.deleteUrl;
-        if (!commentId || !deleteUrl) {
-            console.error("Missing commentId or deleteUrl on delete button");
-             window.showToast('Cannot delete comment: Missing information.', 'error');
-            return;
-        }
-        if (!confirm('Are you sure you want to delete this comment?')) { return; }
-        buttonElement.disabled = true;
-        try {
-            const response = await fetch(deleteUrl, {
-                method: 'POST',
-                headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' }
-            });
-            const data = await response.json();
-            if (response.ok && data.success) {
-                const commentItemDiv = buttonElement.closest('.comment-item');
-                const feedItemDiv = buttonElement.closest('.feed-item'); // Find parent feed item
-                if (commentItemDiv) {
-                    commentItemDiv.remove();
-                    // Update count display after removing
-                    updateCommentCountDisplay(feedItemDiv); // <<< CALL HELPER
-                    window.showToast('Comment deleted.', 'success');
->>>>>>> 47f7da85ffcf76b154e70b1d624807f6b42973ee
+                if (fi && d.comment_html) {
+                    var cl = fi.querySelector('.comments-list');
+                    if (cl) cl.insertAdjacentHTML('beforeend', d.comment_html);
+                    updCount(fi);
                 }
             } else {
                 var m = d.error || 'Could not post.';
+                if (d.form_errors && d.form_errors.text) m = d.form_errors.text.join(' ');
                 if (err) { err.textContent = m; err.classList.remove('hidden'); }
                 window.showToast(m, 'error');
             }
-        }).catch(function() { window.showToast('Network error.', 'error'); })
+        }).catch(function() { if (err) { err.textContent = 'Network error.'; err.classList.remove('hidden'); } window.showToast('Network error.', 'error'); })
         .finally(function() { if (btn) btn.disabled = false; });
     }
 
-    //preserved comment delete
+    // Delete comment
     function handleDeleteComment(btn) {
         if (!confirm('Delete this comment?')) return; btn.disabled = true;
         fetch(btn.dataset.deleteUrl, { method: 'POST', headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' } })
@@ -421,7 +289,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }).catch(function() { window.showToast('Network error.', 'error'); }).finally(function() { btn.disabled = false; });
     }
 
-    //preserved edit comment
+    // Edit comment
     function handleEditComment(btn) {
         var ci = btn.closest('.comment-item'); if (!ci) return;
         var display = ci.querySelector('.comment-display');
@@ -434,93 +302,32 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-<<<<<<< HEAD
+    // Save edited comment
     function handleSaveEdit(btn) {
         var ci = btn.closest('.comment-item'); if (!ci) return;
         var editForm = ci.querySelector('.comment-edit-form');
         var display = ci.querySelector('.comment-display');
         var ta = editForm.querySelector('.edit-textarea');
         var url = btn.dataset.editUrl;
-        var fd = new FormData(); fd.append('text', ta.value.trim());
+        var newText = ta ? ta.value.trim() : '';
+        if (!newText) { window.showToast('Comment cannot be empty.', 'error'); return; }
+        btn.disabled = true;
+        var fd = new FormData();
+        fd.append('text', newText);
         fetch(url, { method: 'POST', headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' }, body: fd })
         .then(function(r) { return r.json(); }).then(function(d) {
             if (d.success) {
                 var textEl = display.querySelector('.comment-text-content');
                 if (textEl) textEl.innerHTML = d.text.replace(/\n/g, '<br>');
-                editForm.classList.add('hidden'); display.classList.remove('hidden');
+                editForm.classList.add('hidden');
+                display.classList.remove('hidden');
                 window.showToast('Comment updated.', 'success');
-            }
-=======
-    // --- Shared Post Delete Handler ---
-    async function handlePostDelete(buttonElement) {
-        // (Keep existing code from your file)
-        const postId = buttonElement.dataset.postId;
-        const deleteUrl = buttonElement.dataset.deleteUrl;
-        if (!postId || !deleteUrl) {
-            console.error("Missing postId or deleteUrl on delete button");
-            window.showToast('Cannot delete post: Missing information.', 'error');
-            return;
-        }
-        if (!confirm('Are you sure you want to delete this shared post?')) { return; }
-        buttonElement.disabled = true;
-        try {
-            const response = await fetch(deleteUrl, {
-                method: 'POST',
-                headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' }
-            });
-            const data = await response.json();
-            if (response.ok && data.success) {
-                const feedItemDiv = buttonElement.closest('.feed-item');
-                if (feedItemDiv) {
-                    feedItemDiv.remove();
-                }
-                window.showToast(data.message || 'Shared post deleted.', 'success');
-            } else {
-                console.error("Post delete failed:", data.error);
-                window.showToast(data.error || 'Could not delete post.', 'error');
-            }
-        } catch (error) {
-            console.error("Error during post delete:", error);
-            window.showToast('A network error occurred while deleting the post.', 'error');
-        } finally {
-            buttonElement.disabled = false;
-        }
+            } else window.showToast(d.error || 'Failed to update.', 'error');
+        }).catch(function() { window.showToast('Network error.', 'error'); })
+        .finally(function() { btn.disabled = false; });
     }
 
-    // --- Helper Function to Update Comment Count Display ---
-    function updateCommentCountDisplay(feedItemDiv) {
-        if (!feedItemDiv) return;
-        const countDisplay = feedItemDiv.querySelector('.comment-count-display');
-        const commentsListDiv = feedItemDiv.querySelector('.comments-list');
-        if (countDisplay && commentsListDiv) {
-            const countSpan = countDisplay.querySelector('.count-number');
-            const pluralSpan = countDisplay.querySelector('.plural-s');
-            // Count actual comment items currently in the DOM for this post
-            const currentComments = commentsListDiv.querySelectorAll('.comment-item');
-            const newCount = currentComments.length;
-            if(countSpan) countSpan.textContent = newCount;
-            if(pluralSpan) pluralSpan.textContent = (newCount === 1) ? '' : 's';
-        }
-    }
-    // --- END Helper ---
-
-
-    // --- Attach Event Listeners using Delegation ---
-    if (feedContainer) {
-        feedContainer.addEventListener('click', function(event) {
-            const likeButton = event.target.closest('.like-button');
-            if (likeButton) { handleLikeClick(likeButton); return; }
-
-            const deleteCommentButton = event.target.closest('.delete-comment-btn');
-            if (deleteCommentButton && !deleteCommentButton.disabled) { handleCommentDelete(deleteCommentButton); return; }
-
-            const deletePostButton = event.target.closest('.delete-post-btn');
-            if (deletePostButton && !deletePostButton.disabled) { handlePostDelete(deletePostButton); return; }
->>>>>>> 47f7da85ffcf76b154e70b1d624807f6b42973ee
-        });
-    }
-
-<<<<<<< HEAD
+    // Cancel edit
     function handleCancelEdit(btn) {
         var ci = btn.closest('.comment-item'); if (!ci) return;
         ci.querySelector('.comment-edit-form').classList.add('hidden');
@@ -538,29 +345,29 @@ document.addEventListener('DOMContentLoaded', function() {
             f.addEventListener('submit', function(e) { e.preventDefault(); handleComment(this); });
             f.dataset.bound = '1';
         });
-=======
-        // Attach submit listeners directly to forms
-        function attachCommentSubmitListeners(container) {
-             container.querySelectorAll('.add-comment-form').forEach(form => {
-                // Prevent adding multiple listeners to the same form
-                if (form.dataset.listenerAttached) return;
-                form.addEventListener('submit', function(event) {
-                    event.preventDefault();
-                    handleCommentSubmit(this);
-                });
-                form.dataset.listenerAttached = 'true'; // Mark as attached
-            });
-        }
-        attachCommentSubmitListeners(feedContainer); // Attach to initial forms
-
-    } else {
-        console.error("Feed container (.space-y-6) not found for event listeners.");
->>>>>>> 47f7da85ffcf76b154e70b1d624807f6b42973ee
     }
     bindForms(fc);
 
-<<<<<<< HEAD
-    //WebSocket
+    // Event delegation
+    fc.addEventListener('click', function(e) {
+        var vb = e.target.closest('.vote-btn'); if (vb) { handleVote(vb); return; }
+        var cvb = e.target.closest('.comment-vote-btn'); if (cvb) { handleCommentVote(cvb); return; }
+        var ecb = e.target.closest('.edit-comment-btn'); if (ecb) { handleEditComment(ecb); return; }
+        var seb = e.target.closest('.save-edit-btn'); if (seb) { handleSaveEdit(seb); return; }
+        var ceb = e.target.closest('.cancel-edit-btn'); if (ceb) { handleCancelEdit(ceb); return; }
+        var dc = e.target.closest('.delete-comment-btn'); if (dc) { handleDeleteComment(dc); return; }
+        var sm = e.target.closest('.review-see-more');
+        if (sm) {
+            var rb = sm.closest('.review-block');
+            if (rb) {
+                rb.classList.toggle('clamped');
+                sm.textContent = rb.classList.contains('clamped') ? 'See more...' : 'See less';
+            }
+            return;
+        }
+    });
+
+    // WebSocket
     function connectFeed() {
         var ws = new WebSocket((location.protocol === 'https:' ? 'wss:' : 'ws:') + '//' + location.host + '/ws/feed/');
         ws.onmessage = function(e) {
@@ -568,7 +375,6 @@ document.addEventListener('DOMContentLoaded', function() {
             if (msg.type === 'new_item') {
                 var empty = document.getElementById('empty-feed-message'); if (empty) empty.remove();
                 window.showToast('New activity in your feed!', 'info');
-                // Re-run height detection for new items
                 setTimeout(initReviewClamping, 100);
             }
             if (msg.type === 'new_comment' && msg.data) {
@@ -576,226 +382,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 var tgt = fc.querySelector('.feed-item[data-ctype-id="' + cd.ctype_id + '"][data-item-id="' + cd.obj_id + '"]');
                 if (tgt) { var cl = tgt.querySelector('.comments-list'); if (cl && cd.comment_html) { cl.insertAdjacentHTML('beforeend', cd.comment_html); updCount(tgt); } }
             }
-=======
-
-    // --- WebSocket Connection for Feed ---
-    const feedSocketProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const feedSocketURL = `${feedSocketProtocol}//${window.location.host}/ws/feed/`;
-    let feedSocket = null;
-
-    function connectFeedWebSocket() {
-        console.log("Attempting to connect Feed WebSocket...");
-        feedSocket = new WebSocket(feedSocketURL);
-
-        feedSocket.onopen = function(e) {
-            console.log("Feed WebSocket connection established.");
         };
-
-        // --- INTEGRATED onmessage handler ---
-        feedSocket.onmessage = function(e) {
-             const message = JSON.parse(e.data);
-             console.log("Feed WebSocket Message received:", message);
-
-             // Check the OUTER message type first
-             if (message.type === 'new_item' && message.data) {
-                 const newItemData = message.data;
-                 const innerItemType = newItemData.type; // 'share' or 'list_item'
-
-                 const feedContainer = document.querySelector('.max-w-3xl.mx-auto > .space-y-6');
-                 if (!feedContainer) { console.error("Cannot insert new item: Feed container not found."); return; }
-
-                 // --- Remove empty feed message if it exists ---
-                 const emptyMsg = document.getElementById('empty-feed-message');
-                 if (emptyMsg) { emptyMsg.remove(); }
-                 // --- End Remove ---
-
-                 try {
-                     const tempDiv = document.createElement('div');
-                     // Helper to escape HTML, useful for user-generated content
-                     function escapeHtml(unsafe) { if (!unsafe) return ''; return unsafe.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;"); }
-
-                     // Simplified timesince calculation for JS (more accurate calculation can be done)
-                     const postDate = new Date(newItemData.timestamp_iso);
-                     const now = new Date();
-                     const secondsAgo = Math.round((now - postDate) / 1000);
-                     let timesince = `${secondsAgo} seconds ago`;
-                     // Basic time formatting (you could use a library like moment.js or date-fns for better formatting)
-                     if (secondsAgo > 60) timesince = `${Math.round(secondsAgo / 60)} minutes ago`;
-                     if (secondsAgo > 3600) timesince = `${Math.round(secondsAgo / 3600)} hours ago`;
-                     if (secondsAgo > 86400) timesince = `${Math.round(secondsAgo / 86400)} days ago`;
-
-                     const profileUrl = `/user/${encodeURIComponent(newItemData.username)}/`;
-                     const addCommentUrl = "{% url 'roulette:add_comment' %}";
-                     const csrfTokenWS = '{{ csrf_token }}';
-                     const currentUserImageUrlWS = "{{ user.profile.image.url }}";
-                     let itemHTML = '';
-
-                     // --- Differentiate HTML generation based on INNER type ---
-                     if (innerItemType === 'share') {
-                         const listUrl = newItemData.list_url;
-                         itemHTML = `
-                         <div class="feed-item bg-gray-700 p-4 rounded-lg shadow-md" data-item-id="${newItemData.obj_id}" data-ctype-id="${newItemData.ctype_id}">
-                             <div class="flex space-x-4"> <a href="${profileUrl}"><img src="${escapeHtml(newItemData.profile_image_url)}" class="w-12 h-12 rounded-full object-cover flex-shrink-0" alt="${escapeHtml(newItemData.username)}'s profile picture"></a>
-                                 <div class="flex-1"> <div class="text-gray-300"> <a href="${profileUrl}" class="font-semibold text-white hover:underline">@${escapeHtml(newItemData.username)}</a> shared the list <a href="${escapeHtml(listUrl)}" class="font-semibold text-indigo-300 hover:underline">${escapeHtml(newItemData.list_name)}</a> <i class="fas fa-share text-blue-400 ml-1"></i> </div> <p class="text-gray-400 text-xs mb-2">${timesince}</p>
-                                     ${newItemData.share_message ? `<p class="text-gray-200 bg-gray-600 p-3 rounded-md">${escapeHtml(newItemData.share_message).replace(/\n/g, '<br>')}</p>` : ''}
-                                     ${newItemData.list_description ? `<div class="mt-2 text-sm text-gray-400 border-l-2 border-gray-600 pl-2 italic"> ${escapeHtml(newItemData.list_description.substring(0, 100))} ${newItemData.list_description.length > 100 ? '...' : ''} </div>` : ''}
-                                     <div class="mt-3 pt-3 border-t border-gray-600 flex items-center space-x-6 text-gray-400 text-sm"> <button class="like-button flex items-center hover:text-red-500 transition-colors" data-ctype-id="${newItemData.ctype_id}" data-obj-id="${newItemData.obj_id}"> <i class="fas fa-heart mr-1"></i> <span class="like-count">0</span> <span class="ml-1"> Like</span> </button> <span class="comment-count-display flex items-center"> <i class="fas fa-comment mr-1"></i> <span class="count-number">0</span>&nbsp;Comment<span class="plural-s">s</span> </span> </div>
-                                     <div class="comments-list mt-4 space-y-3"></div>
-                                     <div class="mt-4"> <form class="add-comment-form flex items-center space-x-2" method="POST" action="${addCommentUrl}"> <input type="hidden" name="csrfmiddlewaretoken" value="${csrfTokenWS}"> <input type="hidden" name="content_type_id" value="${newItemData.ctype_id}"> <input type="hidden" name="object_id" value="${newItemData.obj_id}"> <input type="hidden" name="next" value="${window.location.pathname}"> <img src="${currentUserImageUrlWS}" class="w-8 h-8 rounded-full object-cover flex-shrink-0" alt="Your profile picture"> <div class="flex-grow"> <textarea name="text" rows="2" placeholder="Add a comment..." class="w-full px-3 py-2 border border-gray-600 bg-gray-900 rounded-md placeholder-gray-500 text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 text-sm" maxlength="500" required id="id_text_${newItemData.obj_id}_ws_share"></textarea> <div class="comment-form-errors text-xs text-red-400 mt-1"></div> </div> <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1 px-3 rounded text-sm">Post</button> </form> </div>
-                                 </div> </div> </div> `.trim();
-                     }
-                     else if (innerItemType === 'list_item') {
-                         const contentDetailUrl = `/content/${newItemData.content_type.toLowerCase()}/${newItemData.tmdb_id}/`;
-                         let actionText = '';
-                         let iconClass = '';
-
-                         if (newItemData.list_type === 'FAVORITE') {
-                             actionText = `added <a href="${contentDetailUrl}" class="font-semibold text-indigo-300 hover:underline">${escapeHtml(newItemData.title)}</a> to Favorites`;
-                             iconClass = 'fas fa-heart text-red-500 ml-1';
-                         } else if (newItemData.list_type === 'WATCHLIST') {
-                             actionText = `added <a href="${contentDetailUrl}" class="font-semibold text-indigo-300 hover:underline">${escapeHtml(newItemData.title)}</a> to their Watchlist`;
-                             iconClass = 'fas fa-bookmark text-indigo-400 ml-1';
-                         } else if (newItemData.list_type === 'CUSTOM' && newItemData.custom_list_id) {
-                              const customListDetailUrl = `/list/${newItemData.custom_list_id}/`;
-                              actionText = `added <a href="${contentDetailUrl}" class="font-semibold text-indigo-300 hover:underline">${escapeHtml(newItemData.title)}</a> to <a href="${customListDetailUrl}" class="font-semibold text-indigo-300 hover:underline">${escapeHtml(newItemData.custom_list_name)}</a>`;
-                              iconClass = 'fas fa-list-ul text-gray-400 ml-1';
-                         } else {
-                             // Fallback in case list_type is unexpected (shouldn't happen with current signal logic)
-                             actionText = `added <a href="${contentDetailUrl}" class="font-semibold text-indigo-300 hover:underline">${escapeHtml(newItemData.title)}</a>`;
-                             iconClass = 'fas fa-check text-gray-400 ml-1';
-                         }
-
-                         // Build the HTML for the list_item
-                         itemHTML = `
-                         <div class="feed-item bg-gray-700 p-4 rounded-lg shadow-md" data-item-id="${newItemData.obj_id}" data-ctype-id="${newItemData.ctype_id}">
-                             <div class="flex space-x-4">
-                                 <a href="${profileUrl}">
-                                     <img src="${escapeHtml(newItemData.profile_image_url)}" class="w-12 h-12 rounded-full object-cover flex-shrink-0" alt="${escapeHtml(newItemData.username)}'s profile picture">
-                                 </a>
-                                 <div class="flex-1">
-                                     <div class="text-gray-300">
-                                         <a href="${profileUrl}" class="font-semibold text-white hover:underline">@${escapeHtml(newItemData.username)}</a>
-                                         ${actionText} {# Action text with links is inserted here #}
-                                         <i class="${iconClass}"></i>
-                                     </div>
-                                     <p class="text-gray-400 text-xs">${timesince}</p>
-                                     <div class="mt-3 pt-3 border-t border-gray-600 flex items-center space-x-6 text-gray-400 text-sm">
-                                         <button class="like-button flex items-center hover:text-red-500 transition-colors" data-ctype-id="${newItemData.ctype_id}" data-obj-id="${newItemData.obj_id}">
-                                             <i class="fas fa-heart mr-1"></i> <span class="like-count">0</span> <span class="ml-1"> Like</span>
-                                         </button>
-                                         <span class="comment-count-display flex items-center">
-                                             <i class="fas fa-comment mr-1"></i> <span class="count-number">0</span>&nbsp;Comment<span class="plural-s">s</span>
-                                         </span>
-                                     </div>
-                                     <div class="comments-list mt-4 space-y-3"></div>
-                                     <div class="mt-4">
-                                         <form class="add-comment-form flex items-center space-x-2" method="POST" action="${addCommentUrl}">
-                                             <input type="hidden" name="csrfmiddlewaretoken" value="${csrfTokenWS}">
-                                             <input type="hidden" name="content_type_id" value="${newItemData.ctype_id}">
-                                             <input type="hidden" name="object_id" value="${newItemData.obj_id}">
-                                             <input type="hidden" name="next" value="${window.location.pathname}">
-                                             <img src="${currentUserImageUrlWS}" class="w-8 h-8 rounded-full object-cover flex-shrink-0" alt="Your profile picture">
-                                             <div class="flex-grow">
-                                                 <textarea name="text" rows="2" placeholder="Add a comment..." class="w-full px-3 py-2 border border-gray-600 bg-gray-900 rounded-md placeholder-gray-500 text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 text-sm" maxlength="500" required id="id_text_${newItemData.obj_id}_ws_list"></textarea>
-                                                 <div class="comment-form-errors text-xs text-red-400 mt-1"></div>
-                                             </div>
-                                             <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1 px-3 rounded text-sm">Post</button>
-                                         </form>
-                                     </div>
-                                 </div>
-                             </div>
-                         </div>`.trim();
-                     }
-                     // --- End Differentiation ---
-
-                     tempDiv.innerHTML = itemHTML; // Set the generated HTML
-                     const newItemElement = tempDiv.firstChild;
-
-                     if (newItemElement) {
-                         feedContainer.insertBefore(newItemElement, feedContainer.firstChild); // Add to top
-                         attachCommentSubmitListeners(newItemElement); // Attach listener to the new form
-                         window.showToast("New item added to feed!", "info");
-                     } else {
-                         console.error("Failed to create HTML element for new item type:", innerItemType);
-                     }
-                 } catch (error) {
-                     console.error("Error building or inserting new feed item HTML:", error);
-                     window.showToast("Error adding new item to feed.", "error");
-                 }
-
-             }
-             else if (message.type === 'new_comment') {
-                 const commentData = message.data;
-                 console.log("JS: Received new comment data:", commentData);
-                 const targetFeedItem = feedContainer.querySelector(`.feed-item[data-ctype-id="${commentData.ctype_id}"][data-item-id="${commentData.obj_id}"]`);
-                 if (targetFeedItem) {
-                    if (commentData.commenter_id === currentUserId) {
-                        console.log("JS: Skipping self-comment update via WebSocket.");
-                        updateCommentCountDisplay(targetFeedItem);
-                        return;
-                    }
-                    const commentsList = targetFeedItem.querySelector('.comments-list');
-                    if (commentsList && commentData.comment_html) {
-                        commentsList.insertAdjacentHTML('beforeend', commentData.comment_html);
-                        updateCommentCountDisplay(targetFeedItem);
-                    } else {
-                        console.error("Could not find comments list or missing comment HTML for item:", commentData.ctype_id, commentData.obj_id);
-                    }
-                 } else {
-                      console.warn("Could not find target feed item for new comment:", commentData.ctype_id, commentData.obj_id);
-                 }
-
-             }
-             else if (message.type === 'like_update') {
-                 const likeData = message.data;
-                 console.log("JS: Received like update data:", likeData);
-                 const targetFeedItem = feedContainer.querySelector(`.feed-item[data-ctype-id="${likeData.ctype_id}"][data-item-id="${likeData.obj_id}"]`);
-                 if (targetFeedItem) {
-                     const likeButton = targetFeedItem.querySelector('.like-button');
-                     if (likeButton) {
-                         const countSpan = likeButton.querySelector('.like-count');
-                         const labelSpan = likeButton.querySelector('.ml-1');
-                         const newCount = likeData.like_count;
-                         if (countSpan) countSpan.textContent = newCount;
-                         if (labelSpan) labelSpan.textContent = (newCount === 1) ? ' Like' : ' Likes';
-                     } else {
-                         console.error("Could not find like button for item:", likeData.ctype_id, likeData.obj_id);
-                     }
-                 } else {
-                     console.warn("Could not find target feed item for like update:", likeData.ctype_id, likeData.obj_id);
-                 }
-             }
-             // Add else if blocks here for other potential message.type values ('comment_deleted', 'like_removed' etc.) if needed
-         };
-         // --- END INTEGRATED onmessage handler ---
-
-        feedSocket.onclose = function(e) {
-            console.error('Feed WebSocket closed unexpectedly. Attempting to reconnect...', e);
-             if (e.code !== 1000 && e.code !== 1008) {
-                setTimeout(connectFeedWebSocket, 5000 + Math.random() * 1000);
-             } else {
-                 console.log("Feed WebSocket closed normally or due to policy violation.");
-             }
-        };
-
-        feedSocket.onerror = function(err) {
-            console.error('Feed WebSocket error:', err);
->>>>>>> 47f7da85ffcf76b154e70b1d624807f6b42973ee
-        };
-        ws.onclose = function(e) { if (e.code !== 1000) setTimeout(connectFeed, 5000); };
+        ws.onclose = function(e) { if (e.code !== 1000 && e.code !== 1008) setTimeout(connectFeed, 5e3 + Math.random() * 1e3); };
+        ws.onerror = function(e) { console.error('Feed WS:', e); };
     }
-<<<<<<< HEAD
     connectFeed();
 })();
-=======
-
-    // --- Initial Connection for Feed ---
-    if (feedContainer) {
-       connectFeedWebSocket();
-    }
-    // --- End Feed WebSocket ---
-
-});
->>>>>>> 47f7da85ffcf76b154e70b1d624807f6b42973ee
 </script>
 {% endblock %}
