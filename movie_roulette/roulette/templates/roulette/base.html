@@ -100,8 +100,13 @@
 </head>
 <body class="min-h-screen flex flex-col relative">
 
+<<<<<<< HEAD
     {# =============== NAVBAR =============== #}
     <nav class="fixed top-0 left-0 right-0 z-50 bg-[#0c0c12] border-b border-white/[0.06]">
+=======
+    {# --- Navbar --- #}
+    <nav class="fixed top-0 left-0 right-0 z-50 bg-gray-900 border-b border-indigo-700 shadow-lg">
+>>>>>>> 47f7da85ffcf76b154e70b1d624807f6b42973ee
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-14">
                 <div class="flex items-center gap-8">
@@ -120,11 +125,25 @@
                                class="w-48 bg-white/[0.04] border border-white/[0.06] rounded-lg py-[7px] pl-3.5 pr-9 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500/40 focus:bg-white/[0.06] transition-all">
                     </form>
                     {% if user.is_authenticated %}
+<<<<<<< HEAD
                         <a href="{% url 'roulette:notifications' %}" id="navbar-notifications-link"
                            class="relative w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 hover:text-gray-300 hover:bg-white/[0.05] transition-all">
                             <i class="fas fa-bell text-sm"></i>
                             <span id="navbar-unread-count" class="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500 {% if unread_notifications_count == 0 %}hidden{% endif %}"></span>
                         </a>
+=======
+                        {# --- MODIFIED Notifications Icon --- #}
+                         <a href="{% url 'roulette:notifications' %}" id="navbar-notifications-link" class="relative text-gray-300 hover:text-white transition-colors text-lg" title="Notifications">
+                            <i class="fas fa-bell"></i>
+                            {# Use an ID to target the count span #}
+                            <span id="navbar-unread-count" class="absolute -top-1 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-xs font-bold text-white {% if unread_notifications_count == 0 %}hidden{% endif %}">
+                                {{ unread_notifications_count }}
+                            </span>
+                        </a>
+                        {# --- END MODIFICATION --- #}
+
+                        {# User Dropdown #}
+>>>>>>> 47f7da85ffcf76b154e70b1d624807f6b42973ee
                         <div class="relative dropdown">
                             <button id="user-menu-button" type="button"
                                     class="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-xs font-semibold text-white ring-2 ring-indigo-500/30 cursor-pointer hover:ring-indigo-500/50 transition-all overflow-hidden"
@@ -160,6 +179,7 @@
                 </button>
             </div>
         </div>
+<<<<<<< HEAD
         <div id="mobile-menu" class="hidden md:hidden border-t border-white/[0.04] bg-[#0c0c12]">
             <div class="px-4 py-3 space-y-1">
                 <form action="{% url 'roulette:search_results' %}" method="GET" class="mb-3">
@@ -178,6 +198,35 @@
                     <form action="{% url 'users:logout' %}" method="post">{% csrf_token %}
                         <button type="submit" class="block w-full text-left px-3 py-2.5 rounded-lg text-sm text-gray-500 hover:text-white hover:bg-white/[0.04]">Log out</button>
                     </form>
+=======
+        {# --- MODIFIED Mobile Menu Content --- #}
+        <div id="mobile-menu" class="hidden md:hidden">
+            <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+                {# Mobile links matching desktop #}
+                <form action="{% url 'roulette:search_results' %}" method="GET" class="px-3 py-2">
+                    <input type="text" name="q" placeholder="Search..." class="w-full bg-gray-800 border border-gray-700 rounded-md py-1 px-3 text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                </form>
+                <a href="{% url 'roulette:feed' %}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700">Feed</a>
+                <a href="{% url 'roulette:discover' %}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700">Discover</a>
+
+                {# Mobile Auth/User Links #}
+                {% if user.is_authenticated %}
+                    {# --- ADD Mobile Notifications Link/Count --- #}
+                    <a href="{% url 'roulette:notifications' %}" class="relative block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700">
+                        Notifications
+                        <span id="mobile-unread-count" class="absolute top-1 right-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-xs font-bold text-white {% if unread_notifications_count == 0 %}hidden{% endif %}">
+                           {{ unread_notifications_count }}
+                        </span>
+                    </a>
+                    {# --- END ADD --- #}
+                    <a href="{% url 'roulette:user_profile' username=user.username %}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700">My Profile</a>
+                    <a href="{% url 'roulette:list_all' %}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700">My Lists</a>
+                    <a href="{% url 'users:account_settings' %}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700">Account Settings</a>
+                     <form action="{% url 'users:logout' %}" method="post">
+                         {% csrf_token %}
+                         <button type="submit" class="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700">Logout</button>
+                     </form>
+>>>>>>> 47f7da85ffcf76b154e70b1d624807f6b42973ee
                 {% else %}
                     <div class="h-px bg-white/[0.04] my-2"></div>
                     <a href="{% url 'users:login' %}" class="block px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-white/[0.04]">Log in</a>
@@ -185,6 +234,10 @@
                 {% endif %}
             </div>
         </div>
+<<<<<<< HEAD
+=======
+        {# --- END Mobile Menu Modification --- #}
+>>>>>>> 47f7da85ffcf76b154e70b1d624807f6b42973ee
     </nav>
 
     <main class="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16 relative z-">
@@ -199,6 +252,7 @@
     <div id="toast-container"></div>
 
     {% block scripts %}
+<<<<<<< HEAD
     <script>
     (function() {
         'use strict';
@@ -231,6 +285,176 @@
         {% endif %}
     })();
     </script>
+=======
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                // --- Mobile Menu Toggle ---
+                const menuButton = document.getElementById('mobile-menu-button');
+                const mobileMenu = document.getElementById('mobile-menu');
+                if (menuButton && mobileMenu) {
+                    menuButton.addEventListener('click', function() {
+                        mobileMenu.classList.toggle('hidden');
+                    });
+                }
+
+                // --- User Dropdown Toggle ---
+                const userMenuButton = document.getElementById('user-menu-button');
+                const userMenu = document.getElementById('user-menu');
+                const dropdownDiv = userMenuButton ? userMenuButton.closest('.dropdown') : null;
+
+                if (userMenuButton && userMenu && dropdownDiv) {
+                    userMenuButton.addEventListener('click', function(event) {
+                        event.stopPropagation();
+                        dropdownDiv.classList.toggle('open');
+                        const isExpanded = userMenuButton.getAttribute('aria-expanded') === 'true';
+                        userMenuButton.setAttribute('aria-expanded', !isExpanded);
+                    });
+                    document.addEventListener('click', function(event) {
+                        if (!dropdownDiv.contains(event.target) && dropdownDiv.classList.contains('open')) {
+                            dropdownDiv.classList.remove('open');
+                            userMenuButton.setAttribute('aria-expanded', 'false');
+                        }
+                    });
+                     document.addEventListener('keydown', function(event) {
+                         if (event.key === 'Escape' && dropdownDiv.classList.contains('open')) {
+                             dropdownDiv.classList.remove('open');
+                             userMenuButton.setAttribute('aria-expanded', 'false');
+                         }
+                    });
+                }
+
+                // --- Toast Notification Function (Global) ---
+                function showToast(message, type = 'success') {
+                    const toastContainer = document.getElementById('toast-container');
+                    if (!toastContainer) {
+                        console.error("Toast container not found!");
+                        return;
+                    }
+
+                    const toast = document.createElement('div');
+                    toast.textContent = message;
+                    toast.className = `toast ${type}`; // Add type class for styling
+                    toastContainer.appendChild(toast);
+
+                    requestAnimationFrame(() => {
+                        requestAnimationFrame(() => {
+                           toast.classList.add('show');
+                        });
+                    });
+
+                    setTimeout(() => {
+                        toast.classList.remove('show');
+                        toast.addEventListener('transitionend', () => {
+                             if (toast && toast.parentNode === toastContainer) {
+                                toast.remove();
+                            }
+                        }, { once: true });
+                    }, 4000); // Show for 4 seconds
+                }
+                // --- END Toast Function ---
+
+                // Make showToast globally accessible
+                 window.showToast = showToast;
+
+                // --- Process Django messages as toasts ---
+                const messagesDataElement = document.getElementById('django-messages-data');
+                if (messagesDataElement) {
+                    try {
+                        const messagesData = JSON.parse(messagesDataElement.textContent);
+                        messagesData.forEach(msg => {
+                            let type = 'info';
+                            if (msg.tags.includes('success')) type = 'success';
+                            else if (msg.tags.includes('error')) type = 'error';
+                            else if (msg.tags.includes('warning')) type = 'info';
+                            window.showToast(msg.message, type);
+                        });
+                    } catch (e) {
+                        console.error("Error parsing Django messages for toasts:", e);
+                    }
+                }
+                // --- END Django message processing ---
+
+                // --- ADD Elements for Notification Count Update ---
+                const navbarUnreadCountSpan = document.getElementById('navbar-unread-count');
+                const mobileUnreadCountSpan = document.getElementById('mobile-unread-count'); // If you added it
+                // --- END ADD ---
+
+                // --- Function to update the notification count display ---
+                function updateNotificationDisplay(count) {
+                    const countToShow = parseInt(count) || 0;
+                    console.log("JS: Updating notification display to count:", countToShow); // Logging
+
+                    if (navbarUnreadCountSpan) {
+                        navbarUnreadCountSpan.textContent = countToShow;
+                        navbarUnreadCountSpan.classList.toggle('hidden', countToShow === 0);
+                    }
+                    // Update mobile count if it exists
+                    if (mobileUnreadCountSpan) {
+                         mobileUnreadCountSpan.textContent = countToShow;
+                         mobileUnreadCountSpan.classList.toggle('hidden', countToShow === 0);
+                    }
+                }
+                // --- END Function ---
+
+                // --- ADD WebSocket Connection for Notifications ---
+                {% if user.is_authenticated %} // Only connect if user is logged in
+                    const notificationSocketProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                    // Make sure the path matches your routing.py
+                    const notificationSocketURL = `${notificationSocketProtocol}//${window.location.host}/ws/notifications/`;
+                    let notificationSocket = null;
+
+                    function connectNotificationWebSocket() {
+                        console.log("Attempting to connect Notification WebSocket...");
+                        notificationSocket = new WebSocket(notificationSocketURL);
+
+                        notificationSocket.onopen = function(e) {
+                            console.log("Notification WebSocket connection established.");
+                        };
+
+                        notificationSocket.onmessage = function(e) {
+                            const message = JSON.parse(e.data);
+                            console.log("Notification WebSocket Message received:", message);
+
+                            if (message.type === 'notification_count_update') {
+                                // Update the bell icon count
+                                updateNotificationDisplay(message.unread_count);
+
+                                // Optionally show a toast for the new notification message
+                                if (message.new_message) {
+                                    // Avoid showing toast if it's just the initial count update on connect
+                                    // (unless the backend specifically sends a message then)
+                                    // You might need a flag or check if message.new_message is not a generic "count updated" text
+                                    window.showToast(message.new_message, 'info'); // Use 'info' style
+                                }
+                            }
+                        };
+
+                        notificationSocket.onclose = function(e) {
+                            console.error('Notification WebSocket closed unexpectedly. Reconnecting...', e);
+                            // Avoid reconnect loops if the server deliberately closes (e.g., unauthorized)
+                            if (e.code !== 1000 && e.code !== 1008) { // 1000 = Normal Closure, 1008 = Policy Violation
+                               setTimeout(connectNotificationWebSocket, 5000 + Math.random() * 1000); // Reconnect after 5-6s
+                            } else {
+                                console.log("Notification WebSocket closed normally or due to policy violation.");
+                            }
+                        };
+
+                        notificationSocket.onerror = function(err) {
+                            console.error('Notification WebSocket error:', err);
+                            // Don't automatically reconnect on error, let onclose handle it
+                            // notificationSocket.close(); // Close might trigger onclose
+                        };
+                    }
+
+                    // Initial connection attempt
+                    connectNotificationWebSocket();
+
+                {% endif %} // End if user.is_authenticated
+                // --- END WebSocket Connection for Notifications ---
+
+            }); // End DOMContentLoaded
+        </script>
+>>>>>>> 47f7da85ffcf76b154e70b1d624807f6b42973ee
     {% endblock %}
 </body>
 </html>

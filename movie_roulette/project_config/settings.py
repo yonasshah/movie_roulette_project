@@ -82,8 +82,9 @@ CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            # Use environment variable in production!
+            # In production, this pulls the secure URL from Render's environment
             "hosts": [os.environ.get('REDIS_URL', 'redis://localhost:6379')],
+            
         },
     },
 }
