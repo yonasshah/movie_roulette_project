@@ -1,25 +1,211 @@
 {% extends 'roulette/base.html' %}
 
-{% block title %}Discover Movies & TV Shows{% endblock %}
+{% block title %}Discover | Movie Roulette{% endblock %}
 
 {% block style %}
-/* This hides the default scrollbar */
+<style>
+/* --- 1. Layout & Scrollbars (Scroll Fix) --- */
 .scrolling-wrapper {
-    scrollbar-width: none; /* For Firefox */
-    -ms-overflow-style: none;  /* For Internet Explorer and Edge */
+    display: flex; /* CRITICAL: Must be flex */
+    flex-wrap: nowrap; /* CRITICAL: Prevents items from jumping to next line */
+    overflow-x: auto; /* Enables horizontal scroll */
+    overflow-y: hidden; 
+    width: 100%;
+    gap: 20px;
+    padding: 20px 0;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch; /* Smooth scroll for mobile */
+    scrollbar-width: none; /* Hides scrollbar for Firefox */
+
+    /* ADD THE MASKS HERE TO THE CONTAINER */
+    -webkit-mask-image: linear-gradient(to right, black 85%, transparent 100%);
+    mask-image: linear-gradient(to right, black 85%, transparent 100%);
 }
-.scrolling-wrapper::-webkit-scrollbar {
-    display: none; /* For Chrome, Safari, and Opera */
+
+/* ADDED: This forces the movie cards to keep their size, enabling the scroll */
+.scrolling-wrapper > div {
+    flex: 0 0 180px;
+    width: 180px;
 }
+
+/* Ensure the container of the whole page isn't hiding the overflow */
+.discover-container {
+    width: 100%;
+    /* Delete overflow: hidden; completely */
+}
+.scrolling-wrapper::-webkit-scrollbar { display: none; }
+
+/* --- 2. Hero Spotlight with Glass Badge --- */
+.hero-spotlight {
+    position: relative;
+    width: 100%;
+    height: 450px;
+    border-radius: 20px;
+    overflow: hidden;
+    margin-bottom: 40px;
+    background: #111;
+}
+
+.hero-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.6;
+}
+
+.hero-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to right, rgba(0,0,0,0.9) 10%, transparent 70%),
+                linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 40%);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 0 60px;
+    align-items: flex-start; /* ADDED: Stops the button from stretching */
+}
+
+/* Glassmorphism Badge */
+.hero-badge {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #818cf8;
+    padding: 6px 14px;
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    width: fit-content;
+    margin-bottom: 16px;
+}
+
+.hero-title {
+    font-size: 42px;
+    font-weight: 800;
+    color: #fff;
+    max-width: 500px;
+    line-height: 1.1;
+    margin-bottom: 12px;
+    letter-spacing: -1px;
+}
+
+.hero-desc {
+    color: #9ca3af;
+    max-width: 450px;
+    font-size: 15px;
+    line-height: 1.5;
+    margin-bottom: 24px;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.hero-btn {
+    display: inline-block; /* ADDED: Keeps the button normal size */
+    margin-top: 10px; /* ADDED: Gives space below the description */
+    background: #818cf8;
+    color: #fff;
+    padding: 12px 28px;
+    border-radius: 12px;
+    font-weight: 700;
+    text-decoration: none;
+    width: fit-content;
+    transition: transform 0.2s, background 0.2s;
+}
+.hero-btn:hover { background: #6366f1; transform: translateY(-2px); }
+
+/* --- 3. Section Titles --- */
+.section-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.section-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #f3f4f6;
+    letter-spacing: -0.3px;
+}
+
+/* --- 4. Navigation Arrows (Glassmorphism Effect) --- */
+.arrow-btn {
+    width: 44px;
+    height: 44px;
+    background: rgba(255, 255, 255, 0.03); /* Transparent base */
+    backdrop-filter: blur(15px); /* The frosted glass effect */
+    -webkit-backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    opacity: 0;
+    z-index: 20;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+.carousel-group:hover .arrow-btn { opacity: 1; }
+
+/* Container for the row needs relative positioning for the pseudo-elements to work */
+.carousel-group {
+    position: relative;
+}
+
+
+
+.arrow-btn:hover { 
+    background: rgba(129, 140, 248, 0.2); 
+    border-color: rgba(129, 140, 248, 0.5);
+    transform: scale(1.1);
+}
+
+.arrow-btn.hidden { pointer-events: none; opacity: 0 !important; }
+
+@media (max-width: 768px) {
+    .hero-spotlight { height: 350px; }
+    .hero-title { font-size: 28px; }
+    .hero-overlay { padding: 0 30px; }
+    .arrow-btn { display: none; }
+}
+</style>
 {% endblock %}
 
 {% block content %}
-<div class="space-y-10">
+<div class="discover-container">
 
-    {% include 'roulette/_content_row.html' with title="Popular Movies" items=popular_movies media_type='movie' %}
-    {% include 'roulette/_content_row.html' with title="Top Rated Movies" items=top_rated_movies media_type='movie' %}
-    {% include 'roulette/_content_row.html' with title="Popular TV Shows" items=popular_tv media_type='tv' %}
-    {% include 'roulette/_content_row.html' with title="Top Rated TV Shows" items=top_rated_tv media_type='tv' %}
+    {% with featured=popular_movies|first %}
+    {% if featured %}
+    <div class="hero-spotlight">
+        {% if featured.backdrop_path %}
+            <img src="https://image.tmdb.org/t/p/original{{ featured.backdrop_path }}" class="hero-img" alt="Backdrop">
+        {% endif %}
+        <div class="hero-overlay">
+            <div class="hero-badge">Featured Today</div>
+            <h1 class="hero-title">{% if featured.title %}{{ featured.title }}{% else %}{{ featured.name }}{% endif %}</h1>
+            <p class="hero-desc">{{ featured.overview }}</p>
+            <a href="{% url 'roulette:content_detail' content_type='movie' tmdb_id=featured.id %}" class="hero-btn">
+                View Details
+            </a>
+        </div>
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    <div class="space-y-10">
+        {% include 'roulette/partials/_content_row.html' with title="Popular Movies" items=popular_movies media_type='movie' %}
+        {% include 'roulette/partials/_content_row.html' with title="Top Rated Movies" items=top_rated_movies media_type='movie' %}
+        {% include 'roulette/partials/_content_row.html' with title="Popular TV Shows" items=popular_tv media_type='tv' %}
+        {% include 'roulette/partials/_content_row.html' with title="Top Rated TV Shows" items=top_rated_tv media_type='tv' %}
+    </div>
 
 </div>
 {% endblock %}
@@ -28,44 +214,37 @@
 {{ block.super }}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // This function will set up the arrows for each carousel on the page
-        function setupCarousel(container) {
-            const wrapper = container.querySelector('.scrolling-wrapper');
-            const leftArrow = container.querySelector('.left-arrow');
-            const rightArrow = container.querySelector('.right-arrow');
+        console.log("🎬 Movie Roulette Carousel Script Initialized");
+        
+        // Find every row on the page
+        const rows = document.querySelectorAll('.carousel-group');
+        console.log("Found " + rows.length + " carousel rows.");
 
-            function updateArrowState() {
-                // Hide left arrow if we are at the beginning
-                leftArrow.classList.toggle('hidden', wrapper.scrollLeft <= 0);
-                // Hide right arrow if we are at the end
-                const maxScrollLeft = wrapper.scrollWidth - wrapper.clientWidth;
-                rightArrow.classList.toggle('hidden', wrapper.scrollLeft >= maxScrollLeft - 1); // -1 for precision
+        rows.forEach((row, index) => {
+            const wrapper = row.querySelector('.scrolling-wrapper');
+            const leftBtn = row.querySelector('.left-arrow');
+            const rightBtn = row.querySelector('.right-arrow');
+
+            // Failsafe
+            if (!wrapper || !leftBtn || !rightBtn) {
+                console.warn("Row " + index + " is missing its wrapper or buttons.");
+                return;
             }
 
-            leftArrow.addEventListener('click', function() {
-                // Scroll left by 80% of the container's width
-                const scrollAmount = wrapper.clientWidth * 0.8;
-                wrapper.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+            // Scroll Left - using direct scrollLeft manipulation
+            leftBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                console.log("Scrolled Left");
+                wrapper.scrollLeft -= 600; 
             });
 
-            rightArrow.addEventListener('click', function() {
-                // Scroll right by 80% of the container's width
-                const scrollAmount = wrapper.clientWidth * 0.8;
-                wrapper.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+            // Scroll Right - using direct scrollLeft manipulation
+            rightBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                console.log("Scrolled Right");
+                wrapper.scrollLeft += 600;
             });
-
-            // Update arrows whenever the user scrolls
-            wrapper.addEventListener('scroll', updateArrowState);
-            
-            // Also check on window resize
-            new ResizeObserver(updateArrowState).observe(wrapper);
-            
-            // Set initial state
-            updateArrowState();
-        }
-
-        // Apply the setup function to every carousel on the page
-        document.querySelectorAll('.relative.group').forEach(setupCarousel);
+        });
     });
 </script>
 {% endblock %}

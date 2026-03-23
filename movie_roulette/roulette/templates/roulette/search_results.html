@@ -2,58 +2,366 @@
 
 {% block title %}Search Results for "{{ query }}"{% endblock %}
 
+{% block style %}
+/* --- 1. Header & Typography --- */
+.search-header { margin-bottom: 28px; }
+.sh-query { font-family: 'Space Grotesk', sans-serif; font-size: 22px; font-weight: 700; color: #fff; letter-spacing: -0.3px; }
+.sh-query span { color: #818cf8; }
+.sh-meta { font-size: 12px; color: #4b5563; margin-top: 4px; }
+
+.view-all-link {
+        display: inline-block;
+        margin-top: 10px;
+        color: #818cf8;
+        font-size: 13px;
+        font-weight: 600;
+        text-decoration: none;
+        transition: opacity 0.2s;
+    }
+    .view-all-link:hover { opacity: 0.8; }
+
+.search-tabs {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 24px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    padding-bottom: 2px;
+}
+
+.tab-link {
+    text-decoration: none;
+    color: #4b5563;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 8px 4px;
+    position: relative;
+    transition: color 0.2s;
+}
+
+.tab-link:hover { color: #e5e7eb; }
+
+.tab-link.active {
+    color: #818cf8;
+}
+
+.tab-link.active::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: #818cf8;
+    border-radius: 2px;
+}
+
+.tab-count {
+    font-size: 11px;
+    opacity: 0.5;
+    margin-left: 4px;
+}
+
+.section-label {
+    font-size: 10px; font-weight: 700; color: #4b5563;
+    text-transform: uppercase; letter-spacing: 1.2px;
+    margin-bottom: 12px; padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.search-divider { height: 1px; background: rgba(255,255,255,0.04); margin: 24px 0; }
+
+/* --- 2. User Search Rows --- */
+.user-item-container, .user-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 14px; border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.04);
+    background: rgba(255,255,255,0.02);
+    margin-bottom: 6px; transition: border-color 0.15s, background 0.15s;
+}
+
+.user-item-container:hover, .user-row:hover { 
+    border-color: rgba(99,102,241,0.25); 
+    background: rgba(255,255,255,0.035); 
+}
+
+.user-link { display: flex; align-items: center; gap: 12px; flex: 1; text-decoration: none; color: inherit; min-width: 0; }
+
+.user-av { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+.user-av-fallback {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: linear-gradient(135deg, #6366f1, #7c3aed);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 600; color: #fff; flex-shrink: 0;
+}
+
+.user-info { flex: 1; min-width: 0; }
+.user-name { font-size: 14px; font-weight: 600; color: #e5e7eb; }
+.user-stats { font-size: 11px; color: #4b5563; margin-top: 1px; }
+
+/* --- 3. Follow Button Logic --- */
+.follow-btn {
+    width: 100px; /* Fixed width prevents jumping */
+    padding: 6px 16px;
+    border-radius: 20px; /* Rounded pill look */
+    font-size: 12px;
+    font-weight: 600;
+    transition: all 0.2s;
+    border: 1px solid rgba(99,102,241,0.4);
+    background: transparent;
+    color: #818cf8;
+    text-align: center;
+    cursor: pointer;
+}
+
+.follow-btn:hover {
+    background: #6366f1;
+    color: #fff;
+    border-color: #6366f1;
+}
+
+.follow-btn.following {
+    position: relative;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: #9ca3af;
+}
+
+/* Hide original text on hover smoothly */
+.follow-btn.following:hover {
+    color: transparent !important;
+    background: rgba(239, 68, 68, 0.1) !important;
+    border-color: #ef4444 !important;
+}
+
+/* Position 'Unfollow' exactly over the hidden text */
+.follow-btn.following::after {
+    content: 'Unfollow';
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ef4444;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+}
+
+.follow-btn.following:hover::after {
+    opacity: 1;
+}
+
+/* --- 4. Content Grid (Movies/TV) --- */
+.content-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 8px; }
+@media (min-width: 640px) { .content-grid { grid-template-columns: repeat(4, 1fr); } }
+@media (min-width: 1024px) { .content-grid { grid-template-columns: repeat(5, 1fr); } }
+
+.content-card {
+    border-radius: 10px; overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.04);
+    background: rgba(255,255,255,0.02);
+    transition: border-color 0.15s, transform 0.15s;
+    text-decoration: none; color: inherit; display: block;
+}
+.content-card:hover { border-color: rgba(255,255,255,0.1); transform: scale(1.03); }
+
+.cc-poster { width: 100%; aspect-ratio: 2/3; background: linear-gradient(135deg, #12121e, #1a1428); display: block; overflow: hidden; }
+.cc-poster img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.cc-info { padding: 10px 12px; }
+.cc-title { font-size: 13px; font-weight: 600; color: #e5e7eb; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cc-meta { font-size: 11px; color: #4b5563; margin-top: 3px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+
+.cc-badge { font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.3px; }
+.badge-movie { background: rgba(99,102,241,0.12); color: #818cf8; }
+.badge-tv { background: rgba(168,85,247,0.12); color: #a855f7; }
+.cc-rating { font-size: 11px; color: #fbbf24; display: flex; align-items: center; gap: 3px; }
+
+/* --- 5. Empty States --- */
+.empty-state { text-align: center; padding: 48px 20px; }
+.empty-state i { font-size: 32px; color: rgba(255,255,255,0.06); margin-bottom: 12px; }
+.empty-state p { font-size: 13px; color: #4b5563; }
+{% endblock %}
+
 {% block content %}
-<div class="bg-gray-800 p-8 rounded-lg shadow-2xl space-y-8">
-    
-    <div>
-        <h2 class="text-2xl font-bold text-white mb-4 border-b border-gray-700 pb-2">
-            Users matching "<span class="text-indigo-400">{{ query }}</span>"
-        </h2>
-        <div class="space-y-3">
-            {% for user in user_results %}
-                <a href="{% url 'roulette:user_profile' username=user.username %}" class="flex items-center p-3 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors">
-                    <!-- --- ADDED PROFILE PIC --- -->
-                    <img src="{{ user.profile.image.url }}" class="w-10 h-10 rounded-full mr-3 object-cover" alt="{{ user.username }}'s profile picture">
-                    <div>
-                        <p class="font-semibold">@{{ user.username }}</p>
-                        <p class="text-sm text-gray-400">{{ user.follower_count }} Followers</p>
-                    </div>
-                </a>
-            {% empty %}
-                <p class="text-gray-400">No users found.</p>
-            {% endfor %}
-        </div>
+
+<div class="max-w-4xl mx-auto">
+
+    <div class="search-header">
+        <div class="sh-query">Results for <span>"{{ query }}"</span></div>
     </div>
 
-    <div>
-        <h2 class="text-2xl font-bold text-white mb-4 border-b border-gray-700 pb-2">
-            Movies & TV Shows matching "<span class="text-indigo-400">{{ query }}</span>"
-        </h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {% for item in content_results %}
-                <a href="{% url 'roulette:content_detail' content_type=item.media_type tmdb_id=item.id %}" class="bg-gray-700 rounded-lg overflow-hidden shadow-lg hover:ring-2 hover:ring-indigo-500 transition-all">
-                    {% if item.poster_path %}
-                        <img src="https://image.tmdb.org/t/p/w500{{ item.poster_path }}" alt="Poster" class="w-full h-auto object-cover">
-                    {% else %}
-                        <div class="w-full h-auto bg-gray-900 flex items-center justify-center" style="aspect-ratio: 2/3;">
-                             <span class="text-gray-500">No Poster</span>
-                        </div>
-                    {% endif %}
-                    <div class="p-4">
-                        {% if item.media_type == 'movie' %}
-                            <h3 class="font-bold text-lg">{{ item.title }}</h3>
-                            <p class="text-sm text-gray-400">Movie ({{ item.release_date|slice:":4" }})</p>
-                        {% elif item.media_type == 'tv' %}
-                            <h3 class="font-bold text-lg">{{ item.name }}</h3>
-                            <p class="text-sm text-gray-400">TV Show ({{ item.first_air_date|slice:":4" }})</p>
+    <nav class="search-tabs">
+        <a href="?q={{ query }}&type=all" class="tab-link {% if active_tab == 'all' %}active{% endif %}">
+            All
+        </a>
+        <a href="?q={{ query }}&type=movies" class="tab-link {% if active_tab == 'movies' %}active{% endif %}">
+            Movies <span class="tab-count">{{ movie_count }}</span>
+        </a>
+        <a href="?q={{ query }}&type=tv" class="tab-link {% if active_tab == 'tv' %}active{% endif %}">
+            TV Shows <span class="tab-count">{{ tv_count }}</span>
+        </a>
+        <a href="?q={{ query }}&type=people" class="tab-link {% if active_tab == 'people' %}active{% endif %}">
+            People <span class="tab-count">{{ people_count }}</span>
+        </a>
+    </nav>
+
+    {# ===== TAB: ALL (Summary View) ===== #}
+    {% if active_tab == 'all' %}
+        
+        {# People Summary (Top 3) #}
+        {% if user_results %}
+            <div class="section-label">People</div>
+            {% for user_obj in user_results|slice:":3" %}
+                <div class="user-item-container">
+                    <a href="{% url 'roulette:user_profile' username=user_obj.username %}" class="user-link">
+                        {% if user_obj.profile.image and user_obj.profile.image.url != '/media/default.jpg' %}
+                            <img src="{{ user_obj.profile.image.url }}" class="user-av" alt="">
+                        {% else %}
+                            <div class="user-av-fallback">{{ user_obj.username|first|upper }}</div>
                         {% endif %}
-                    </div>
-                </a>
-            {% empty %}
-                <p class="text-gray-400 md:col-span-2 lg:col-span-3">No movies or TV shows found.</p>
+                        <div class="user-info">
+                            <div class="user-name">@{{ user_obj.username }}</div>
+                            <div class="user-stats">
+                                <span class="follower-count">{{ user_obj.follower_count }}</span> 
+                                <span class="follower-label">follower{{ user_obj.follower_count|pluralize }}</span>
+                            </div>
+                        </div>
+                    </a>
+                    {% if user.is_authenticated and user_obj != request.user %}
+                        <button type="button" class="follow-btn toggle-follow-btn {% if user_obj.is_followed %}following{% endif %}" data-user-id="{{ user_obj.id }}">
+                            {% if user_obj.is_followed %}Following{% else %}Follow{% endif %}
+                        </button>
+                    {% endif %}
+                </div>
+            {% endfor %}
+            {% if people_count > 3 %}
+                <a href="?q={{ query }}&type=people" class="view-all-link">View all people →</a>
+            {% endif %}
+            <div class="search-divider"></div>
+        {% endif %}
+
+        {# Content Summary #}
+        <div class="section-label">Movies & TV Shows</div>
+        {% if content_results %}
+            <div class="content-grid">
+                {% for item in content_results %}
+                    {% include 'roulette/partials/content_card.html' with media_type=item.media_type %}
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <p>No titles found matching "{{ query }}"</p>
+            </div>
+        {% endif %}
+
+    {# ===== TAB: MOVIES or TV (Full Grid) ===== #}
+    {% elif active_tab == 'movies' or active_tab == 'tv' %}
+        <div class="content-grid">
+            {% for item in content_results %}
+                {% include 'roulette/partials/content_card.html' with media_type=item.media_type %}
             {% endfor %}
         </div>
-    </div>
+        {% if not content_results %}
+            <div class="empty-state">
+                <p>No results found in this category.</p>
+            </div>
+        {% endif %}
+
+    {# ===== TAB: PEOPLE (Full List) ===== #}
+    {% elif active_tab == 'people' %}
+        {% for user_obj in user_results %}
+            <div class="user-item-container">
+                <a href="{% url 'roulette:user_profile' username=user_obj.username %}" class="user-link">
+                    {% if user_obj.profile.image and user_obj.profile.image.url != '/media/default.jpg' %}
+                        <img src="{{ user_obj.profile.image.url }}" class="user-av" alt="">
+                    {% else %}
+                        <div class="user-av-fallback">{{ user_obj.username|first|upper }}</div>
+                    {% endif %}
+                    <div class="user-info">
+                        <div class="user-name">@{{ user_obj.username }}</div>
+                        <div class="user-stats">
+                            <span class="follower-count">{{ user_obj.follower_count }}</span> 
+                            <span class="follower-label">follower{{ user_obj.follower_count|pluralize }}</span>
+                        </div>
+                    </div>
+                </a>
+                {% if user.is_authenticated and user_obj != request.user %}
+                    <button type="button" class="follow-btn toggle-follow-btn {% if user_obj.is_followed %}following{% endif %}" data-user-id="{{ user_obj.id }}">
+                        {% if user_obj.is_followed %}Following{% else %}Follow{% endif %}
+                    </button>
+                {% endif %}
+            </div>
+        {% empty %}
+            <div class="empty-state">
+                <p>No users found matching "{{ query }}"</p>
+            </div>
+        {% endfor %}
+    {% endif %}
 
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.toggle-follow-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const btnElement = this;
+            const userId = btnElement.getAttribute('data-user-id');
+            const csrftoken = '{{ csrf_token }}';
+
+            // Visual feedback: prevent double-clicks
+            btnElement.style.opacity = '0.6';
+            btnElement.style.pointerEvents = 'none';
+
+            fetch("{% url 'roulette:toggle_follow' %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': csrftoken,
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: `user_id=${userId}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                btnElement.style.opacity = '1';
+                btnElement.style.pointerEvents = 'auto';
+
+                if (data.success) {
+                    // 1. Toggle Button UI
+                    if (data.is_following) {
+                        btnElement.classList.add('following');
+                        btnElement.textContent = 'Following';
+                    } else {
+                        btnElement.classList.remove('following');
+                        btnElement.textContent = 'Follow';
+                    }
+
+                    // 2. Update Stats Cleanly
+                    const container = btnElement.closest('.user-item-container');
+                    const countSpan = container.querySelector('.follower-count');
+                    const labelSpan = container.querySelector('.follower-label');
+
+                    if (countSpan && labelSpan) {
+                        // Update only the number
+                        countSpan.textContent = data.followers_count;
+                        // Update only the word (pluralization)
+                        labelSpan.textContent = data.followers_count === 1 ? ' follower' : ' followers';
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Follow error:', error);
+                btnElement.style.opacity = '1';
+                btnElement.style.pointerEvents = 'auto';
+            });
+        });
+    });
+});
+</script>
 {% endblock %}

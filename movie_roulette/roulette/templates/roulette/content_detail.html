@@ -5,134 +5,106 @@
 {% endblock %}
 
 {% block style %}
-/* ===== CINEMATIC DASHBOARD THEME ===== */
-
-/* 1. Backdrop Hero */
 .detail-hero-v2 {
-    position: relative;
-    width: 100vw;
-    margin-left: calc(-50vw + 50%);
-    height: 520px;
-    background-size: cover;
-    background-position: center 20%;
-    margin-top: -20px;
+    position: relative; width: 100vw; margin-left: calc(-50vw + 50%);
+    height: 520px; background-size: cover; background-position: center 20%; margin-top: -20px;
 }
-
 .hero-overlay-v2 {
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(to top, #050507 8%, rgba(5, 5, 7, 0.5) 50%, rgba(5, 5, 7, 0.85) 100%);
+    position: absolute; inset: 0;
+    background: linear-gradient(to top, #050507 8%, rgba(5,5,7,0.5) 50%, rgba(5,5,7,0.85) 100%);
 }
-
-/* 2. Main Content Grid */
 .detail-grid-v2 {
-    display: grid;
-    grid-template-columns: 320px 1fr;
-    gap: 48px;
-    position: relative;
-    z-index: 10;
-    margin-top: -240px;
+    display: grid; grid-template-columns: 320px 1fr; gap: 48px;
+    position: relative; z-index: 10; margin-top: -240px;
 }
-
 @media (max-width: 1024px) {
     .detail-grid-v2 { grid-template-columns: 1fr; margin-top: -120px; text-align: center; }
     .poster-v2 { max-width: 260px; margin: 0 auto; }
-    .action-group-v2 { justify-content: center; }
     .meta-row-v2 { justify-content: center; }
 }
-
-.poster-v2 {
-    width: 100%;
-    border-radius: 24px;
-    box-shadow: 0 30px 60px rgba(0,0,0,0.8);
-    border: 1px solid rgba(255,255,255,0.1);
-}
-
-/* 3. Action Pills & UI Elements */
+.poster-v2 { width: 100%; border-radius: 24px; box-shadow: 0 30px 60px rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.1); }
 .action-pill-v2 {
-    display: inline-flex; align-items: center; gap: 8px;
-    padding: 12px 24px; border-radius: 14px;
-    font-size: 14px; font-weight: 700;
-    border: 1px solid rgba(255,255,255,0.08);
-    background: rgba(255,255,255,0.04);
-    backdrop-filter: blur(10px);
-    color: #94a3b8; transition: all 0.2s;
+    display: inline-flex; align-items: center; gap: 8px; padding: 12px 24px; border-radius: 14px;
+    font-size: 14px; font-weight: 700; border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.04); backdrop-filter: blur(10px); color: #94a3b8; transition: all 0.2s;
 }
 .action-pill-v2:hover { border-color: #6366f1; color: #fff; transform: translateY(-2px); }
 .action-pill-v2.fav-active { color: #ef4444; border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.1); }
 .action-pill-v2.watch-active { color: #818cf8; border-color: rgba(99,102,241,0.3); background: rgba(99,102,241,0.1); }
-
-.meta-chip {
-    padding: 6px 14px;
-    background: rgba(255,255,255,0.06);
-    border-radius: 8px;
-    font-size: 13px;
-    font-weight: 600;
-    color: #cbd5e1;
-}
-
+.meta-chip { padding: 6px 14px; background: rgba(255,255,255,0.06); border-radius: 8px; font-size: 13px; font-weight: 600; color: #cbd5e1; }
 .provider-logo-v2 { width: 44px; height: 44px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); }
-
-/* Review Styling */
 .review-card-v2 { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 20px; padding: 24px; }
 .your-review-post { background: rgba(99,102,241,0.04); border: 1px solid rgba(99,102,241,0.15); border-radius: 20px; padding: 28px; }
-
-/* Modal Utility */
 .hidden { display: none; }
 .modal-list-btn { width: 100%; text-align: left; padding: 12px; border-radius: 10px; color: #94a3b8; transition: 0.2s; }
 .modal-list-btn:hover { background: rgba(255,255,255,0.05); color: #fff; }
-
 .review-vote-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 12px;
-    font-weight: 700;
-    color: #4b5563;
-    background: none;
-    border: none;
-    cursor: pointer;
-    transition: all 0.2s;
+    display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700;
+    color: #4b5563; background: none; border: none; cursor: pointer; transition: all 0.2s;
 }
 .review-vote-btn:hover { color: #9ca3af; }
 .review-vote-btn.active.vote-up { color: #60a5fa; }
 .review-vote-btn.active.vote-down { color: #ef4444; }
 .review-vote-btn span { font-family: 'Space Grotesk', sans-serif; }
+
+/* Comment styles for content detail */
+.cd-comments-section { margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.05); }
+.cd-comment-vote-btn {
+    display: inline-flex; align-items: center; gap: 3px; font-size: 10px; color: #374151;
+    cursor: pointer; background: none; border: none; padding: 1px 4px; transition: color 0.15s;
+}
+.cd-comment-vote-btn:hover { color: #6b7280; }
+.cd-comment-vote-btn.cvote-up.active { color: #60a5fa; }
+.cd-comment-vote-btn.cvote-down.active { color: #ef4444; }
+.cd-reply-input {
+    background: rgba(255,255,255,0.025); border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 8px; padding: 8px 12px; color: #e5e7eb; font-size: 12px;
+    outline: none; font-family: inherit; resize: none;
+}
+.cd-reply-input::placeholder { color: #252528; }
+.cd-reply-input:focus { border-color: rgba(99,102,241,0.4); }
+.cd-reply-btn {
+    padding: 6px 14px; border-radius: 8px; font-size: 11px; font-weight: 600;
+    background: #6366f1; color: #fff; border: none; cursor: pointer; transition: background 0.15s;
+}
+.cd-reply-btn:hover { background: #5558e6; }
+.cd-reply-btn:disabled { opacity: 0.5; cursor: wait; }
+.cd-comment-item:hover .cd-delete-comment-btn { opacity: 1; }
+.cd-comment-count { font-size: 11px; color: #4b5563; display: flex; align-items: center; gap: 4px; }
+
+.comment-vote-btn {
+    display: inline-flex; align-items: center; gap: 3px;
+    font-size: 10px; color: #374151; cursor: pointer;
+    background: none; border: none; padding: 1px 4px; transition: color 0.15s;
+}
+.comment-vote-btn:hover { color: #6b7280; }
+.comment-vote-btn.cvote-up.active { color: #60a5fa; }
+.comment-vote-btn.cvote-down.active { color: #ef4444; }
 {% endblock %}
 
 {% block content %}
-{# === CINEMATIC BACKDROP === #}
-<div class="detail-hero-v2" 
+<div class="detail-hero-v2"
      {% if content.backdrop_path %}style="background-image: url('https://image.tmdb.org/t/p/original{{ content.backdrop_path }}');"{% endif %}>
     <div class="hero-overlay-v2"></div>
 </div>
 
 <div class="max-w-6xl mx-auto px-6 pb-20">
     <div class="detail-grid-v2">
-        
-        {# === LEFT COLUMN: POSTER & ACTIONS === #}
+
+        {# === LEFT COLUMN === #}
         <aside>
             {% if content.poster_path %}
                 <img src="https://image.tmdb.org/t/p/w500{{ content.poster_path }}" class="poster-v2" alt="Poster">
             {% else %}
                 <div class="poster-v2 aspect-[2/3] bg-white/5 flex items-center justify-center">No Poster</div>
             {% endif %}
-
             <div class="flex flex-col gap-3 mt-8">
-                <button id="add-to-list-btn" class="action-pill-v2 w-full justify-center">
-                    <i class="fas fa-plus"></i> Add to List
-                </button>
+                <button id="add-to-list-btn" class="action-pill-v2 w-full justify-center"><i class="fas fa-plus"></i> Add to List</button>
                 <div class="grid grid-cols-2 gap-3">
-                    <button id="watchlist-btn" class="action-pill-v2 justify-center {% if is_watchlist %}watch-active{% endif %}">
-                        <i class="fas fa-bookmark"></i> Watchlist
-                    </button>
-                    <button id="like-btn" class="action-pill-v2 justify-center {% if is_favorite %}fav-active{% endif %}">
-                        <i class="fas fa-heart"></i> Favorite
-                    </button>
+                    <button id="watchlist-btn" class="action-pill-v2 justify-center {% if is_watchlist %}watch-active{% endif %}"><i class="fas fa-bookmark"></i> Watchlist</button>
+                    <button id="like-btn" class="action-pill-v2 justify-center {% if is_favorite %}fav-active{% endif %}"><i class="fas fa-heart"></i> Favorite</button>
                 </div>
             </div>
-
-            {# Providers #}
             <div class="mt-10 p-6 bg-white/[0.02] border border-white/5 rounded-2xl">
                 <h3 class="text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-4">Available On</h3>
                 <div class="flex flex-wrap gap-3">
@@ -147,45 +119,34 @@
             </div>
         </aside>
 
-        {# === RIGHT COLUMN: INFORMATION & REVIEWS === #}
+        {# === RIGHT COLUMN === #}
         <main class="pt-32">
             <div class="flex flex-wrap items-center gap-3 mb-4 meta-row-v2">
                 <span class="meta-chip">{% if content_type == 'movie' %}{{ content.release_date|slice:":4" }}{% else %}{{ content.first_air_date|slice:":4" }}{% endif %}</span>
-                <span class="meta-chip">
-                    {% if content_type == 'movie' %}{{ content.runtime }} min{% else %}{{ content.episode_run_time.0 }} min/ep{% endif %}
-                </span>
-                <span class="text-amber-400 font-bold flex items-center gap-1.5 ml-2">
-                    <i class="fas fa-star text-xs"></i>{{ content.vote_average|floatformat:1 }} <span class="text-gray-600 text-xs font-normal">TMDb</span>
-                </span>
+                <span class="meta-chip">{% if content_type == 'movie' %}{{ content.runtime }} min{% else %}{{ content.episode_run_time.0 }} min/ep{% endif %}</span>
+                <span class="text-amber-400 font-bold flex items-center gap-1.5 ml-2"><i class="fas fa-star text-xs"></i>{{ content.vote_average|floatformat:1 }} <span class="text-gray-600 text-xs font-normal">TMDb</span></span>
                 {% if avg_rating %}
-                    <span class="text-indigo-400 font-bold flex items-center gap-1.5 ml-4">
-                        <i class="fas fa-star text-xs"></i>{{ avg_rating|floatformat:1 }} <span class="text-gray-600 text-xs font-normal">({{ review_count }} Users)</span>
-                    </span>
+                    <span class="text-indigo-400 font-bold flex items-center gap-1.5 ml-4"><i class="fas fa-star text-xs"></i>{{ avg_rating|floatformat:1 }} <span class="text-gray-600 text-xs font-normal">({{ review_count }} Users)</span></span>
                 {% endif %}
             </div>
 
             <h1 class="text-5xl md:text-6xl font-black text-white mb-8 tracking-tighter italic uppercase">
                 {% if content_type == 'movie' %}{{ content.title }}{% else %}{{ content.name }}{% endif %}
             </h1>
-
-            <p class="text-lg text-gray-400 leading-relaxed max-w-3xl mb-12">
-                {{ content.overview }}
-            </p>
+            <p class="text-lg text-gray-400 leading-relaxed max-w-3xl mb-12">{{ content.overview }}</p>
 
             <div class="flex items-center gap-4 mb-20">
-                <a href="{% if trailer_key %}https://www.youtube.com/watch?v={{ trailer_key }}{% else %}#{% endif %}"
-                   target="_blank"
+                <a href="{% if trailer_key %}https://www.youtube.com/watch?v={{ trailer_key }}{% else %}#{% endif %}" target="_blank"
                    class="inline-flex items-center gap-3 px-8 py-4 rounded-2xl text-base font-bold transition-all hover:scale-105 {% if trailer_key %}bg-red-600 hover:bg-red-500 text-white shadow-xl shadow-red-600/20{% else %}bg-white/5 text-gray-600 cursor-not-allowed{% endif %}">
                     <i class="fab fa-youtube text-xl"></i> Watch Trailer
                 </a>
             </div>
 
-            {# Reviews Section #}
+            {# ===== REVIEWS ===== #}
             <section class="max-w-3xl">
                 <h2 class="text-2xl font-bold text-white mb-8">Community Reviews</h2>
 
                 {% if user_review %}
-                    {# YOUR REVIEW #}
                     <div class="your-review-post mb-12" id="your-review-display">
                         <div class="flex items-center justify-between mb-4">
                             <div class="flex items-center gap-4">
@@ -203,13 +164,12 @@
                             <button class="text-xs font-bold text-gray-500 hover:text-red-400" onclick="if(confirm('Delete?'))document.getElementById('delete-review-form').submit();"><i class="fas fa-trash mr-2"></i>Delete</button>
                         </div>
                     </div>
-
-                    {# EDIT FORM #}
                     <div class="your-review-post mb-12 hidden" id="your-review-edit">
                         <form action="{% url 'roulette:add_review' content_type=content_type tmdb_id=content.id %}" method="POST">
                             {% csrf_token %}
                             <input type="hidden" name="title" value="{% if content_type == 'movie' %}{{ content.title|escapejs }}{% else %}{{ content.name|escapejs }}{% endif %}">
-                            <input type="hidden" name="poster_path" value="{{ content.poster_path }}"><input type="hidden" name="overview" value="{{ content.overview }}">
+                            <input type="hidden" name="poster_path" value="{{ content.poster_path }}">
+                            <input type="hidden" name="overview" value="{{ content.overview }}">
                             <div class="space-y-6">
                                 <div class="flex justify-between items-center">
                                     <h3 class="font-bold text-white">Modify Review</h3>
@@ -227,13 +187,13 @@
                     </div>
                     <form id="delete-review-form" action="{% url 'roulette:delete_review' review_id=user_review.id %}" method="POST" class="hidden">{% csrf_token %}</form>
                 {% else %}
-                    {# NEW REVIEW FORM #}
                     <div class="bg-white/[0.03] border border-white/10 rounded-2xl p-8 mb-12">
                         <h3 class="font-bold text-white mb-6">Leave your thoughts</h3>
                         <form action="{% url 'roulette:add_review' content_type=content_type tmdb_id=content.id %}" method="POST">
                             {% csrf_token %}
                             <input type="hidden" name="title" value="{% if content_type == 'movie' %}{{ content.title|escapejs }}{% else %}{{ content.name|escapejs }}{% endif %}">
-                            <input type="hidden" name="poster_path" value="{{ content.poster_path }}"><input type="hidden" name="overview" value="{{ content.overview }}">
+                            <input type="hidden" name="poster_path" value="{{ content.poster_path }}">
+                            <input type="hidden" name="overview" value="{{ content.overview }}">
                             <div class="space-y-6">
                                 <select name="rating" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white">
                                     {% for value, label in review_form.rating.field.choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
@@ -245,38 +205,83 @@
                     </div>
                 {% endif %}
 
-                {# ===== COMMUNITY REVIEWS LOOP ===== #}
+                {# ===== COMMUNITY REVIEWS WITH COMMENTS ===== #}
                 <div class="space-y-4" id="reviews-container">
                     {% for review in reviews %}
                         {% if review.user != request.user %}
-                            <div class="review-card-v2" data-review-id="{{ review.id }}">
+                            <div class="review-card-v2" data-review-id="{{ review.id }}" data-ctype-id="{{ review_content_type_id }}">
                                 <div class="flex gap-4">
                                     <a href="{% url 'roulette:user_profile' username=review.user.username %}" class="shrink-0">
                                         <img src="{{ review.user.profile.image.url }}" class="w-10 h-10 rounded-lg object-cover">
                                     </a>
-                                    
                                     <div class="flex-1">
                                         <div class="flex justify-between items-center mb-2">
                                             <a href="{% url 'roulette:user_profile' username=review.user.username %}" class="text-sm font-bold text-white hover:underline">@{{ review.user.username }}</a>
                                             <span class="text-amber-400 font-bold text-sm">★ {{ review.rating }}/10</span>
                                         </div>
-                                        
                                         <p class="text-[10px] text-gray-600 uppercase mb-3">{{ review.timestamp|timesince }} ago</p>
-                                        <p class="text-sm text-gray-400 leading-relaxed italic mb-4">
-                                            {{ review.review_text|linebreaksbr|default:"Rating only." }}
-                                        </p>
+                                        <p class="text-sm text-gray-400 leading-relaxed italic mb-4">{{ review.review_text|linebreaksbr|default:"Rating only." }}</p>
 
+                                        {# Votes + comment count #}
                                         <div class="flex items-center gap-4 pt-4 border-t border-white/5">
-                                            <button class="review-vote-btn vote-up {% if review.fetched_user_vote == 1 %}active{% endif %}" 
-                                                    data-obj-id="{{ review.id }}" data-vote="1">
-                                                <i class="fas fa-thumbs-up"></i>
-                                                <span class="up-count">{{ review.fetched_up_count|default:0 }}</span>
+                                            <button class="review-vote-btn vote-up {% if review.fetched_user_vote == 1 %}active{% endif %}" data-obj-id="{{ review.id }}" data-vote="1">
+                                                <i class="fas fa-thumbs-up"></i> <span class="up-count">{{ review.fetched_up_count|default:0 }}</span>
                                             </button>
-                                            <button class="review-vote-btn vote-down {% if review.fetched_user_vote == -1 %}active{% endif %}" 
-                                                    data-obj-id="{{ review.id }}" data-vote="-1">
-                                                <i class="fas fa-thumbs-down"></i>
-                                                <span class="down-count">{{ review.fetched_down_count|default:0 }}</span>
+                                            <button class="review-vote-btn vote-down {% if review.fetched_user_vote == -1 %}active{% endif %}" data-obj-id="{{ review.id }}" data-vote="-1">
+                                                <i class="fas fa-thumbs-down"></i> <span class="down-count">{{ review.fetched_down_count|default:0 }}</span>
                                             </button>
+                                            <span class="cd-comment-count ml-auto">
+                                                <i class="fas fa-comment text-[10px]"></i>
+                                                <span class="cd-count-number">{{ review.fetched_comments|length }}</span> comments
+                                            </span>
+                                        </div>
+
+                                        {# Comments section #}
+                                        <div class="cd-comments-section">
+                                            <div class="cd-comments-list">
+                                                {% for comment in review.fetched_comments %}
+                                                    <div class="cd-comment-item flex gap-2 mt-2.5" data-comment-id="{{ comment.id }}">
+                                                        <a href="{% url 'roulette:user_profile' username=comment.user.username %}" class="flex-shrink-0">
+                                                            <img src="{{ comment.user.profile.image.url }}" class="w-5 h-5 rounded-full object-cover mt-0.5" alt="">
+                                                        </a>
+                                                        <div class="flex-1 min-w-0">
+                                                            <div class="flex items-start justify-between gap-2">
+                                                                <div class="min-w-0 flex-1">
+                                                                    <span class="text-[11px] font-semibold text-gray-300">{{ comment.user.username }}</span>
+                                                                    <span class="text-[10px] text-gray-700 ml-1">&middot; {{ comment.timestamp|timesince }} ago</span>
+                                                                    <p class="text-xs text-gray-400 mt-0.5 leading-relaxed">{{ comment.text|linebreaksbr }}</p>
+                                                                    <div class="flex items-center gap-3 mt-1.5">
+                                                                        <button class="cd-comment-vote-btn cvote-up {% if comment.fetched_user_vote == 1 %}active{% endif %}" data-comment-id="{{ comment.id }}" data-vote="1">
+                                                                            <i class="fas fa-thumbs-up"></i> <span class="cup-count">{{ comment.fetched_up_count|default:"0" }}</span>
+                                                                        </button>
+                                                                        <button class="cd-comment-vote-btn cvote-down {% if comment.fetched_user_vote == -1 %}active{% endif %}" data-comment-id="{{ comment.id }}" data-vote="-1">
+                                                                            <i class="fas fa-thumbs-down"></i> <span class="cdown-count">{{ comment.fetched_down_count|default:"0" }}</span>
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                                {% if comment.user == request.user %}
+                                                                <button type="button" class="cd-delete-comment-btn text-gray-700 hover:text-red-400 text-[10px] opacity-0 transition-all flex-shrink-0"
+                                                                        data-comment-id="{{ comment.id }}" data-delete-url="{% url 'roulette:delete_comment' comment.id %}">
+                                                                    <i class="fas fa-trash"></i>
+                                                                </button>
+                                                                {% endif %}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                {% endfor %}
+                                            </div>
+
+                                            {% if user.is_authenticated %}
+                                            <form class="cd-add-comment-form flex items-center gap-2 mt-3" method="POST" action="{% url 'roulette:add_comment' %}">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="content_type_id" value="{{ review_content_type_id }}">
+                                                <input type="hidden" name="object_id" value="{{ review.id }}">
+                                                <input type="hidden" name="next" value="{{ request.path }}">
+                                                <img src="{{ user.profile.image.url }}" class="w-5 h-5 rounded-full object-cover flex-shrink-0" alt="">
+                                                <textarea name="text" rows="1" placeholder="Add a comment..." class="cd-reply-input flex-1" maxlength="500" required></textarea>
+                                                <button type="submit" class="cd-reply-btn flex-shrink-0">Post</button>
+                                            </form>
+                                            {% endif %}
                                         </div>
                                     </div>
                                 </div>
@@ -312,120 +317,160 @@
 {% block scripts %}
 {{ block.super }}
 <script>
-    (function() {
-        'use strict';
-        var csrfToken = '{{ csrf_token }}';
-        var reviewCtypeId = '{{ review_content_type_id }}'; 
-        var contentInfo = {
-            tmdb_id: '{{ content.id }}',
-            content_type: '{{ content_type }}',
-            title: '{% if content_type == "movie" %}{{ content.title|escapejs }}{% else %}{{ content.name|escapejs }}{% endif %}',
-            poster_path: '{{ content.poster_path }}',
-            release_year: '{% if content_type == "movie" %}{{ content.release_date|slice:":4" }}{% else %}{{ content.first_air_date|slice:":4" }}{% endif %}',
-            overview: '{{ content.overview|escapejs }}'
-        };
+(function() {
+    'use strict';
+    var csrfToken = '{{ csrf_token }}';
+    var reviewCtypeId = '{{ review_content_type_id }}';
+    var commentCtypeId = '{{ comment_ctype_id }}';
+    var contentInfo = {
+        tmdb_id: '{{ content.id }}',
+        content_type: '{{ content_type }}',
+        title: '{% if content_type == "movie" %}{{ content.title|escapejs }}{% else %}{{ content.name|escapejs }}{% endif %}',
+        poster_path: '{{ content.poster_path }}',
+        release_year: '{% if content_type == "movie" %}{{ content.release_date|slice:":4" }}{% else %}{{ content.first_air_date|slice:":4" }}{% endif %}',
+        overview: '{{ content.overview|escapejs }}'
+    };
 
-        const $ = s => document.querySelector(s);
-        var likeBtn = $('#like-btn'), watchBtn = $('#watchlist-btn'), addBtn = $('#add-to-list-btn');
-        var modal = $('#add-to-list-modal'), modalCancel = $('#cancel-add-to-list');
-        var listsCont = $('#custom-lists-container'), modalMsg = $('#modal-message-container');
-        var newInput = $('#new-list-name-input'), createBtn = $('#create-and-add-btn');
-        const reviewsContainer = $('#reviews-container');
+    const $ = s => document.querySelector(s);
+    var likeBtn = $('#like-btn'), watchBtn = $('#watchlist-btn'), addBtn = $('#add-to-list-btn');
+    var modal = $('#add-to-list-modal'), modalCancel = $('#cancel-add-to-list');
+    var listsCont = $('#custom-lists-container'), modalMsg = $('#modal-message-container');
+    var newInput = $('#new-list-name-input'), createBtn = $('#create-and-add-btn');
+    var reviewsContainer = $('#reviews-container');
 
-        // Review Vote Handler
-        function handleReviewVote(btn) {
-            var fd = new FormData();
-            fd.append('content_type_id', reviewCtypeId);
-            fd.append('object_id', btn.dataset.objId);
-            fd.append('vote_type', btn.dataset.vote);
+    // === REVIEW VOTES ===
+    function handleReviewVote(btn) {
+        var fd = new FormData();
+        fd.append('content_type_id', reviewCtypeId);
+        fd.append('object_id', btn.dataset.objId);
+        fd.append('vote_type', btn.dataset.vote);
+        fetch("{% url 'roulette:toggle_vote' %}", { method: 'POST', headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' }, body: fd })
+        .then(r => r.json()).then(d => {
+            if (d.success) {
+                var card = btn.closest('.review-card-v2');
+                var up = card.querySelector('.vote-up'), dn = card.querySelector('.vote-down');
+                up.classList.toggle('active', d.user_vote === 1);
+                dn.classList.toggle('active', d.user_vote === -1);
+                up.querySelector('.up-count').textContent = d.up_count;
+                dn.querySelector('.down-count').textContent = d.down_count;
+            } else window.showToast(d.error || 'Failed.', 'error');
+        }).catch(() => window.showToast('Network error.', 'error'));
+    }
 
-            fetch("{% url 'roulette:toggle_vote' %}", {
-                method: 'POST',
-                headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
-                body: fd
-            })
-            .then(r => r.json())
-            .then(d => {
-                if (d.success) {
-                    var card = btn.closest('.review-card-v2');
-                    var upBtn = card.querySelector('.vote-up');
-                    var downBtn = card.querySelector('.vote-down');
+    // === COMMENT VOTES ===
+    function handleCommentVote(btn) {
+        var fd = new FormData();
+        fd.append('content_type_id', commentCtypeId);
+        fd.append('object_id', btn.dataset.commentId);
+        fd.append('vote_type', btn.dataset.vote);
+        fetch("{% url 'roulette:toggle_vote' %}", { method: 'POST', headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' }, body: fd })
+        .then(r => r.json()).then(d => {
+            if (d.success) {
+                var ci = btn.closest('.cd-comment-item');
+                var up = ci.querySelector('.cvote-up'), dn = ci.querySelector('.cvote-down');
+                up.classList.toggle('active', d.user_vote === 1);
+                dn.classList.toggle('active', d.user_vote === -1);
+                up.querySelector('.cup-count').textContent = d.up_count;
+                dn.querySelector('.cdown-count').textContent = d.down_count;
+            } else window.showToast(d.error || 'Failed.', 'error');
+        }).catch(() => window.showToast('Network error.', 'error'));
+    }
 
-                    // Update UI states based on response
-                    upBtn.classList.toggle('active', d.user_vote === 1);
-                    downBtn.classList.toggle('active', d.user_vote === -1);
-                    
-                    upBtn.querySelector('.up-count').textContent = d.up_count;
-                    downBtn.querySelector('.down-count').textContent = d.down_count;
-                } else if (d.error) {
-                    window.showToast(d.error, 'error');
+    // === ADD COMMENT ===
+    function handleComment(form) {
+        var ta = form.querySelector('textarea[name="text"]'), btn = form.querySelector('button[type="submit"]');
+        if (btn) btn.disabled = true;
+        fetch(form.action, { method: 'POST', headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' }, body: new FormData(form) })
+        .then(r => r.json()).then(d => {
+            if (d.success) {
+                if (ta) ta.value = '';
+                var card = form.closest('.review-card-v2');
+                if (card && d.comment_html) {
+                    var cl = card.querySelector('.cd-comments-list');
+                    if (cl) cl.insertAdjacentHTML('beforeend', d.comment_html);
+                    updCount(card);
                 }
-            })
-            .catch(() => window.showToast('Network error.', 'error'));
-        }
+            } else window.showToast(d.error || 'Could not post.', 'error');
+        }).catch(() => window.showToast('Network error.', 'error'))
+        .finally(() => { if (btn) btn.disabled = false; });
+    }
 
-        // Attach event listener for votes
-        if (reviewsContainer) {
-            reviewsContainer.addEventListener('click', function(e) {
-                var btn = e.target.closest('.review-vote-btn');
-                if (btn) handleReviewVote(btn);
-            });
-        }
+    // === DELETE COMMENT ===
+    function handleDeleteComment(btn) {
+        if (!confirm('Delete this comment?')) return;
+        btn.disabled = true;
+        fetch(btn.dataset.deleteUrl, { method: 'POST', headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(r => r.json()).then(d => {
+            if (d.success) {
+                var ci = btn.closest('.cd-comment-item'), card = btn.closest('.review-card-v2');
+                if (ci) ci.remove();
+                updCount(card);
+                window.showToast('Deleted.', 'success');
+            } else window.showToast(d.error || 'Failed.', 'error');
+        }).catch(() => window.showToast('Network error.', 'error'))
+        .finally(() => { btn.disabled = false; });
+    }
 
-        // Review Toggles
-        $('#edit-review-toggle')?.addEventListener('click', () => { $('#your-review-display').classList.add('hidden'); $('#your-review-edit').classList.remove('hidden'); });
-        $('#cancel-edit-review')?.addEventListener('click', () => { $('#your-review-edit').classList.add('hidden'); $('#your-review-display').classList.remove('hidden'); });
+    function updCount(card) {
+        if (!card) return;
+        var d = card.querySelector('.cd-comment-count'), l = card.querySelector('.cd-comments-list');
+        if (d && l) { var s = d.querySelector('.cd-count-number'); if (s) s.textContent = l.querySelectorAll('.cd-comment-item').length; }
+    }
 
-        // List/Favorite Toggle Logic
-        function toggleList(listType) {
-            var fd = new FormData();
-            Object.keys(contentInfo).forEach(k => fd.append(k, contentInfo[k]));
-            var url = (listType === 'favorite') ? "{% url 'roulette:toggle_favorite' %}" : "{% url 'roulette:toggle_watchlist' %}";
-            fetch(url, { method: 'POST', headers: { 'X-CSRFToken': csrfToken }, body: fd })
-            .then(r => r.json()).then(d => {
-                if (d.success) {
-                    if (d.hasOwnProperty('is_favorite')) likeBtn.classList.toggle('fav-active', d.is_favorite);
-                    if (d.hasOwnProperty('is_watchlist')) watchBtn.classList.toggle('watch-active', d.is_watchlist);
-                }
-            });
-        }
-
-        likeBtn?.addEventListener('click', () => toggleList('favorite'));
-        watchBtn?.addEventListener('click', () => toggleList('watchlist'));
-
-        // Modal Logic
-        function loadLists() {
-            fetch("{% url 'roulette:get_user_lists' %}")
-            .then(r => r.json()).then(d => {
-                var ls = d.custom_lists || [];
-                listsCont.innerHTML = '';
-                if (!ls.length) { listsCont.innerHTML = '<p class="text-gray-500 text-xs p-4 italic">No collections yet.</p>'; return; }
-                ls.forEach(l => {
-                    var b = document.createElement('button');
-                    b.textContent = l.name; b.className = 'modal-list-btn font-bold text-sm';
-                    b.addEventListener('click', () => addToList(l.id, l.name));
-                    listsCont.appendChild(b);
-                });
-            });
-        }
-
-        function addToList(listId, listName) {
-            var fd = new FormData(); fd.append('list_id', listId);
-            Object.keys(contentInfo).forEach(k => fd.append(k, contentInfo[k]));
-            fetch("{% url 'roulette:list_add_item' %}", { method: 'POST', headers: { 'X-CSRFToken': csrfToken }, body: fd })
-            .then(r => r.json()).then(d => {
-                window.showToast(d.message || d.error, d.success ? 'success' : 'error');
-                if (d.success) modal.classList.add('hidden');
-            });
-        }
-
-        addBtn?.addEventListener('click', () => { modal.classList.remove('hidden'); loadLists(); });
-        modalCancel?.addEventListener('click', () => modal.classList.add('hidden'));
-        createBtn?.addEventListener('click', () => {
-            var fd = new FormData(); fd.append('name', newInput.value.trim());
-            fetch("{% url 'roulette:list_create' %}", { method: 'POST', headers: { 'X-CSRFToken': csrfToken }, body: fd })
-            .then(r => r.json()).then(d => { if(d.success) addToList(d.list.id, d.list.name); });
+    // === EVENT DELEGATION ===
+    if (reviewsContainer) {
+        reviewsContainer.addEventListener('click', function(e) {
+            var vb = e.target.closest('.review-vote-btn'); if (vb) { handleReviewVote(vb); return; }
+            var cvb = e.target.closest('.cd-comment-vote-btn'); if (cvb) { handleCommentVote(cvb); return; }
+            var dc = e.target.closest('.cd-delete-comment-btn'); if (dc) { handleDeleteComment(dc); return; }
         });
-    })();
+        // Bind comment forms
+        reviewsContainer.querySelectorAll('.cd-add-comment-form').forEach(function(f) {
+            f.addEventListener('submit', function(e) { e.preventDefault(); handleComment(this); });
+        });
+    }
+
+    // === REVIEW EDIT TOGGLES ===
+    $('#edit-review-toggle')?.addEventListener('click', () => { $('#your-review-display').classList.add('hidden'); $('#your-review-edit').classList.remove('hidden'); });
+    $('#cancel-edit-review')?.addEventListener('click', () => { $('#your-review-edit').classList.add('hidden'); $('#your-review-display').classList.remove('hidden'); });
+
+    // === LIST/FAVORITE TOGGLES ===
+    function toggleList(listType) {
+        var fd = new FormData();
+        Object.keys(contentInfo).forEach(k => fd.append(k, contentInfo[k]));
+        var url = (listType === 'favorite') ? "{% url 'roulette:toggle_favorite' %}" : "{% url 'roulette:toggle_watchlist' %}";
+        fetch(url, { method: 'POST', headers: { 'X-CSRFToken': csrfToken }, body: fd })
+        .then(r => r.json()).then(d => {
+            if (d.success) {
+                if (d.hasOwnProperty('is_favorite')) likeBtn.classList.toggle('fav-active', d.is_favorite);
+                if (d.hasOwnProperty('is_watchlist')) watchBtn.classList.toggle('watch-active', d.is_watchlist);
+            }
+        });
+    }
+    likeBtn?.addEventListener('click', () => toggleList('favorite'));
+    watchBtn?.addEventListener('click', () => toggleList('watchlist'));
+
+    // === MODAL ===
+    function loadLists() {
+        fetch("{% url 'roulette:get_user_lists' %}").then(r => r.json()).then(d => {
+            var ls = d.custom_lists || []; listsCont.innerHTML = '';
+            if (!ls.length) { listsCont.innerHTML = '<p class="text-gray-500 text-xs p-4 italic">No collections yet.</p>'; return; }
+            ls.forEach(l => { var b = document.createElement('button'); b.textContent = l.name; b.className = 'modal-list-btn font-bold text-sm'; b.addEventListener('click', () => addToList(l.id, l.name)); listsCont.appendChild(b); });
+        });
+    }
+    function addToList(listId) {
+        var fd = new FormData(); fd.append('list_id', listId);
+        Object.keys(contentInfo).forEach(k => fd.append(k, contentInfo[k]));
+        fetch("{% url 'roulette:list_add_item' %}", { method: 'POST', headers: { 'X-CSRFToken': csrfToken }, body: fd })
+        .then(r => r.json()).then(d => { window.showToast(d.message || d.error, d.success ? 'success' : 'error'); if (d.success) modal.classList.add('hidden'); });
+    }
+    addBtn?.addEventListener('click', () => { modal.classList.remove('hidden'); loadLists(); });
+    modalCancel?.addEventListener('click', () => modal.classList.add('hidden'));
+    createBtn?.addEventListener('click', () => {
+        var fd = new FormData(); fd.append('name', newInput.value.trim());
+        fetch("{% url 'roulette:list_create' %}", { method: 'POST', headers: { 'X-CSRFToken': csrfToken }, body: fd })
+        .then(r => r.json()).then(d => { if (d.success) addToList(d.list.id); });
+    });
+})();
 </script>
 {% endblock %}

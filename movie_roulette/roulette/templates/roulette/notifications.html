@@ -2,69 +2,127 @@
 
 {% block title %}Notifications{% endblock %}
 
+{% block style %}
+.notif-header { margin-bottom: 24px; }
+.notif-header h1 { font-family: 'Space Grotesk', sans-serif; font-size: 22px; font-weight: 700; color: #fff; letter-spacing: -0.3px; }
+.notif-header p { font-size: 12px; color: #4b5563; margin-top: 4px; }
+
+.notif-item {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 14px 16px; border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.04);
+    background: rgba(255,255,255,0.02);
+    margin-bottom: 6px; transition: border-color 0.15s, background 0.15s;
+}
+.notif-item:hover { border-color: rgba(255,255,255,0.08); background: rgba(255,255,255,0.03); }
+.notif-item.unread {
+    border-left: 3px solid #6366f1;
+    background: rgba(99,102,241,0.04);
+    border-color: rgba(99,102,241,0.12);
+}
+.notif-item.unread:hover { background: rgba(99,102,241,0.06); }
+
+.notif-avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    object-fit: cover; flex-shrink: 0;
+}
+.notif-avatar-fallback {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: rgba(255,255,255,0.06);
+    flex-shrink: 0;
+}
+
+.notif-body { flex: 1; min-width: 0; }
+.notif-text { font-size: 13px; color: #9ca3af; line-height: 1.5; }
+.notif-text a { color: #e5e7eb; font-weight: 600; text-decoration: none; }
+.notif-text a:hover { text-decoration: underline; }
+.notif-text .notif-target { color: #818cf8; font-weight: 500; }
+.notif-text .notif-target:hover { color: #a5b4fc; }
+.notif-time { font-size: 11px; color: #374151; margin-top: 3px; }
+
+.notif-icon {
+    width: 28px; height: 28px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; flex-shrink: 0; margin-top: 2px;
+}
+.ni-follow { background: rgba(34,197,94,0.1); color: #4ade80; }
+.ni-like { background: rgba(239,68,68,0.1); color: #f87171; }
+.ni-comment { background: rgba(99,102,241,0.1); color: #818cf8; }
+.ni-share { background: rgba(59,130,246,0.1); color: #60a5fa; }
+.ni-default { background: rgba(255,255,255,0.04); color: #4b5563; }
+
+.notif-empty {
+    text-align: center; padding: 60px 20px;
+}
+.notif-empty i { font-size: 36px; color: rgba(255,255,255,0.06); }
+.notif-empty p { font-size: 13px; color: #4b5563; margin-top: 12px; }
+{% endblock %}
+
 {% block content %}
-<div class="bg-gray-800 p-6 md:p-8 rounded-lg shadow-2xl max-w-3xl mx-auto">
-    <h2 class="text-3xl font-extrabold text-white mb-6 border-b border-gray-700 pb-4">
-        <i class="fas fa-bell mr-3 text-indigo-400"></i>Notifications
-    </h2>
+<div class="max-w-2xl mx-auto">
 
-    <div class="space-y-4">
-        {% for notification in notifications %}
-            <div class="p-4 rounded-lg flex items-start space-x-3 {% if not notification.read %}bg-gray-700 border-l-4 border-indigo-500{% else %}bg-gray-700 opacity-70{% endif %}">
-                {# Actor's Profile Picture (if actor exists) #}
-                {% if notification.actor %}
-                    <a href="{% url 'roulette:user_profile' username=notification.actor.username %}">
-                        <img src="{{ notification.actor.profile.image.url }}" class="w-10 h-10 rounded-full object-cover flex-shrink-0" alt="{{ notification.actor.username }}'s profile picture">
-                    </a>
-                {% else %}
-                    <div class="w-10 h-10 flex-shrink-0"></div> {# Placeholder #}
-                {% endif %}
+    <div class="notif-header">
+        <h1>Notifications</h1>
+        <p>Stay up to date with your activity</p>
+    </div>
 
-                {# Notification Text #}
-                <div class="flex-grow text-sm">
+    {% for notification in notifications %}
+        <div class="notif-item {% if not notification.read %}unread{% endif %}">
+            {# Actor avatar #}
+            {% if notification.actor %}
+                <a href="{% url 'roulette:user_profile' username=notification.actor.username %}">
+                    <img src="{{ notification.actor.profile.image.url }}" class="notif-avatar" alt="">
+                </a>
+            {% else %}
+                <div class="notif-avatar-fallback"></div>
+            {% endif %}
+
+            {# Notification content #}
+            <div class="notif-body">
+                <div class="notif-text">
                     {% if notification.actor %}
-                        <a href="{% url 'roulette:user_profile' username=notification.actor.username %}" class="font-semibold text-white hover:underline">@{{ notification.actor.username }}</a>
+                        <a href="{% url 'roulette:user_profile' username=notification.actor.username %}">@{{ notification.actor.username }}</a>
                     {% endif %}
 
-                    {{ notification.verb }} {# e.g., "liked", "commented on", "followed you" #}
+                    {{ notification.verb }}
 
-                    {# Link to Target Object (if it exists) #}
                     {% if notification.target %}
                         {% with target=notification.target %}
-                            {# Determine URL based on target type #}
                             {% if notification.target_content_type.model == 'userreview' %}
-                                <a href="{% url 'roulette:content_detail' content_type=target.content_type|lower tmdb_id=target.tmdb_id %}" class="font-semibold text-indigo-300 hover:underline">your review for {{ target.title }}</a>.
+                                <a class="notif-target" href="{% url 'roulette:content_detail' content_type=target.content_type|lower tmdb_id=target.tmdb_id %}">{{ target.title }}</a>
                             {% elif notification.target_content_type.model == 'usercontent' %}
-                                {# Handle different list types if needed, or just link to content #}
-                                {% if target.list_type == 'FAVORITE' %}
-                                    <a href="{% url 'roulette:content_detail' content_type=target.content_type|lower tmdb_id=target.tmdb_id %}" class="font-semibold text-indigo-300 hover:underline">your favorite: {{ target.title }}</a>.
-                                {% elif target.list_type == 'WATCHLIST' %}
-                                     <a href="{% url 'roulette:content_detail' content_type=target.content_type|lower tmdb_id=target.tmdb_id %}" class="font-semibold text-indigo-300 hover:underline">your watchlist item: {{ target.title }}</a>.
-                                {% elif target.list_type == 'CUSTOM' and target.custom_list %}
-                                     <a href="{% url 'roulette:list_detail' list_id=target.custom_list.id %}" class="font-semibold text-indigo-300 hover:underline">item in your list "{{ target.custom_list.name }}": {{ target.title }}</a>.
+                                {% if target.list_type == 'CUSTOM' and target.custom_list %}
+                                    <a class="notif-target" href="{% url 'roulette:list_detail' list_id=target.custom_list.id %}">{{ target.title }}</a>
+                                    in <a class="notif-target" href="{% url 'roulette:list_detail' list_id=target.custom_list.id %}">{{ target.custom_list.name }}</a>
                                 {% else %}
-                                    <a href="{% url 'roulette:content_detail' content_type=target.content_type|lower tmdb_id=target.tmdb_id %}" class="font-semibold text-indigo-300 hover:underline">"{{ target.title }}"</a>.
+                                    <a class="notif-target" href="{% url 'roulette:content_detail' content_type=target.content_type|lower tmdb_id=target.tmdb_id %}">{{ target.title }}</a>
                                 {% endif %}
-                            {% else %}
-                                {# Fallback if target type is unknown #}
-                                (an item).
                             {% endif %}
                         {% endwith %}
-                    {% else %}
-                        {# If no target (like a follow) #}
-                        .
                     {% endif %}
-
-                    {# Timestamp #}
-                    <p class="text-xs text-gray-400 mt-1">{{ notification.timestamp|timesince }} ago</p>
                 </div>
-
-                {# Optional: Add a "Mark as Read" button here later #}
-
+                <div class="notif-time">{{ notification.timestamp|timesince }} ago</div>
             </div>
-        {% empty %}
-            <p class="text-center text-gray-500 py-8">You have no notifications yet.</p>
-        {% endfor %}
-    </div>
+
+            {# Icon based on verb #}
+            {% if 'followed' in notification.verb %}
+                <div class="notif-icon ni-follow"><i class="fas fa-user-plus"></i></div>
+            {% elif 'liked' in notification.verb %}
+                <div class="notif-icon ni-like"><i class="fas fa-heart"></i></div>
+            {% elif 'commented' in notification.verb %}
+                <div class="notif-icon ni-comment"><i class="fas fa-comment"></i></div>
+            {% elif 'shared' in notification.verb %}
+                <div class="notif-icon ni-share"><i class="fas fa-share"></i></div>
+            {% else %}
+                <div class="notif-icon ni-default"><i class="fas fa-bell"></i></div>
+            {% endif %}
+        </div>
+    {% empty %}
+        <div class="notif-empty">
+            <div><i class="fas fa-bell-slash"></i></div>
+            <p>No notifications yet. Follow some people to get started.</p>
+        </div>
+    {% endfor %}
+
 </div>
 {% endblock %}

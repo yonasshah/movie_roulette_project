@@ -108,10 +108,17 @@
                         <span class="bg-gradient-to-r from-indigo-400 to-indigo-500 bg-clip-text text-transparent">ROULETTE</span>
                     </a>
                     <div class="hidden md:flex nav-pill-group">
-                        <a href="{% url 'roulette:roulette_view' %}" class="nav-pill {% block nav_home %}{% endblock %}">Home</a>
-                        <a href="{% url 'roulette:feed' %}" class="nav-pill {% block nav_feed %}{% endblock %}">Feed</a>
-                        <a href="{% url 'roulette:discover' %}" class="nav-pill {% block nav_discover %}{% endblock %}">Discover</a>
-                    </div>
+    <a href="{% url 'roulette:roulette_view' %}" 
+       class="nav-pill {% if request.path == '/' or request.path == '/home/' %}nav-pill-active{% endif %}">Home</a>
+    
+
+    
+    <a href="{% url 'roulette:discover' %}" 
+       class="nav-pill {% if '/discover/' in request.path %}nav-pill-active{% endif %}">Discover</a>
+
+       <a href="{% url 'roulette:feed' %}" 
+       class="nav-pill {% if '/feed/' in request.path %}nav-pill-active{% endif %}">Feed</a>
+</div>
                 </div>
                 <div class="hidden md:flex items-center gap-2">
                     <form action="{% url 'roulette:search_results' %}" method="GET">
@@ -164,9 +171,13 @@
                 <form action="{% url 'roulette:search_results' %}" method="GET" class="mb-3">
                     <input type="text" name="q" placeholder="Search films..." class="w-full bg-white/[0.04] border border-white/[0.06] rounded-lg py-2 px-3.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500/40 transition-all">
                 </form>
-                <a href="{% url 'roulette:roulette_view' %}" class="block px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-white/[0.04]">Home</a>
-                <a href="{% url 'roulette:feed' %}" class="block px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-white/[0.04]">Feed</a>
-                <a href="{% url 'roulette:discover' %}" class="block px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-white/[0.04]">Discover</a>
+                <a href="{% url 'roulette:roulette_view' %}" 
+   class="block px-3 py-2.5 rounded-lg text-sm {% if request.path == '/' or request.path == '/home/' %}text-white bg-white/[0.04]{% else %}text-gray-300 hover:text-white hover:bg-white/[0.04]{% endif %}">Home</a>
+
+   
+<a href="{% url 'roulette:feed' %}" 
+   class="block px-3 py-2.5 rounded-lg text-sm {% if '/feed/' in request.path %}text-white bg-white/[0.04]{% else %}text-gray-300 hover:text-white hover:bg-white/[0.04]{% endif %}">Feed</a>
+
                 {% if user.is_authenticated %}
                     <div class="h-px bg-white/[0.04] my-2"></div>
                     <a href="{% url 'roulette:notifications' %}" class="relative block px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-white/[0.04]">Notifications <span id="mobile-unread-count" class="absolute top-2.5 right-3 w-2 h-2 rounded-full bg-red-500 {% if unread_notifications_count == 0 %}hidden{% endif %}"></span></a>

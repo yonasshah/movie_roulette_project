@@ -1,0 +1,22 @@
+<div class="carousel-group relative">
+    
+    <div class="section-header mb-4 px-2">
+        <h2 class="text-2xl font-bold text-white">{{ title }}</h2>
+    </div>
+
+    <button class="arrow-btn left-arrow absolute left-4 top-1/2 -translate-y-1/2 z-40">
+        <i class="fas fa-chevron-left"></i>
+    </button>
+    
+    <button class="arrow-btn right-arrow absolute right-4 top-1/2 -translate-y-1/2 z-40">
+        <i class="fas fa-chevron-right"></i>
+    </button>
+
+    <div class="scrolling-wrapper flex flex-row gap-5 overflow-x-auto pb-4 scroll-smooth">
+        {% for item in items %}
+            <div class="flex-none w-[180px]">
+                {% include 'roulette/partials/content_card.html' with media_type=media_type %}
+            </div>
+        {% endfor %}
+    </div>
+</div>

@@ -282,7 +282,7 @@ def content_detail_view(request, content_type, tmdb_id):
     BASE_URL = "https://api.themoviedb.org/3"
     endpoint_type = 'movie' if content_type == 'movie' else 'tv'
     model_content_type = UserContent.ContentType.MOVIE if content_type == 'movie' else UserContent.ContentType.TV
-
+ 
     try:
         detail_params = {
             "api_key": settings.TMDB_API_KEY,
@@ -291,56 +291,113 @@ def content_detail_view(request, content_type, tmdb_id):
         detail_res = requests.get(f"{BASE_URL}/{endpoint_type}/{tmdb_id}", params=detail_params)
         detail_res.raise_for_status()
         content_details = detail_res.json()
-
+ 
         streaming_providers = content_details.get('watch/providers', {}).get('results', {}).get('US', {}).get('flatrate', [])
-
+ 
         trailer_key = None
         videos = content_details.get('videos', {}).get('results', [])
         for video in videos:
             if video.get('site') == 'YouTube' and video.get('type') == 'Trailer':
                 trailer_key = video.get('key')
                 break
-
+ 
         is_favorite = UserContent.objects.filter(
             user=request.user, tmdb_id=tmdb_id, list_type=UserContent.ListType.FAVORITE,
             content_type=model_content_type
         ).exists()
-
+ 
         is_watchlist = UserContent.objects.filter(
             user=request.user, tmdb_id=tmdb_id, list_type=UserContent.ListType.WATCHLIST,
             content_type=model_content_type
         ).exists()
-
+ 
         # --- REVIEWS LOGIC ---
         all_reviews = UserReview.objects.filter(
             tmdb_id=tmdb_id, content_type=model_content_type
         ).select_related('user', 'user__profile').order_by('-timestamp')
-
-        # 1. Get the ContentType ID for UserReview (Crucial for JS)
-        from django.contrib.contenttypes.models import ContentType
+ 
         review_ctype = ContentType.objects.get_for_model(UserReview)
-
-        # 2. Attach vote data to each review
-        from .models import Vote # Ensure you import your Vote model
+        comment_ctype = ContentType.objects.get_for_model(Comment)
+ 
+        # Collect all review IDs for batch queries
+        review_ids = [r.id for r in all_reviews]
+ 
+        # --- Batch fetch votes on reviews ---
+        if review_ids:
+            review_votes_qs = Vote.objects.filter(content_type=review_ctype, object_id__in=review_ids)
+ 
+            rv_up = review_votes_qs.filter(vote_type=1).values('object_id').annotate(count=Count('id'))
+            rv_up_lookup = {d['object_id']: d['count'] for d in rv_up}
+ 
+            rv_down = review_votes_qs.filter(vote_type=-1).values('object_id').annotate(count=Count('id'))
+            rv_down_lookup = {d['object_id']: d['count'] for d in rv_down}
+ 
+            rv_user = review_votes_qs.filter(user=request.user).values_list('object_id', 'vote_type')
+            rv_user_lookup = {oid: vt for oid, vt in rv_user}
+        else:
+            rv_up_lookup = {}
+            rv_down_lookup = {}
+            rv_user_lookup = {}
+ 
+        # --- Batch fetch comments on reviews ---
+        if review_ids:
+            comments_qs = Comment.objects.filter(
+                content_type=review_ctype, object_id__in=review_ids
+            ).select_related('user', 'user__profile').order_by('timestamp')
+ 
+            comments_by_review = {}
+            all_comment_ids = []
+            for comment in comments_qs:
+                if comment.object_id not in comments_by_review:
+                    comments_by_review[comment.object_id] = []
+                comments_by_review[comment.object_id].append(comment)
+                all_comment_ids.append(comment.id)
+ 
+            # --- Batch fetch votes on comments ---
+            if all_comment_ids:
+                cv_qs = Vote.objects.filter(content_type=comment_ctype, object_id__in=all_comment_ids)
+ 
+                cv_up = cv_qs.filter(vote_type=1).values('object_id').annotate(count=Count('id'))
+                cv_up_lookup = {d['object_id']: d['count'] for d in cv_up}
+ 
+                cv_down = cv_qs.filter(vote_type=-1).values('object_id').annotate(count=Count('id'))
+                cv_down_lookup = {d['object_id']: d['count'] for d in cv_down}
+ 
+                cv_user = cv_qs.filter(user=request.user).values_list('object_id', 'vote_type')
+                cv_user_lookup = {oid: vt for oid, vt in cv_user}
+ 
+                # Attach vote data to each comment
+                for comment_list in comments_by_review.values():
+                    for c in comment_list:
+                        c.fetched_up_count = cv_up_lookup.get(c.id, 0)
+                        c.fetched_down_count = cv_down_lookup.get(c.id, 0)
+                        c.fetched_user_vote = cv_user_lookup.get(c.id, 0)
+            else:
+                for comment_list in comments_by_review.values():
+                    for c in comment_list:
+                        c.fetched_up_count = 0
+                        c.fetched_down_count = 0
+                        c.fetched_user_vote = 0
+        else:
+            comments_by_review = {}
+ 
+        # --- Attach all fetched data to each review ---
         for review in all_reviews:
-            # Get counts
-            review.fetched_up_count = Vote.objects.filter(content_type=review_ctype, object_id=review.id, vote_type=1).count()
-            review.fetched_down_count = Vote.objects.filter(content_type=review_ctype, object_id=review.id, vote_type=-1).count()
-            
-            # Check if current user voted
-            user_v = Vote.objects.filter(content_type=review_ctype, object_id=review.id, user=request.user).first()
-            review.fetched_user_vote = user_v.vote_type if user_v else 0
-
+            review.fetched_up_count = rv_up_lookup.get(review.id, 0)
+            review.fetched_down_count = rv_down_lookup.get(review.id, 0)
+            review.fetched_user_vote = rv_user_lookup.get(review.id, 0)
+            review.fetched_comments = comments_by_review.get(review.id, [])
+ 
         user_review = all_reviews.filter(user=request.user).first()
-
+ 
         avg_rating_data = all_reviews.aggregate(Avg('rating'))
         avg_rating = avg_rating_data['rating__avg']
-
+ 
         if user_review:
             review_form = ReviewForm(instance=user_review)
         else:
             review_form = ReviewForm()
-
+ 
         context = {
             'content': content_details,
             'content_type': content_type,
@@ -353,11 +410,11 @@ def content_detail_view(request, content_type, tmdb_id):
             'review_form': review_form,
             'avg_rating': avg_rating,
             'review_count': all_reviews.count(),
-            # 3. Add this to context so JavaScript can see it
             'review_content_type_id': review_ctype.id,
+            'comment_ctype_id': comment_ctype.id,
         }
         return render(request, 'roulette/content_detail.html', context)
-
+ 
     except requests.exceptions.RequestException as e:
         return JsonResponse({'error': f"API request failed: {e}"}, status=500)
 
@@ -668,40 +725,63 @@ def toggle_watchlist(request):
 
     return JsonResponse({'success': True, 'is_watchlist': is_watchlist})
 
+from django.db.models import Q, Count, Exists, OuterRef
+from django.contrib.auth import get_user_model
+from .models import UserFollow  # Ensure this import matches your project structure
+
 @login_required
 def search_view(request):
-    query = request.GET.get('q')
+    query = request.GET.get('q', '')
+    active_tab = request.GET.get('type', 'all')  # Default to 'all'
+    
     user_results = get_user_model().objects.none()
     content_results = []
+    movie_results = []
+    tv_results = []
 
     if query:
-        # --- ADDED: Prefetch profile for profile picture ---
+        # 1. Always fetch users for the 'People' tab or 'All' summary
         user_results = get_user_model().objects.filter(
             Q(username__icontains=query)
         ).annotate(
-            follower_count=Count('followers') # Creates a new field 'follower_count'
-        ).select_related('profile') # --- ADDED
+            follower_count=Count('followers', distinct=True)
+        ).select_related('profile')
 
+        if request.user.is_authenticated:
+            for u in user_results:
+                u.is_followed = UserFollow.objects.filter(follower=request.user, followed=u).exists()
+
+        # 2. Fetch TMDB results
         try:
             search_url = "https://api.themoviedb.org/3/search/multi"
-            params = {
-                "api_key": settings.TMDB_API_KEY, "query": query, "include_adult": "false",
-                "language": "en-US", "page": 1
-            }
+            params = {"api_key": settings.TMDB_API_KEY, "query": query, "language": "en-US"}
             res = requests.get(search_url, params=params)
             res.raise_for_status()
-            api_data = res.json()
-            content_results = [
-                item for item in api_data.get('results', [])
-                if item.get('media_type') in ['movie', 'tv']
-            ]
-        except requests.exceptions.RequestException as e:
-            print(f"API request failed: {e}")
+            api_data = res.json().get('results', [])
+
+            # Categorize the data
+            movie_results = [i for i in api_data if i.get('media_type') == 'movie']
+            tv_results = [i for i in api_data if i.get('media_type') == 'tv']
+            
+            # For the 'All' tab, show a mix
+            if active_tab == 'all':
+                content_results = movie_results[:10] + tv_results[:5]
+            elif active_tab == 'movies':
+                content_results = movie_results
+            elif active_tab == 'tv':
+                content_results = tv_results
+                
+        except Exception as e:
+            print(f"API Error: {e}")
 
     context = {
         'user_results': user_results,
         'content_results': content_results,
+        'movie_count': len(movie_results),
+        'tv_count': len(tv_results),
+        'people_count': user_results.count(),
         'query': query,
+        'active_tab': active_tab,
     }
     return render(request, 'roulette/search_results.html', context)
 
