@@ -21,9 +21,30 @@ from django.db import IntegrityError # To handle duplicate list names
 from django.urls import reverse # For redirects
 from itertools import chain
 from operator import attrgetter
-# --- END ADDED ---
 
-# --- UPDATED VIEW FOR SOCIAL FEED ---
+def build_comment_tree(comments):
+    """
+    Builds a 2-level nested tree. Direct replies go on parent.replies_list.
+    Replies to replies go on the reply's replies_list. Max 2 levels.
+    """
+    comment_map = {}
+    top_level = []
+
+    for comment in comments:
+        comment.replies_list = []
+        comment_map[comment.id] = comment
+
+    for comment in comments:
+        if comment.parent_id is None:
+            top_level.append(comment)
+        elif comment.parent_id in comment_map:
+            comment_map[comment.parent_id].replies_list.append(comment)
+        else:
+            top_level.append(comment)
+
+    return top_level
+
+
 @login_required
 def feed_view(request):
     """Displays a chronological feed including reviews, list items, and shared lists."""
@@ -104,7 +125,7 @@ def feed_view(request):
         comments_qs = Comment.objects.filter(
             content_type_id__in=content_type_ids,
             object_id__in=all_object_ids
-        ).select_related('user', 'user__profile')
+        ).select_related('user', 'user__profile', 'parent__user').order_by('timestamp')
 
         comments_by_target = {}
         all_comment_ids = []
@@ -115,6 +136,18 @@ def feed_view(request):
             comments_by_target[key].append(comment)
             all_comment_ids.append(comment.id)
 
+        for key, item in item_lookup.items():
+            item.fetched_comments = comments_by_target.get(key, [])
+            
+        # Store flat count BEFORE building tree
+        for key, item in item_lookup.items():
+            item.fetched_comment_count = len(item.fetched_comments)
+            
+        # Build comment trees (converts flat list to nested)
+        for key in comments_by_target:
+            comments_by_target[key] = build_comment_tree(comments_by_target[key])
+
+        # Re-assign the tree versions
         for key, item in item_lookup.items():
             item.fetched_comments = comments_by_target.get(key, [])
 
@@ -343,7 +376,7 @@ def content_detail_view(request, content_type, tmdb_id):
         if review_ids:
             comments_qs = Comment.objects.filter(
                 content_type=review_ctype, object_id__in=review_ids
-            ).select_related('user', 'user__profile').order_by('timestamp')
+            ).select_related('user', 'user__profile', 'parent__user').order_by('timestamp')
  
             comments_by_review = {}
             all_comment_ids = []
@@ -382,11 +415,19 @@ def content_detail_view(request, content_type, tmdb_id):
             comments_by_review = {}
  
         # --- Attach all fetched data to each review ---
+        # Build trees for each review's comments
+        comment_counts = {rid: len(clist) for rid, clist in comments_by_review.items()}
+
+        # Build trees for each review's comments (ONCE)
+        for rid in comments_by_review:
+            comments_by_review[rid] = build_comment_tree(comments_by_review[rid])
+
         for review in all_reviews:
             review.fetched_up_count = rv_up_lookup.get(review.id, 0)
             review.fetched_down_count = rv_down_lookup.get(review.id, 0)
             review.fetched_user_vote = rv_user_lookup.get(review.id, 0)
             review.fetched_comments = comments_by_review.get(review.id, [])
+            review.fetched_comment_count = comment_counts.get(review.id, 0)
  
         user_review = all_reviews.filter(user=request.user).first()
  
@@ -955,75 +996,94 @@ def remove_from_custom_list_view(request):
 @require_POST
 def add_comment_view(request):
     is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
-
+ 
     form = CommentForm(request.POST)
     content_type_id = request.POST.get('content_type_id')
     object_id = request.POST.get('object_id')
-
+    parent_id = request.POST.get('parent_id')  # NEW: optional parent
+ 
     if form.is_valid() and content_type_id and object_id:
         try:
             content_type = ContentType.objects.get_for_id(content_type_id)
-            target_object = content_type.get_object_for_this_type(pk=object_id) # Get the target
-
+            target_object = content_type.get_object_for_this_type(pk=object_id)
+ 
             comment = form.save(commit=False)
             comment.user = request.user
             comment.content_type = content_type
             comment.object_id = object_id
+ 
+            # NEW: Set parent if replying to a comment
+            if parent_id:
+                try:
+                    parent_comment = Comment.objects.get(id=parent_id)
+                    # Enforce max 2 levels: if parent already has a parent,
+                    # attach reply to the parent's parent (flatten to level 2)
+                    comment.parent = parent_comment
+                except Comment.DoesNotExist:
+                    pass  # Invalid parent, save as top-level
+ 
             comment.save()
-
+ 
             # --- Create Notification ---
             recipient = None
-            if hasattr(target_object, 'user'):
+            if parent_id and comment.parent:
+                # Notify the person being replied to
+                recipient = comment.parent.user
+            elif hasattr(target_object, 'user'):
                 recipient = target_object.user
-                if recipient != request.user: # Don't notify yourself
-                    Notification.objects.create(
-                        recipient=recipient,
-                        actor=request.user,
-                        verb='commented on',
-                        target_content_type=content_type,
-                        target_object_id=object_id
-                        # Optional: You could add the comment itself as an 'action_object'
-                        # using another GenericForeignKey on the Notification model if needed.
-                    )
-            # --- End Notification ---
-
+ 
+            if recipient and recipient != request.user:
+                verb = 'replied to your comment' if comment.parent else 'commented on'
+                Notification.objects.create(
+                    recipient=recipient,
+                    actor=request.user,
+                    verb=verb,
+                    target_content_type=content_type,
+                    target_object_id=object_id
+                )
+ 
             if is_ajax:
+                # Determine depth for template rendering
                 comment_html = render_to_string(
                     'roulette/_comment.html',
-                    {'comment': comment, 'request': request}
+                    {'comment': comment, 'request': request, 'is_reply': bool(comment.parent)}
                 )
-                return JsonResponse({'success': True, 'comment_html': comment_html})
+                return JsonResponse({
+                    'success': True,
+                    'comment_html': comment_html,
+                    'parent_id': comment.parent_id,
+                })
             else:
                 messages.success(request, "Comment added.")
                 return redirect(request.POST.get('next', 'roulette:feed'))
-
-        # ... (rest of the error handling remains the same) ...
+ 
         except (ContentType.DoesNotExist, ValueError) as e:
             error_msg = f"Could not add comment: Invalid target. {e}"
-            if is_ajax: return JsonResponse({'success': False, 'error': error_msg}, status=400)
-            else: messages.error(request, error_msg)
+            if is_ajax:
+                return JsonResponse({'success': False, 'error': error_msg}, status=400)
+            else:
+                messages.error(request, error_msg)
         except Exception as e:
-             # Try to get the target object's class name for better error logging
-             target_model_name = "Unknown"
-             try:
-                 target_model_name = content_type.model_class().__name__ if content_type else "Unknown ContentType"
-             except: pass # Ignore errors during error reporting
-             error_msg = f"An unexpected error occurred processing comment on {target_model_name} ID {object_id}: {e}"
-             print(f"ERROR in add_comment_view: {error_msg}") # Log detailed error
-             if is_ajax: return JsonResponse({'success': False, 'error': "An unexpected error occurred."}, status=500) # Generic error to user
-             else: messages.error(request, "An unexpected error occurred.")
-
-    # ... (rest of the non-valid form handling remains the same) ...
+            error_msg = f"An unexpected error occurred: {e}"
+            print(f"ERROR in add_comment_view: {error_msg}")
+            if is_ajax:
+                return JsonResponse({'success': False, 'error': "An unexpected error occurred."}, status=500)
+            else:
+                messages.error(request, "An unexpected error occurred.")
     else:
         error_msg = "Could not add comment."
-        if not content_type_id or not object_id: error_msg = "Missing target information."
-        elif form.errors: error_msg = f"Please correct the errors below."
-        if is_ajax: return JsonResponse({'success': False,'error': error_msg, 'form_errors': form.errors if form.errors else None}, status=400)
-        else: messages.error(request, error_msg)
-
+        if not content_type_id or not object_id:
+            error_msg = "Missing target information."
+        elif form.errors:
+            error_msg = "Please correct the errors below."
+        if is_ajax:
+            return JsonResponse({'success': False, 'error': error_msg, 'form_errors': form.errors if form.errors else None}, status=400)
+        else:
+            messages.error(request, error_msg)
+ 
     return redirect(request.POST.get('next', 'roulette:feed'))
 
-# --- NEW VIEW FOR TOGGLING LIKES (AJAX) ---
+# --- VIEW FOR TOGGLING LIKES (AJAX) ---
 @login_required
 @require_POST
 def toggle_like_view(request):

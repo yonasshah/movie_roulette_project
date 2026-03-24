@@ -47,15 +47,23 @@
 .review-vote-btn.active.vote-down { color: #ef4444; }
 .review-vote-btn span { font-family: 'Space Grotesk', sans-serif; }
 
-/* Comment styles for content detail */
+/* Shared comment styles (matches feed) */
 .cd-comments-section { margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.05); }
-.cd-comment-vote-btn {
-    display: inline-flex; align-items: center; gap: 3px; font-size: 10px; color: #374151;
-    cursor: pointer; background: none; border: none; padding: 1px 4px; transition: color 0.15s;
-}
-.cd-comment-vote-btn:hover { color: #6b7280; }
-.cd-comment-vote-btn.cvote-up.active { color: #60a5fa; }
-.cd-comment-vote-btn.cvote-down.active { color: #ef4444; }
+.cd-comment-count { font-size: 11px; color: #4b5563; display: flex; align-items: center; gap: 4px; }
+.comment-item { margin-top: 10px; }
+.comment-reply { margin-left: 0; padding-left: 16px; border-left: 2px solid rgba(255,255,255,0.04); margin-top: 6px; }
+.replies-group { margin-top: 4px; }
+.comment-vote-btn { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; color: #374151; cursor: pointer; background: none; border: none; padding: 1px 4px; transition: color 0.15s; }
+.comment-vote-btn:hover { color: #6b7280; }
+.comment-vote-btn.cvote-up.active { color: #60a5fa; }
+.comment-vote-btn.cvote-down.active { color: #ef4444; }
+.comment-toggle-btn { display: inline-flex; align-items: center; gap: 4px; background: none; border: none; padding: 6px 0; font-size: 11px; color: #6b7280; cursor: pointer; font-weight: 500; transition: color 0.15s; }
+.comment-toggle-btn:hover { color: #818cf8; }
+.comment-toggle-btn i { font-size: 8px; }
+.comment-item:hover .delete-comment-btn { opacity: 1; }
+.comment-item:hover .edit-comment-btn { opacity: 1; }
+.comment-edit-form.hidden { display: none; }
+.inline-reply-form.hidden { display: none; }
 .cd-reply-input {
     background: rgba(255,255,255,0.025); border: 1px solid rgba(255,255,255,0.06);
     border-radius: 8px; padding: 8px 12px; color: #e5e7eb; font-size: 12px;
@@ -69,17 +77,12 @@
 }
 .cd-reply-btn:hover { background: #5558e6; }
 .cd-reply-btn:disabled { opacity: 0.5; cursor: wait; }
-.cd-comment-item:hover .cd-delete-comment-btn { opacity: 1; }
-.cd-comment-count { font-size: 11px; color: #4b5563; display: flex; align-items: center; gap: 4px; }
-
-.comment-vote-btn {
-    display: inline-flex; align-items: center; gap: 3px;
-    font-size: 10px; color: #374151; cursor: pointer;
-    background: none; border: none; padding: 1px 4px; transition: color 0.15s;
-}
-.comment-vote-btn:hover { color: #6b7280; }
-.comment-vote-btn.cvote-up.active { color: #60a5fa; }
-.comment-vote-btn.cvote-down.active { color: #ef4444; }
+.reply-text-input { background: rgba(255,255,255,0.025); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 6px 10px; color: #e5e7eb; font-size: 11px; outline: none; font-family: inherit; resize: none; }
+.reply-text-input::placeholder { color: #252528; }
+.reply-text-input:focus { border-color: rgba(99,102,241,0.4); }
+.reply-btn { padding: 5px 12px; border-radius: 8px; font-size: 10px; font-weight: 600; background: #6366f1; color: #fff; border: none; cursor: pointer; transition: background 0.15s; }
+.reply-btn:hover { background: #5558e6; }
+.reply-btn:disabled { opacity: 0.5; cursor: wait; }
 {% endblock %}
 
 {% block content %}
@@ -205,7 +208,7 @@
                     </div>
                 {% endif %}
 
-                {# ===== COMMUNITY REVIEWS WITH COMMENTS ===== #}
+                {# ===== COMMUNITY REVIEWS WITH THREADED COMMENTS ===== #}
                 <div class="space-y-4" id="reviews-container">
                     {% for review in reviews %}
                         {% if review.user != request.user %}
@@ -222,7 +225,6 @@
                                         <p class="text-[10px] text-gray-600 uppercase mb-3">{{ review.timestamp|timesince }} ago</p>
                                         <p class="text-sm text-gray-400 leading-relaxed italic mb-4">{{ review.review_text|linebreaksbr|default:"Rating only." }}</p>
 
-                                        {# Votes + comment count #}
                                         <div class="flex items-center gap-4 pt-4 border-t border-white/5">
                                             <button class="review-vote-btn vote-up {% if review.fetched_user_vote == 1 %}active{% endif %}" data-obj-id="{{ review.id }}" data-vote="1">
                                                 <i class="fas fa-thumbs-up"></i> <span class="up-count">{{ review.fetched_up_count|default:0 }}</span>
@@ -232,43 +234,28 @@
                                             </button>
                                             <span class="cd-comment-count ml-auto">
                                                 <i class="fas fa-comment text-[10px]"></i>
-                                                <span class="cd-count-number">{{ review.fetched_comments|length }}</span> comments
+                                                <span class="cd-count-number">{{ review.fetched_comment_count|default:0 }}</span> comments
                                             </span>
                                         </div>
 
-                                        {# Comments section #}
+                                        {# Threaded comments using shared partial #}
                                         <div class="cd-comments-section">
                                             <div class="cd-comments-list">
                                                 {% for comment in review.fetched_comments %}
-                                                    <div class="cd-comment-item flex gap-2 mt-2.5" data-comment-id="{{ comment.id }}">
-                                                        <a href="{% url 'roulette:user_profile' username=comment.user.username %}" class="flex-shrink-0">
-                                                            <img src="{{ comment.user.profile.image.url }}" class="w-5 h-5 rounded-full object-cover mt-0.5" alt="">
-                                                        </a>
-                                                        <div class="flex-1 min-w-0">
-                                                            <div class="flex items-start justify-between gap-2">
-                                                                <div class="min-w-0 flex-1">
-                                                                    <span class="text-[11px] font-semibold text-gray-300">{{ comment.user.username }}</span>
-                                                                    <span class="text-[10px] text-gray-700 ml-1">&middot; {{ comment.timestamp|timesince }} ago</span>
-                                                                    <p class="text-xs text-gray-400 mt-0.5 leading-relaxed">{{ comment.text|linebreaksbr }}</p>
-                                                                    <div class="flex items-center gap-3 mt-1.5">
-                                                                        <button class="cd-comment-vote-btn cvote-up {% if comment.fetched_user_vote == 1 %}active{% endif %}" data-comment-id="{{ comment.id }}" data-vote="1">
-                                                                            <i class="fas fa-thumbs-up"></i> <span class="cup-count">{{ comment.fetched_up_count|default:"0" }}</span>
-                                                                        </button>
-                                                                        <button class="cd-comment-vote-btn cvote-down {% if comment.fetched_user_vote == -1 %}active{% endif %}" data-comment-id="{{ comment.id }}" data-vote="-1">
-                                                                            <i class="fas fa-thumbs-down"></i> <span class="cdown-count">{{ comment.fetched_down_count|default:"0" }}</span>
-                                                                        </button>
-                                                                    </div>
-                                                                </div>
-                                                                {% if comment.user == request.user %}
-                                                                <button type="button" class="cd-delete-comment-btn text-gray-700 hover:text-red-400 text-[10px] opacity-0 transition-all flex-shrink-0"
-                                                                        data-comment-id="{{ comment.id }}" data-delete-url="{% url 'roulette:delete_comment' comment.id %}">
-                                                                    <i class="fas fa-trash"></i>
-                                                                </button>
-                                                                {% endif %}
-                                                            </div>
-                                                        </div>
-                                                    </div>
+                                                    {% include 'roulette/_comment.html' with comment=comment is_reply=False %}
                                                 {% endfor %}
+                                            </div>
+
+                                            {# Floating reply form for this review's comments #}
+                                            <div class="cd-floating-reply-form inline-reply-form hidden" style="margin-left:16px">
+                                                <div class="flex items-center gap-2">
+                                                    {% if user.is_authenticated %}
+                                                    <img src="{{ user.profile.image.url }}" class="w-4 h-4 rounded-full object-cover flex-shrink-0" alt="">
+                                                    {% endif %}
+                                                    <textarea class="reply-text-input flex-1" rows="1" placeholder="Reply..." maxlength="500"></textarea>
+                                                    <button type="button" class="cd-submit-reply-btn reply-btn flex-shrink-0">Reply</button>
+                                                    <button type="button" class="cd-cancel-reply-btn text-[10px] text-gray-600 hover:text-gray-400 cursor-pointer">Cancel</button>
+                                                </div>
                                             </div>
 
                                             {% if user.is_authenticated %}
@@ -322,6 +309,7 @@
     var csrfToken = '{{ csrf_token }}';
     var reviewCtypeId = '{{ review_content_type_id }}';
     var commentCtypeId = '{{ comment_ctype_id }}';
+    var INITIAL_REPLIES = 2;
     var contentInfo = {
         tmdb_id: '{{ content.id }}',
         content_type: '{{ content_type }}',
@@ -337,6 +325,16 @@
     var listsCont = $('#custom-lists-container'), modalMsg = $('#modal-message-container');
     var newInput = $('#new-list-name-input'), createBtn = $('#create-and-add-btn');
     var reviewsContainer = $('#reviews-container');
+
+    // ===== Collapse replies on load =====
+    function initCollapseState() {
+        if (!reviewsContainer) return;
+        reviewsContainer.querySelectorAll('.replies-group').forEach(function(rg) {
+            var wrappers = rg.querySelectorAll(':scope > .reply-wrapper');
+            wrappers.forEach(function(w, i) { if (i >= INITIAL_REPLIES) w.classList.add('hidden'); });
+        });
+    }
+    initCollapseState();
 
     // === REVIEW VOTES ===
     function handleReviewVote(btn) {
@@ -366,17 +364,15 @@
         fetch("{% url 'roulette:toggle_vote' %}", { method: 'POST', headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' }, body: fd })
         .then(r => r.json()).then(d => {
             if (d.success) {
-                var ci = btn.closest('.cd-comment-item');
-                var up = ci.querySelector('.cvote-up'), dn = ci.querySelector('.cvote-down');
-                up.classList.toggle('active', d.user_vote === 1);
-                dn.classList.toggle('active', d.user_vote === -1);
-                up.querySelector('.cup-count').textContent = d.up_count;
-                dn.querySelector('.cdown-count').textContent = d.down_count;
+                var ci = btn.closest('.comment-item');
+                var up = ci.querySelector(':scope > .flex .cvote-up'), dn = ci.querySelector(':scope > .flex .cvote-down');
+                if (up) { up.classList.toggle('active', d.user_vote === 1); up.querySelector('.cup-count').textContent = d.up_count; }
+                if (dn) { dn.classList.toggle('active', d.user_vote === -1); dn.querySelector('.cdown-count').textContent = d.down_count; }
             } else window.showToast(d.error || 'Failed.', 'error');
         }).catch(() => window.showToast('Network error.', 'error'));
     }
 
-    // === ADD COMMENT ===
+    // === ADD TOP-LEVEL COMMENT ===
     function handleComment(form) {
         var ta = form.querySelector('textarea[name="text"]'), btn = form.querySelector('button[type="submit"]');
         if (btn) btn.disabled = true;
@@ -395,6 +391,62 @@
         .finally(() => { if (btn) btn.disabled = false; });
     }
 
+    // === REPLY TOGGLE ===
+    function handleReplyToggle(btn) {
+        var commentId = btn.dataset.commentId;
+        var username = btn.dataset.username;
+        var ci = btn.closest('.comment-item');
+        var card = ci.closest('.review-card-v2');
+        var floatingForm = card.querySelector('.cd-floating-reply-form');
+        if (!floatingForm) return;
+        if (floatingForm.dataset.activeParent === commentId && !floatingForm.classList.contains('hidden')) {
+            floatingForm.classList.add('hidden'); floatingForm.dataset.activeParent = ''; return;
+        }
+        ci.querySelector(':scope > .flex > .flex-1').appendChild(floatingForm);
+        floatingForm.classList.remove('hidden');
+        floatingForm.dataset.activeParent = commentId;
+        var ta = floatingForm.querySelector('.reply-text-input');
+        ta.placeholder = 'Reply to ' + username + '...'; ta.value = ''; ta.focus();
+    }
+
+    // === SUBMIT REPLY ===
+    function handleSubmitReply(btn) {
+        var card = btn.closest('.review-card-v2');
+        var floatingForm = card.querySelector('.cd-floating-reply-form');
+        var parentId = floatingForm.dataset.activeParent;
+        var ta = floatingForm.querySelector('.reply-text-input');
+        var text = ta ? ta.value.trim() : '';
+        if (!text) { window.showToast('Reply cannot be empty.', 'error'); return; }
+        btn.disabled = true;
+        var ctypeId = card.dataset.ctypeId;
+        var reviewId = card.dataset.reviewId;
+        var fd = new FormData();
+        fd.append('text', text); fd.append('content_type_id', ctypeId);
+        fd.append('object_id', reviewId); fd.append('parent_id', parentId);
+
+        fetch("{% url 'roulette:add_comment' %}", { method: 'POST', headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' }, body: fd })
+        .then(r => r.json()).then(d => {
+            if (d.success) {
+                ta.value = ''; floatingForm.classList.add('hidden'); floatingForm.dataset.activeParent = '';
+                var parentCI = card.querySelector('.comment-item[data-comment-id="' + parentId + '"]');
+                if (parentCI && d.comment_html) {
+                    var parentFlex = parentCI.querySelector(':scope > .flex > .flex-1');
+                    var rg = parentFlex.querySelector(':scope > .replies-group');
+                    if (!rg) { rg = document.createElement('div'); rg.className = 'replies-group'; rg.dataset.parentId = parentId; parentFlex.appendChild(rg); }
+                    var replyWrap = document.createElement('div'); replyWrap.className = 'reply-wrapper'; replyWrap.innerHTML = d.comment_html;
+                    var toggleBtn = rg.querySelector(':scope > .toggle-replies-btn');
+                    if (toggleBtn) rg.insertBefore(replyWrap, toggleBtn); else rg.appendChild(replyWrap);
+                }
+                updCount(card);
+            } else window.showToast(d.error || 'Failed.', 'error');
+        }).catch(() => window.showToast('Network error.', 'error')).finally(() => { btn.disabled = false; });
+    }
+
+    function handleCancelReply(btn) {
+        var form = btn.closest('.cd-floating-reply-form');
+        if (form) { form.classList.add('hidden'); form.dataset.activeParent = ''; }
+    }
+
     // === DELETE COMMENT ===
     function handleDeleteComment(btn) {
         if (!confirm('Delete this comment?')) return;
@@ -402,7 +454,7 @@
         fetch(btn.dataset.deleteUrl, { method: 'POST', headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' } })
         .then(r => r.json()).then(d => {
             if (d.success) {
-                var ci = btn.closest('.cd-comment-item'), card = btn.closest('.review-card-v2');
+                var ci = btn.closest('.comment-item'), card = btn.closest('.review-card-v2');
                 if (ci) ci.remove();
                 updCount(card);
                 window.showToast('Deleted.', 'success');
@@ -411,20 +463,71 @@
         .finally(() => { btn.disabled = false; });
     }
 
+    // === EDIT COMMENT ===
+    function handleEditComment(btn) {
+        var ci = btn.closest('.comment-item'); if (!ci) return;
+        var display = ci.querySelector(':scope > .flex > .flex-1 .comment-display');
+        var editForm = ci.querySelector(':scope > .flex > .flex-1 .comment-edit-form');
+        if (display && editForm) { display.classList.add('hidden'); editForm.classList.remove('hidden');
+            var ta = editForm.querySelector('.edit-textarea'); if (ta) { ta.focus(); ta.selectionStart = ta.value.length; } }
+    }
+    function handleSaveEdit(btn) {
+        var ci = btn.closest('.comment-item'); if (!ci) return;
+        var editForm = ci.querySelector(':scope > .flex > .flex-1 .comment-edit-form');
+        var display = ci.querySelector(':scope > .flex > .flex-1 .comment-display');
+        var ta = editForm.querySelector('.edit-textarea'), url = btn.dataset.editUrl;
+        var newText = ta ? ta.value.trim() : '';
+        if (!newText) { window.showToast('Comment cannot be empty.', 'error'); return; }
+        btn.disabled = true; var fd = new FormData(); fd.append('text', newText);
+        fetch(url, { method: 'POST', headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' }, body: fd })
+        .then(r => r.json()).then(d => {
+            if (d.success) { var textEl = display.querySelector('.comment-text-content'); if (textEl) textEl.innerHTML = d.text.replace(/\n/g, '<br>');
+                editForm.classList.add('hidden'); display.classList.remove('hidden'); window.showToast('Comment updated.', 'success');
+            } else window.showToast(d.error || 'Failed.', 'error');
+        }).catch(() => window.showToast('Network error.', 'error')).finally(() => { btn.disabled = false; });
+    }
+    function handleCancelEdit(btn) { var ci = btn.closest('.comment-item'); if (!ci) return;
+        ci.querySelector(':scope > .flex > .flex-1 .comment-edit-form').classList.add('hidden');
+        ci.querySelector(':scope > .flex > .flex-1 .comment-display').classList.remove('hidden'); }
+
+    // === TOGGLE REPLIES ===
+    function handleToggleReplies(btn) {
+        var rg = btn.closest('.replies-group');
+        var wrappers = rg.querySelectorAll(':scope > .reply-wrapper');
+        var state = btn.dataset.state;
+        var total = parseInt(btn.dataset.total);
+        var extra = total - INITIAL_REPLIES;
+        if (state === 'collapsed') {
+            wrappers.forEach(function(w) { w.classList.remove('hidden'); });
+            btn.dataset.state = 'expanded';
+            btn.innerHTML = '<i class="fas fa-chevron-up"></i> Hide replies';
+        } else {
+            wrappers.forEach(function(w, i) { if (i >= INITIAL_REPLIES) w.classList.add('hidden'); });
+            btn.dataset.state = 'collapsed';
+            btn.innerHTML = '<i class="fas fa-chevron-down"></i> View ' + extra + ' more repl' + (extra === 1 ? 'y' : 'ies');
+        }
+    }
+
     function updCount(card) {
         if (!card) return;
         var d = card.querySelector('.cd-comment-count'), l = card.querySelector('.cd-comments-list');
-        if (d && l) { var s = d.querySelector('.cd-count-number'); if (s) s.textContent = l.querySelectorAll('.cd-comment-item').length; }
+        if (d && l) { var s = d.querySelector('.cd-count-number'); if (s) s.textContent = l.querySelectorAll('.comment-item').length; }
     }
 
     // === EVENT DELEGATION ===
     if (reviewsContainer) {
         reviewsContainer.addEventListener('click', function(e) {
             var vb = e.target.closest('.review-vote-btn'); if (vb) { handleReviewVote(vb); return; }
-            var cvb = e.target.closest('.cd-comment-vote-btn'); if (cvb) { handleCommentVote(cvb); return; }
-            var dc = e.target.closest('.cd-delete-comment-btn'); if (dc) { handleDeleteComment(dc); return; }
+            var cvb = e.target.closest('.comment-vote-btn'); if (cvb) { handleCommentVote(cvb); return; }
+            var ecb = e.target.closest('.edit-comment-btn'); if (ecb) { handleEditComment(ecb); return; }
+            var seb = e.target.closest('.save-edit-btn'); if (seb) { handleSaveEdit(seb); return; }
+            var ceb = e.target.closest('.cancel-edit-btn'); if (ceb) { handleCancelEdit(ceb); return; }
+            var dc = e.target.closest('.delete-comment-btn'); if (dc) { handleDeleteComment(dc); return; }
+            var rtb = e.target.closest('.reply-toggle-btn'); if (rtb) { handleReplyToggle(rtb); return; }
+            var srb = e.target.closest('.cd-submit-reply-btn'); if (srb) { handleSubmitReply(srb); return; }
+            var crb = e.target.closest('.cd-cancel-reply-btn'); if (crb) { handleCancelReply(crb); return; }
+            var trb = e.target.closest('.toggle-replies-btn'); if (trb) { handleToggleReplies(trb); return; }
         });
-        // Bind comment forms
         reviewsContainer.querySelectorAll('.cd-add-comment-form').forEach(function(f) {
             f.addEventListener('submit', function(e) { e.preventDefault(); handleComment(this); });
         });
