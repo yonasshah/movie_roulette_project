@@ -55,7 +55,6 @@
             {% if comment.replies_list %}
                 <div class="replies-group mt-2">
                     {% for reply in comment.replies_list %}
-                        {# This line ensures that every reply beyond the 2nd is hidden on load #}
                         <div class="reply-wrapper {% if forloop.counter > 2 %}hidden{% endif %}">
                             {% include 'roulette/_comment.html' with comment=reply is_reply=True %}
                         </div>

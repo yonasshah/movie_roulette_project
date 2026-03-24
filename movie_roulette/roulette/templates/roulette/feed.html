@@ -98,6 +98,9 @@
 .comment-thread.hidden, 
 .reply-wrapper.hidden {
     display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    margin: 0 !important;
 }
 {% endblock %}
 
@@ -259,28 +262,58 @@
 
     // 5. Comment Posting (updated to handle auto-reveal for your own new comments)
     function handleComment(form) {
-        var ta = form.querySelector('textarea[name="text"]'), btn = form.querySelector('button[type="submit"]');
-        if (btn) btn.disabled = true;
-        fetch(form.action, { method: 'POST', headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' }, body: new FormData(form) })
-        .then(function(r) { return r.json(); }).then(function(d) {
-            if (d.success) { 
-                if (ta) ta.value = ''; 
-                var fi = form.closest('.feed-item');
-                if (fi && d.comment_html) {
-                    var cl = fi.querySelector('.comments-list');
-                    if (cl) { 
-                        var wrapper = document.createElement('div'); 
-                        wrapper.className = 'comment-thread'; 
-                        wrapper.innerHTML = d.comment_html; 
-                        cl.appendChild(wrapper); 
-                        // If it's your own comment, make sure it's not hidden
-                        wrapper.classList.remove('hidden');
+    var ta = form.querySelector('textarea[name="text"]'), 
+        btn = form.querySelector('button[type="submit"]');
+    
+    if (btn) btn.disabled = true;
+
+    fetch(form.action, { 
+        method: 'POST', 
+        headers: { 
+            'X-CSRFToken': csrfToken, 
+            'X-Requested-With': 'XMLHttpRequest' 
+        }, 
+        body: new FormData(form) 
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+        if (d.success) { 
+            if (ta) ta.value = ''; 
+            var fi = form.closest('.feed-item');
+            
+            if (fi && d.comment_html) {
+                var cl = fi.querySelector('.comments-list');
+                if (cl) { 
+                    var wrapper = document.createElement('div'); 
+                    
+                    // --- THE FIX ---
+                    // Count how many TOP-LEVEL comments are already visible
+                    var currentCount = cl.querySelectorAll(':scope > .comment-thread').length;
+                    
+                    // If there are already 2 or more, hide this new one to prevent a wall of text
+                    if (currentCount >= 2) {
+                        wrapper.className = 'comment-thread hidden';
+                    } else {
+                        wrapper.className = 'comment-thread';
                     }
-                    updCount(fi);
+                    
+                    wrapper.innerHTML = d.comment_html; 
+                    cl.appendChild(wrapper); 
                 }
+                updCount(fi);
+                
+                // Optional: Show a toast so the user knows it posted even if it's hidden
+                if (window.showToast) window.showToast('Comment posted!', 'success');
             }
-        }).finally(function() { if (btn) btn.disabled = false; });
-    }
+        }
+    })
+    .catch(function() {
+        if (window.showToast) window.showToast('Network error.', 'error');
+    })
+    .finally(function() { 
+        if (btn) btn.disabled = false; 
+    });
+}
 
     // 6. Reply Toggles & Submission (unchanged)
     function handleReplyToggle(btn) {
@@ -322,14 +355,22 @@
     }
 
     function handleToggleReplies(btn) {
-        var rg = btn.closest('.replies-group'), wrappers = rg.querySelectorAll(':scope > .reply-wrapper');
-        var state = btn.dataset.state, total = parseInt(btn.dataset.total), extra = total - INITIAL_REPLIES;
-        if (state === 'collapsed') {
-            wrappers.forEach(function(w) { w.classList.remove('hidden'); });
-            btn.dataset.state = 'expanded'; btn.innerHTML = '<i class="fas fa-chevron-up"></i> Hide replies';
+        const rg = btn.closest('.replies-group');
+        const wrappers = rg.querySelectorAll(':scope > .reply-wrapper');
+        const isCollapsed = btn.dataset.state === 'collapsed';
+        
+        if (isCollapsed) {
+            // Expand everything
+            wrappers.forEach(w => w.classList.remove('hidden'));
+            btn.dataset.state = 'expanded';
+            btn.innerHTML = '<i class="fas fa-chevron-up mr-1"></i> Hide replies';
         } else {
-            wrappers.forEach(function(w, i) { if (i >= INITIAL_REPLIES) w.classList.add('hidden'); });
-            btn.dataset.state = 'collapsed'; btn.innerHTML = '<i class="fas fa-chevron-down"></i> View ' + extra + ' more replies';
+            // Collapse back to the first 2
+            wrappers.forEach((w, i) => { if (i >= 2) w.classList.add('hidden'); });
+            btn.dataset.state = 'collapsed';
+            // Recalculate the hidden count
+            const extra = wrappers.length - 2;
+            btn.innerHTML = `<i class="fas fa-chevron-down mr-1"></i> View ${extra} more replies`;
         }
     }
 
@@ -441,6 +482,22 @@ function handleDeleteComment(btn) {
                         updCount(tgt); 
                     } 
                 } 
+                if (msg.type === 'new_comment' && msg.data) {
+                    var cd = msg.data;
+                    var tgt = fc.querySelector('.feed-item[data-ctype-id="' + cd.ctype_id + '"][data-item-id="' + cd.obj_id + '"]');
+                    if (tgt) {
+                        var cl = tgt.querySelector('.comments-list');
+                        if (cl && cd.comment_html) {
+                            var wrapper = document.createElement('div');
+                            // FIX: Check how many comments are already there
+                            var currentCount = cl.querySelectorAll(':scope > .comment-thread').length;
+                            wrapper.className = 'comment-thread' + (currentCount >= 2 ? ' hidden' : '');
+                            wrapper.innerHTML = cd.comment_html;
+                            cl.appendChild(wrapper);
+                            updCount(tgt);
+                        }
+                    }
+                }
             } 
         };
         ws.onclose = function() { setTimeout(connectFeed, 5000); };
