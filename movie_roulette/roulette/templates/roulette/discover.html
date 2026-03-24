@@ -3,7 +3,6 @@
 {% block title %}Discover | Movie Roulette{% endblock %}
 
 {% block style %}
-<style>
 /* --- 1. Layout & Scrollbars (Scroll Fix) --- */
 .scrolling-wrapper {
     display: flex; /* CRITICAL: Must be flex */
@@ -31,11 +30,10 @@
 /* Ensure the container of the whole page isn't hiding the overflow */
 .discover-container {
     width: 100%;
-    /* Delete overflow: hidden; completely */
 }
 .scrolling-wrapper::-webkit-scrollbar { display: none; }
 
-/* --- 2. Hero Spotlight with Glass Badge --- */
+/* --- 2. Hero Spotlight --- */
 .hero-spotlight {
     position: relative;
     width: 100%;
@@ -62,61 +60,8 @@
     flex-direction: column;
     justify-content: center;
     padding: 0 60px;
-    align-items: flex-start; /* ADDED: Stops the button from stretching */
+    align-items: flex-start;
 }
-
-/* Glassmorphism Badge */
-.hero-badge {
-    background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    color: #818cf8;
-    padding: 6px 14px;
-    border-radius: 100px;
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-    width: fit-content;
-    margin-bottom: 16px;
-}
-
-.hero-title {
-    font-size: 42px;
-    font-weight: 800;
-    color: #fff;
-    max-width: 500px;
-    line-height: 1.1;
-    margin-bottom: 12px;
-    letter-spacing: -1px;
-}
-
-.hero-desc {
-    color: #9ca3af;
-    max-width: 450px;
-    font-size: 15px;
-    line-height: 1.5;
-    margin-bottom: 24px;
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-}
-
-.hero-btn {
-    display: inline-block; /* ADDED: Keeps the button normal size */
-    margin-top: 10px; /* ADDED: Gives space below the description */
-    background: #818cf8;
-    color: #fff;
-    padding: 12px 28px;
-    border-radius: 12px;
-    font-weight: 700;
-    text-decoration: none;
-    width: fit-content;
-    transition: transform 0.2s, background 0.2s;
-}
-.hero-btn:hover { background: #6366f1; transform: translateY(-2px); }
 
 /* --- 3. Section Titles --- */
 .section-header {
@@ -127,14 +72,15 @@
 }
 
 .section-title {
-    font-size: 18px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 22px; 
     font-weight: 700;
-    color: #f3f4f6;
-    letter-spacing: -0.3px;
+    color: #fff; 
+    letter-spacing: -0.5px;
 }
 
 /* --- 4. Navigation Arrows (Glassmorphism Effect) --- */
-.arrow-btn {
+.arrow-btn, .carousel-arrow {
     width: 44px;
     height: 44px;
     background: rgba(255, 255, 255, 0.03); /* Transparent base */
@@ -153,52 +99,101 @@
     box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
 }
 
-.carousel-group:hover .arrow-btn { opacity: 1; }
+.carousel-group:hover .arrow-btn,
+.group:hover .carousel-arrow { 
+    opacity: 1; 
+}
 
 /* Container for the row needs relative positioning for the pseudo-elements to work */
 .carousel-group {
     position: relative;
 }
 
-
-
-.arrow-btn:hover { 
+.arrow-btn:hover, .carousel-arrow:hover { 
     background: rgba(129, 140, 248, 0.2); 
     border-color: rgba(129, 140, 248, 0.5);
     transform: scale(1.1);
 }
 
-.arrow-btn.hidden { pointer-events: none; opacity: 0 !important; }
+.arrow-btn.hidden, .carousel-arrow.hidden { 
+    pointer-events: none; 
+    opacity: 0 !important; 
+}
 
 @media (max-width: 768px) {
     .hero-spotlight { height: 350px; }
-    .hero-title { font-size: 28px; }
     .hero-overlay { padding: 0 30px; }
-    .arrow-btn { display: none; }
+    .arrow-btn, .carousel-arrow { display: none; }
 }
-</style>
 {% endblock %}
 
 {% block content %}
 <div class="discover-container">
 
-    {% with featured=popular_movies|first %}
-    {% if featured %}
-    <div class="hero-spotlight">
-        {% if featured.backdrop_path %}
-            <img src="https://image.tmdb.org/t/p/original{{ featured.backdrop_path }}" class="hero-img" alt="Backdrop">
-        {% endif %}
-        <div class="hero-overlay">
-            <div class="hero-badge">Featured Today</div>
-            <h1 class="hero-title">{% if featured.title %}{{ featured.title }}{% else %}{{ featured.name }}{% endif %}</h1>
-            <p class="hero-desc">{{ featured.overview }}</p>
-            <a href="{% url 'roulette:content_detail' content_type='movie' tmdb_id=featured.id %}" class="hero-btn">
-                View Details
-            </a>
+    <div id="hero-carousel" class="relative w-full h-[550px] md:h-[700px] rounded-[32px] overflow-hidden mb-16 shadow-[0_0_40px_rgba(0,0,0,0.5)] border border-white/5 bg-[#050507]">
+        
+        {% for featured in popular_movies|slice:":5" %}
+        <div class="hero-slide absolute inset-0 transition-opacity duration-1000 ease-in-out group {% if forloop.first %}opacity-100 z-20{% else %}opacity-0 pointer-events-none z-0{% endif %}" data-index="{{ forloop.counter0 }}">
+            
+            {% if featured.backdrop_path %}
+                <img src="https://image.tmdb.org/t/p/original{{ featured.backdrop_path }}" 
+                     class="absolute inset-0 w-full h-full object-cover transform scale-105 transition-transform duration-[3000ms] ease-out group-hover:scale-100 opacity-90" 
+                     alt="Backdrop">
+            {% endif %}
+
+            <div class="absolute inset-0 bg-gradient-to-r from-[#050507] via-[#050507]/80 to-transparent w-full md:w-[75%] z-10"></div>
+            <div class="absolute inset-0 bg-gradient-to-t from-[#050507] via-[#050507]/20 to-transparent z-10"></div>
+
+            <div class="absolute inset-0 z-20 flex flex-col justify-end pb-16 md:pb-20 px-6 md:px-16 max-w-4xl">
+                
+                <div class="inline-flex items-center gap-2 bg-indigo-500/10 backdrop-blur-md border border-indigo-500/20 text-indigo-300 px-4 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-[2px] w-fit mb-4 shadow-[0_0_15px_rgba(99,102,241,0.2)]">
+                    <i class="fas fa-fire animate-pulse text-indigo-400"></i>
+                    #{{ forloop.counter }} Trending Worldwide
+                </div>
+
+                <h1 class="font-display text-6xl md:text-7xl lg:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white to-gray-400 leading-[1.05] mb-4 tracking-tighter drop-shadow-2xl">
+                    {% if featured.title %}{{ featured.title }}{% else %}{{ featured.name }}{% endif %}
+                </h1>
+
+                <div class="flex items-center gap-4 text-sm font-semibold text-gray-300 mb-6">
+                    {% if featured.vote_average %}
+                        <span class="flex items-center gap-1.5 bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2.5 py-1 rounded-md backdrop-blur-sm">
+                            <i class="fas fa-star text-xs"></i>
+                            {{ featured.vote_average|floatformat:1 }}
+                        </span>
+                    {% endif %}
+                    <span class="px-2 py-0.5 border border-gray-500 text-gray-300 rounded text-xs tracking-wider">4K HDR</span>
+                    <span>{{ featured.release_date|slice:":4" }}</span>
+                    <span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                    <span class="uppercase tracking-widest text-[12px] text-indigo-200">Featured</span>
+                </div>
+
+                <p class="text-gray-300 text-base md:text-lg leading-relaxed mb-8 line-clamp-3 md:line-clamp-4 max-w-2xl font-light drop-shadow-md">
+                    {{ featured.overview }}
+                </p>
+
+                <div class="flex flex-wrap items-center gap-4">
+                    <a href="{% url 'roulette:content_detail' content_type='movie' tmdb_id=featured.id %}" 
+                       class="flex items-center gap-3 bg-white text-black px-8 py-4 rounded-xl font-bold transition-all hover:bg-gray-200 hover:scale-105 shadow-[0_0_30px_rgba(255,255,255,0.3)] pointer-events-auto">
+                        <i class="fas fa-play text-sm"></i>
+                        View Details
+                    </a>
+                    
+                    <button class="flex items-center gap-3 bg-white/10 backdrop-blur-xl border border-white/20 text-white px-8 py-4 rounded-xl font-bold transition-all hover:bg-white/20 hover:border-white/40 hover:scale-105 shadow-xl pointer-events-auto">
+                        <i class="fas fa-plus text-sm"></i>
+                        Add to Watchlist
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+
+        <div class="absolute bottom-6 right-8 z-30 flex items-center gap-3">
+            {% for featured in popular_movies|slice:":5" %}
+                <button class="carousel-dot h-1.5 rounded-full transition-all duration-500 cursor-pointer {% if forloop.first %}w-10 bg-indigo-500{% else %}w-4 bg-white/30 hover:bg-white/50{% endif %}" data-target="{{ forloop.counter0 }}"></button>
+            {% endfor %}
         </div>
     </div>
-    {% endif %}
-    {% endwith %}
 
     <div class="space-y-10">
         {% include 'roulette/partials/_content_row.html' with title="Popular Movies" items=popular_movies media_type='movie' %}
@@ -214,37 +209,122 @@
 {{ block.super }}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        console.log("🎬 Movie Roulette Carousel Script Initialized");
-        
-        // Find every row on the page
         const rows = document.querySelectorAll('.carousel-group');
-        console.log("Found " + rows.length + " carousel rows.");
 
-        rows.forEach((row, index) => {
+        rows.forEach((row) => {
             const wrapper = row.querySelector('.scrolling-wrapper');
             const leftBtn = row.querySelector('.left-arrow');
             const rightBtn = row.querySelector('.right-arrow');
 
-            // Failsafe
-            if (!wrapper || !leftBtn || !rightBtn) {
-                console.warn("Row " + index + " is missing its wrapper or buttons.");
-                return;
-            }
+            if (!wrapper || !leftBtn || !rightBtn) return;
 
-            // Scroll Left - using direct scrollLeft manipulation
+            // Function to check scroll position and hide/show arrows
+            const updateArrows = () => {
+                // If scrollLeft is 0 (or very close to it), hide the left arrow
+                if (wrapper.scrollLeft <= 5) {
+                    leftBtn.style.opacity = '0';
+                    leftBtn.style.pointerEvents = 'none';
+                } else {
+                    leftBtn.style.opacity = '1';
+                    leftBtn.style.pointerEvents = 'auto';
+                }
+
+                // If we've scrolled to the max width, hide the right arrow
+                // (Using Math.ceil to account for fractional pixel scrolling on some monitors)
+                const maxScroll = wrapper.scrollWidth - wrapper.clientWidth;
+                if (Math.ceil(wrapper.scrollLeft) >= maxScroll - 5) {
+                    rightBtn.style.opacity = '0';
+                    rightBtn.style.pointerEvents = 'none';
+                } else {
+                    rightBtn.style.opacity = '1';
+                    rightBtn.style.pointerEvents = 'auto';
+                }
+            };
+
+            // Run once on load to hide left arrows immediately
+            updateArrows();
+
+            // Listen for scrolling to update arrows dynamically
+            wrapper.addEventListener('scroll', () => {
+                // requestAnimationFrame makes the UI update perfectly smooth
+                window.requestAnimationFrame(updateArrows);
+            });
+
+            // Scroll Left Button Click
             leftBtn.addEventListener('click', function(e) {
                 e.preventDefault();
-                console.log("Scrolled Left");
-                wrapper.scrollLeft -= 600; 
+                // Scroll by roughly 3-4 movie cards at a time (600px)
+                wrapper.scrollBy({ left: -600, behavior: 'smooth' });
             });
 
-            // Scroll Right - using direct scrollLeft manipulation
+            // Scroll Right Button Click
             rightBtn.addEventListener('click', function(e) {
                 e.preventDefault();
-                console.log("Scrolled Right");
-                wrapper.scrollLeft += 600;
+                wrapper.scrollBy({ left: 600, behavior: 'smooth' });
             });
         });
+    });
+</script>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const slides = document.querySelectorAll('.hero-slide');
+        const dots = document.querySelectorAll('.carousel-dot');
+        const carousel = document.getElementById('hero-carousel');
+        
+        let currentSlide = 0;
+        const totalSlides = slides.length;
+        let slideInterval;
+
+        if (totalSlides === 0) return;
+
+        // Function to smoothly transition to a specific slide
+        function goToSlide(index) {
+            // Fade out current slide
+            slides[currentSlide].classList.remove('opacity-100', 'z-20');
+            slides[currentSlide].classList.add('opacity-0', 'pointer-events-none', 'z-0');
+            dots[currentSlide].classList.remove('bg-indigo-500', 'w-10');
+            dots[currentSlide].classList.add('bg-white/30', 'w-4');
+
+            currentSlide = index;
+
+            // Fade in new slide
+            slides[currentSlide].classList.remove('opacity-0', 'pointer-events-none', 'z-0');
+            slides[currentSlide].classList.add('opacity-100', 'z-20');
+            dots[currentSlide].classList.remove('bg-white/30', 'w-4');
+            dots[currentSlide].classList.add('bg-indigo-500', 'w-10');
+        }
+
+        function nextSlide() {
+            goToSlide((currentSlide + 1) % totalSlides);
+        }
+
+        // Start the 7-second timer
+        function startInterval() {
+            slideInterval = setInterval(nextSlide, 7000);
+        }
+
+        // Stop timer (useful for when user clicks or hovers)
+        function stopInterval() {
+            clearInterval(slideInterval);
+        }
+
+        // Add click events to the indicator dots
+        dots.forEach((dot, index) => {
+            dot.addEventListener('click', () => {
+                goToSlide(index);
+                stopInterval();
+                startInterval(); // Reset the timer so it doesn't jump immediately after clicking
+            });
+        });
+
+        // Pause rotation when the user hovers over the billboard
+        if (carousel) {
+            carousel.addEventListener('mouseenter', stopInterval);
+            carousel.addEventListener('mouseleave', startInterval);
+        }
+
+        // Kick it off!
+        startInterval();
     });
 </script>
 {% endblock %}

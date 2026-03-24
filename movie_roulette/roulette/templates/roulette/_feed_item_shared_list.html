@@ -14,18 +14,18 @@
         </div>
     </div>
 
-    <a href="{{ shared_list.get_absolute_url }}" class="share-card">
-        <div class="sc-name">{{ shared_list.name }}</div>
+    <a href="{{ shared_list.get_absolute_url }}" class="share-card block p-4 mx-4 md:mx-5 mb-4 mt-2 rounded-xl bg-indigo-500/5 border border-indigo-500/10 hover:bg-indigo-500/10 transition-colors group">
+        <div class="font-display text-base font-bold text-indigo-400 mb-1 group-hover:text-indigo-300 transition-colors">{{ shared_list.name }}</div>
         {% if item.message %}
-            <div class="sc-msg">"{{ item.message|escape }}"</div>
+            <div class="text-[13px] text-gray-200 italic mb-2">"{{ item.message|escape }}"</div>
         {% endif %}
         {% if shared_list.description %}
-            <div class="sc-desc">{{ shared_list.description|truncatewords:20 }}</div>
+            <div class="text-xs text-gray-400 line-clamp-2 leading-relaxed">{{ shared_list.description|truncatewords:20 }}</div>
         {% endif %}
     </a>
 
     {% with content_type_id=item.ctype_id object_id=item.obj_id %}
-    <div class="fc-footer">
+    <div class="fc-footer px-4 md:px-5">
         <button class="vote-btn vote-up {% if item.fetched_user_vote == 1 %}active{% endif %}" data-ctype-id="{{ content_type_id }}" data-obj-id="{{ object_id }}" data-vote="1">
             <i class="fas fa-thumbs-up"></i> <span class="up-count">{{ item.fetched_up_count }}</span>
         </button>
@@ -36,24 +36,25 @@
         <span class="comment-count-display fc-comment-count"><i class="fas fa-comment text-[10px]"></i> <span class="count-number">{{ item.fetched_comments|length }}</span> comments</span>
     </div>
 
-    <div class="comments-section">
-        <div class="comments-list">
-            {% for comment in item.fetched_comments %}
-                {% include 'roulette/_comment.html' with comment=comment request=request %}
-            {% endfor %}
+    <div class="comments-section px-4 md:px-5" data-total-comments="{{ item.fetched_comment_count|default:0 }}">
+    <div class="comments-list">
+        {% for comment in item.fetched_comments %}
+            {# Only show the first 2, hide the rest #}
+            <div class="comment-thread {% if forloop.counter > 2 %}hidden{% endif %}" data-index="{{ forloop.counter }}">
+                {% include 'roulette/_comment.html' with comment=comment is_reply=False %}
+            </div>
+        {% endfor %}
+    </div>
+
+    {% if item.fetched_comments|length > 2 %}
+        <div class="mt-2 mb-3">
+            <button class="view-all-btn text-gray-500 hover:text-indigo-400 text-[13px] font-medium transition-colors" 
+                    onclick="showAllComments(this)">
+                View all {{ item.fetched_comment_count }} comments
+            </button>
         </div>
-        {% if user.is_authenticated %}
-        <form class="add-comment-form flex items-center gap-2 mt-3" method="POST" action="{% url 'roulette:add_comment' %}">
-            {% csrf_token %}
-            <input type="hidden" name="content_type_id" value="{{ content_type_id }}">
-            <input type="hidden" name="object_id" value="{{ object_id }}">
-            <input type="hidden" name="next" value="{{ request.path }}">
-            <img src="{{ user.profile.image.url }}" class="w-6 h-6 rounded-full object-cover flex-shrink-0" alt="">
-            <textarea name="text" rows="1" placeholder="Add a comment..." class="reply-input flex-1" maxlength="500" required></textarea>
-            <button type="submit" class="reply-btn flex-shrink-0">Post</button>
-            <div class="comment-form-errors text-[10px] text-red-400 hidden"></div>
-        </form>
-        {% endif %}
+    {% endif %}
+    
     </div>
     {% endwith %}
 

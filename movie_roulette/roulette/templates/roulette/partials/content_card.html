@@ -1,37 +1,42 @@
-<a href="{% url 'roulette:content_detail' content_type=item.media_type|default:media_type tmdb_id=item.id %}" class="content-card">
-    <div class="cc-poster">
-        {% if item.poster_path %}
-            {# --- THE FIX --- #}
-            {# Use a nested if or a simple check to avoid the 'name' lookup on movies #}
-            <img src="https://image.tmdb.org/t/p/w342{{ item.poster_path }}" 
-                 alt="{% if item.title %}{{ item.title }}{% else %}{{ item.name }}{% endif %}" 
-                 loading="lazy">
-        {% else %}
-            <div style="height:100%; display:flex; align-items:center; justify-content:center; background:#1a1a2e; color:#4b5563;">
-                <i class="fas fa-image" style="font-size: 24px;"></i>
-            </div>
-        {% endif %}
-    </div>
-    <div class="cc-info">
-        <div class="cc-title">
-            {# --- ALSO UPDATE THIS --- #}
-            {% if item.title %}{{ item.title }}{% else %}{{ item.name }}{% endif %}
+<a href="{% url 'roulette:content_detail' content_type=item.media_type|default:media_type tmdb_id=item.id %}" 
+   class="relative block w-full aspect-[2/3] rounded-xl overflow-hidden group border border-white/5 shadow-lg transition-all duration-300 hover:border-indigo-500/40 hover:shadow-[0_0_20px_rgba(99,102,241,0.2)] hover:-translate-y-1.5">
+    
+    {% if item.poster_path %}
+        <img src="https://image.tmdb.org/t/p/w342{{ item.poster_path }}" 
+             alt="{% if item.title %}{{ item.title }}{% else %}{{ item.name }}{% endif %}" 
+             class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" loading="lazy">
+    {% else %}
+        <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#12121e] to-[#1a1428] text-gray-600">
+            <i class="fas fa-image text-3xl"></i>
         </div>
-        <div class="cc-meta">
-            {% if item.media_type == 'movie' %}
-                <span class="cc-badge badge-movie">Movie</span>
+    {% endif %}
+
+    <div class="absolute inset-0 bg-gradient-to-t from-[#050507] via-[#050507]/60 to-transparent opacity-90 transition-opacity duration-300 group-hover:opacity-100"></div>
+
+    <div class="absolute inset-0 p-4 flex flex-col justify-end translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
+        
+        <h3 class="font-display text-[15px] font-bold text-white leading-tight mb-2 line-clamp-2 drop-shadow-lg">
+            {% if item.title %}{{ item.title }}{% else %}{{ item.name }}{% endif %}
+        </h3>
+        
+        <div class="flex items-center gap-2 text-[11px] font-medium text-gray-300">
+            {% if item.media_type == 'movie' or media_type == 'movie' %}
+                <span class="text-indigo-400 font-bold tracking-wide uppercase text-[9px]">Movie</span>
+                <span class="w-1 h-1 rounded-full bg-white/20"></span>
                 <span>{{ item.release_date|slice:":4" }}</span>
             {% else %}
-                <span class="cc-badge badge-tv">TV</span>
+                <span class="text-purple-400 font-bold tracking-wide uppercase text-[9px]">TV</span>
+                <span class="w-1 h-1 rounded-full bg-white/20"></span>
                 <span>{{ item.first_air_date|slice:":4" }}</span>
             {% endif %}
             
             {% if item.vote_average %}
-                <span class="cc-rating">
-                    <i class="fas fa-star" style="font-size:9px"></i>
+                <span class="ml-auto flex items-center gap-1 text-amber-400 bg-black/40 px-1.5 py-0.5 rounded backdrop-blur-md border border-white/10">
+                    <i class="fas fa-star text-[9px]"></i>
                     {{ item.vote_average|floatformat:1 }}
                 </span>
             {% endif %}
         </div>
+        
     </div>
 </a>
