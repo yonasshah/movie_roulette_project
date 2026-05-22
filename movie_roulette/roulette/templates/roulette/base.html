@@ -64,20 +64,108 @@
         .dropdown-menu { display: none; }
         .dropdown.open .dropdown-menu { display: block; }
         #toast-container {
-            position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 200;
-            display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-end;
-            max-width: 360px; pointer-events: none;
+            position: fixed;
+            bottom: 1.5rem;
+            right: 1.5rem;
+            z-index: 200;
+            display: flex;
+            flex-direction: column;
+            gap: 0.65rem;
+            align-items: flex-end;
+            max-width: 380px;
+            pointer-events: none;
         }
+
         .toast {
-            padding: 12px 20px; border-radius: 10px; color: white; font-size: 13px; font-weight: 500;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.06);
-            opacity: 0; transform: translateX(100%); transition: opacity 0.3s ease, transform 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            min-width: 230px;
+            max-width: 360px;
+            padding: 12px 15px 12px 42px;
+            border-radius: 16px;
+            color: #e5e7eb;
+            font-size: 13px;
+            font-weight: 600;
+            line-height: 1.35;
+            background: rgba(17, 18, 28, 0.94);
+            border: 1px solid rgba(255,255,255,0.08);
+            box-shadow: 0 18px 55px rgba(0,0,0,0.55);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            opacity: 0;
+            transform: translateX(18px) translateY(6px) scale(0.98);
+            transition: opacity 0.22s ease, transform 0.22s ease;
             pointer-events: auto;
         }
-        .toast.show { opacity: 1; transform: translateX(0); }
-        .toast.success { background: rgba(34,197,94,0.9); }
-        .toast.error { background: rgba(239,68,68,0.9); }
-        .toast.info { background: rgba(99,102,241,0.9); }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(0) translateY(0) scale(1);
+        }
+
+        .toast::before {
+            content: '';
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            width: 14px;
+            height: 14px;
+            border-radius: 999px;
+            transform: translateY(-50%);
+        }
+
+        .toast::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 12px;
+            bottom: 12px;
+            width: 3px;
+            border-radius: 999px;
+        }
+
+        .toast.success::before {
+            background: #22c55e;
+            box-shadow: 0 0 18px rgba(34,197,94,0.45);
+        }
+
+        .toast.success::after {
+            background: #22c55e;
+        }
+
+        .toast.error::before {
+            background: #ef4444;
+            box-shadow: 0 0 18px rgba(239,68,68,0.45);
+        }
+
+        .toast.error::after {
+            background: #ef4444;
+        }
+
+        .toast.info::before {
+            background: #818cf8;
+            box-shadow: 0 0 18px rgba(129,140,248,0.45);
+        }
+
+        .toast.info::after {
+            background: #818cf8;
+        }
+
+        @media (max-width: 640px) {
+            #toast-container {
+                left: 1rem;
+                right: 1rem;
+                bottom: 1rem;
+                align-items: stretch;
+                max-width: none;
+            }
+
+            .toast {
+                width: 100%;
+                min-width: 0;
+                max-width: none;
+            }
+        }
         .cx-card {
             background: rgba(255,255,255,0.025);
             border: 1px solid rgba(255,255,255,0.06);
@@ -133,28 +221,98 @@
                         </a>
                         <div class="relative dropdown">
                             <button id="user-menu-button" type="button"
-                                    class="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-xs font-semibold text-white ring-2 ring-indigo-500/30 cursor-pointer hover:ring-indigo-500/50 transition-all overflow-hidden"
-                                    aria-expanded="false" aria-haspopup="true">
-                                {% if user.profile.image and user.profile.image.url != '/media/default.jpg' %}
-                                    <img src="{{ user.profile.image.url }}" class="w-full h-full rounded-full object-cover" alt="">
-                                {% else %}
-                                    {{ user.username|first|upper }}
-                                {% endif %}
-                            </button>
-                            <div id="user-menu" class="dropdown-menu origin-top-right absolute right-0 mt-2 w-52 rounded-xl py-1.5 bg-[#131420] border border-white/[0.08] shadow-2xl shadow-black/50" role="menu" tabindex="-1">
-                                <div class="px-4 py-2.5 border-b border-white/[0.06]">
-                                    <p class="text-sm font-medium text-white truncate">@{{ user.username }}</p>
-                                    <p class="text-xs text-gray-600 truncate">{{ user.email }}</p>
-                                </div>
-                                <a href="{% url 'roulette:user_profile' username=user.username %}" class="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-400 hover:bg-white/[0.04] hover:text-white transition-colors" role="menuitem"><i class="fas fa-user text-xs text-gray-600 w-4"></i>My profile</a>
-                                <a href="{% url 'roulette:list_all' %}" class="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-400 hover:bg-white/[0.04] hover:text-white transition-colors" role="menuitem"><i class="fas fa-list text-xs text-gray-600 w-4"></i>My lists</a>
-                                <a href="{% url 'users:account_settings' %}" class="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-400 hover:bg-white/[0.04] hover:text-white transition-colors" role="menuitem"><i class="fas fa-cog text-xs text-gray-600 w-4"></i>Settings</a>
-                                <div class="border-t border-white/[0.06] mt-1 pt-1">
-                                    <form action="{% url 'users:logout' %}" method="post">{% csrf_token %}
-                                        <button type="submit" class="flex items-center gap-3 w-full text-left px-4 py-2.5 text-sm text-gray-500 hover:bg-white/[0.04] hover:text-gray-300 transition-colors" role="menuitem"><i class="fas fa-sign-out-alt text-xs text-gray-600 w-4"></i>Log out</button>
-                                    </form>
-                                </div>
-                            </div>
+                                class="w-9 h-9 rounded-xl bg-white/[0.04] border border-white/[0.08] p-[1px] flex items-center justify-center text-xs font-semibold text-white cursor-pointer hover:border-indigo-400/40 hover:bg-white/[0.06] transition-all overflow-hidden"
+                                aria-expanded="false" aria-haspopup="true">
+                            {% if user.profile.image and user.profile.image.url != '/media/default.jpg' %}
+                                <img src="{{ user.profile.image.url }}" class="w-full h-full rounded-[10px] object-cover" alt="">
+                            {% else %}
+                                {{ user.username|first|upper }}
+                            {% endif %}
+                        </button>
+                            <div id="user-menu"
+     class="dropdown-menu origin-top-right absolute right-0 mt-3 w-72 overflow-hidden rounded-2xl bg-[#11121c]/95 border border-white/[0.08] shadow-2xl shadow-black/60 backdrop-blur-xl"
+     role="menu"
+     tabindex="-1">
+
+    <!-- Profile header -->
+    <div class="relative px-4 pt-4 pb-4 border-b border-white/[0.06]">
+        <div class="absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-purple-500/5 to-transparent pointer-events-none"></div>
+
+        <div class="relative flex items-center gap-3">
+            <div class="w-12 h-12 rounded-xl bg-white/[0.04] border border-white/[0.08] p-[1px]">
+                <div class="w-full h-full rounded-[10px] bg-[#11121c] overflow-hidden flex items-center justify-center text-white font-bold">
+                    {% if user.profile.image and user.profile.image.url != '/media/default.jpg' %}
+                        <img src="{{ user.profile.image.url }}" class="w-full h-full object-cover" alt="">
+                    {% else %}
+                        {{ user.username|first|upper }}
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="min-w-0 flex-1">
+                <p class="text-sm font-bold text-white truncate">@{{ user.username }}</p>
+                <p class="text-xs text-gray-600 truncate">Movie Roulette account</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main links -->
+    <div class="p-2">
+        <a href="{% url 'roulette:user_profile' username=user.username %}"
+           class="group flex items-center gap-3 px-3 py-3 rounded-xl text-sm text-gray-400 hover:text-white hover:bg-white/[0.045] transition-all"
+           role="menuitem">
+            <span class="w-9 h-9 rounded-xl bg-white/[0.035] border border-white/[0.05] flex items-center justify-center text-gray-600 group-hover:text-indigo-300 group-hover:border-indigo-400/20 group-hover:bg-indigo-500/10 transition-all">
+                <i class="fas fa-user text-xs"></i>
+            </span>
+            <span class="flex-1">
+                <span class="block font-semibold">My profile</span>
+                <span class="block text-[11px] text-gray-700 group-hover:text-gray-600">View your public page</span>
+            </span>
+            <i class="fas fa-chevron-right text-[10px] text-gray-700 group-hover:text-gray-500"></i>
+        </a>
+
+        <a href="{% url 'roulette:list_all' %}"
+           class="group flex items-center gap-3 px-3 py-3 rounded-xl text-sm text-gray-400 hover:text-white hover:bg-white/[0.045] transition-all"
+           role="menuitem">
+            <span class="w-9 h-9 rounded-xl bg-white/[0.035] border border-white/[0.05] flex items-center justify-center text-gray-600 group-hover:text-indigo-300 group-hover:border-indigo-400/20 group-hover:bg-indigo-500/10 transition-all">
+                <i class="fas fa-list text-xs"></i>
+            </span>
+            <span class="flex-1">
+                <span class="block font-semibold">My lists</span>
+                <span class="block text-[11px] text-gray-700 group-hover:text-gray-600">Watchlist and collections</span>
+            </span>
+            <i class="fas fa-chevron-right text-[10px] text-gray-700 group-hover:text-gray-500"></i>
+        </a>
+
+        <a href="{% url 'users:account_settings' %}"
+           class="group flex items-center gap-3 px-3 py-3 rounded-xl text-sm text-gray-400 hover:text-white hover:bg-white/[0.045] transition-all"
+           role="menuitem">
+            <span class="w-9 h-9 rounded-xl bg-white/[0.035] border border-white/[0.05] flex items-center justify-center text-gray-600 group-hover:text-indigo-300 group-hover:border-indigo-400/20 group-hover:bg-indigo-500/10 transition-all">
+                <i class="fas fa-cog text-xs"></i>
+            </span>
+            <span class="flex-1">
+                <span class="block font-semibold">Settings</span>
+                <span class="block text-[11px] text-gray-700 group-hover:text-gray-600">Account and preferences</span>
+            </span>
+            <i class="fas fa-chevron-right text-[10px] text-gray-700 group-hover:text-gray-500"></i>
+        </a>
+    </div>
+
+    <!-- Footer / logout -->
+    <div class="p-2 border-t border-white/[0.06] bg-black/[0.12]">
+        <form action="{% url 'users:logout' %}" method="post">
+            {% csrf_token %}
+            <button type="submit"
+                    class="group flex items-center gap-3 w-full px-3 py-3 rounded-xl text-sm text-gray-500 hover:text-red-300 hover:bg-red-500/[0.08] transition-all"
+                    role="menuitem">
+                <span class="w-9 h-9 rounded-xl bg-white/[0.025] border border-white/[0.04] flex items-center justify-center text-gray-700 group-hover:text-red-300 group-hover:border-red-400/20 group-hover:bg-red-500/10 transition-all">
+                    <i class="fas fa-sign-out-alt text-xs"></i>
+                </span>
+                <span class="flex-1 text-left font-semibold">Log out</span>
+            </button>
+        </form>
+    </div>
+</div>
                         </div>
                     {% else %}
                         <a href="{% url 'users:login' %}" class="px-3 py-1.5 rounded-lg text-sm text-gray-400 hover:text-white transition-colors">Log in</a>
@@ -175,8 +333,17 @@
    class="block px-3 py-2.5 rounded-lg text-sm {% if request.path == '/' or request.path == '/home/' %}text-white bg-white/[0.04]{% else %}text-gray-300 hover:text-white hover:bg-white/[0.04]{% endif %}">Home</a>
 
    
-<a href="{% url 'roulette:feed' %}" 
-   class="block px-3 py-2.5 rounded-lg text-sm {% if '/feed/' in request.path %}text-white bg-white/[0.04]{% else %}text-gray-300 hover:text-white hover:bg-white/[0.04]{% endif %}">Feed</a>
+{% if user.is_authenticated %}
+        <a href="{% url 'roulette:feed' %}" 
+        class="block px-3 py-2.5 rounded-lg text-sm {% if '/feed/' in request.path %}text-white bg-white/[0.04]{% else %}text-gray-300 hover:text-white hover:bg-white/[0.04]{% endif %}">
+            Feed
+        </a>
+    {% else %}
+        <a href="{% url 'roulette:discover' %}" 
+        class="block px-3 py-2.5 rounded-lg text-sm {% if '/discover/' in request.path %}text-white bg-white/[0.04]{% else %}text-gray-300 hover:text-white hover:bg-white/[0.04]{% endif %}">
+            Discover
+        </a>
+    {% endif %}
 
                 {% if user.is_authenticated %}
                     <div class="h-px bg-white/[0.04] my-2"></div>
@@ -222,10 +389,36 @@
         }
         function showToast(msg, type) {
             type = type || 'success';
-            var c = document.getElementById('toast-container'); if (!c) return;
-            var t = document.createElement('div'); t.textContent = msg; t.className = 'toast ' + type; c.appendChild(t);
-            requestAnimationFrame(function(){requestAnimationFrame(function(){t.classList.add('show');});});
-            setTimeout(function(){ t.classList.remove('show'); t.addEventListener('transitionend',function(){if(t.parentNode===c)t.remove();},{once:true}); },4000);
+
+            var c = document.getElementById('toast-container');
+            if (!c) return;
+
+            // Prevent toast spam by clearing old notifications first
+            c.querySelectorAll('.toast').forEach(function(oldToast) {
+                oldToast.remove();
+            });
+
+            var t = document.createElement('div');
+            t.textContent = msg;
+            t.className = 'toast ' + type;
+
+            c.appendChild(t);
+
+            requestAnimationFrame(function() {
+                requestAnimationFrame(function() {
+                    t.classList.add('show');
+                });
+            });
+
+            setTimeout(function() {
+                t.classList.remove('show');
+
+                t.addEventListener('transitionend', function() {
+                    if (t.parentNode === c) {
+                        t.remove();
+                    }
+                }, { once: true });
+            }, 2200);
         }
         window.showToast = showToast;
         var mEl = document.getElementById('django-messages-data');

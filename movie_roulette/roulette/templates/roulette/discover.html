@@ -179,7 +179,16 @@
                         View Details
                     </a>
                     
-                    <button class="flex items-center gap-3 bg-white/10 backdrop-blur-xl border border-white/20 text-white px-8 py-4 rounded-xl font-bold transition-all hover:bg-white/20 hover:border-white/40 hover:scale-105 shadow-xl pointer-events-auto">
+                    <button
+                        type="button"
+                        class="discover-watchlist-btn flex items-center gap-3 bg-white/10 backdrop-blur-xl border border-white/20 text-white px-8 py-4 rounded-xl font-bold transition-all hover:bg-white/20 hover:border-white/40 hover:scale-105 shadow-xl pointer-events-auto"
+                        data-tmdb-id="{{ featured.id }}"
+                        data-content-type="movie"
+                        data-title="{% if featured.title %}{{ featured.title|escapejs }}{% else %}{{ featured.name|escapejs }}{% endif %}"
+                        data-poster-path="{{ featured.poster_path|default:'' }}"
+                        data-release-year="{{ featured.release_date|slice:':4' }}"
+                        data-overview="{{ featured.overview|escapejs }}"
+                    >
                         <i class="fas fa-plus text-sm"></i>
                         Add to Watchlist
                     </button>
@@ -209,7 +218,99 @@
 {{ block.super }}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        const csrfToken = '{{ csrf_token }}';
+        const isAuthenticated = {{ user.is_authenticated|yesno:"true,false" }};
+        const loginUrl = "{% url 'users:login' %}";
+        const signupUrl = "{% url 'users:signup' %}";
+        const watchlistUrl = "{% url 'roulette:toggle_watchlist' %}";
+
+        function showSignupPrompt(message) {
+            var existing = document.getElementById('signup-prompt-modal');
+            if (existing) existing.remove();
+
+            var promptModal = document.createElement('div');
+            promptModal.id = 'signup-prompt-modal';
+            promptModal.className = 'fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 px-4';
+
+            promptModal.innerHTML =
+                '<div class="cx-card max-w-sm w-full p-6 text-center border border-white/[0.08]">' +
+                    '<div class="w-12 h-12 mx-auto mb-4 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-400">' +
+                        '<i class="fas fa-lock"></i>' +
+                    '</div>' +
+                    '<h3 class="font-display text-xl font-semibold text-white mb-2">Create an account</h3>' +
+                    '<p class="text-sm text-gray-500 leading-relaxed mb-6">' +
+                        (message || 'Create an account to save movies and shows to your watchlist.') +
+                    '</p>' +
+                    '<div class="flex flex-col gap-2">' +
+                        '<a href="' + signupUrl + '" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2.5 px-5 rounded-lg text-sm transition-colors">Sign up</a>' +
+                        '<a href="' + loginUrl + '?next=' + encodeURIComponent(location.pathname) + '" class="border border-white/[0.08] hover:bg-white/[0.04] text-gray-400 hover:text-white font-semibold py-2.5 px-5 rounded-lg text-sm transition-colors">Log in</a>' +
+                        '<button type="button" id="signup-prompt-close" class="text-gray-600 hover:text-gray-400 text-sm py-2">Maybe later</button>' +
+                    '</div>' +
+                '</div>';
+
+            document.body.appendChild(promptModal);
+
+            document.getElementById('signup-prompt-close').addEventListener('click', function() {
+                promptModal.remove();
+            });
+
+            promptModal.addEventListener('click', function(e) {
+                if (e.target === promptModal) promptModal.remove();
+            });
+        }
+
+        document.querySelectorAll('.discover-watchlist-btn').forEach(function(button) {
+            button.addEventListener('click', function() {
+                if (!isAuthenticated) {
+                    showSignupPrompt('Create an account to save movies and shows to your watchlist.');
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('tmdb_id', button.dataset.tmdbId);
+                formData.append('content_type', button.dataset.contentType);
+                formData.append('title', button.dataset.title);
+                formData.append('poster_path', button.dataset.posterPath || '');
+                formData.append('release_year', button.dataset.releaseYear || '');
+                formData.append('overview', button.dataset.overview || '');
+
+                button.disabled = true;
+
+                fetch(watchlistUrl, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrfToken,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: formData
+                })
+                .then(function(response) {
+                    return response.json();
+                })
+                .then(function(data) {
+                    if (data.success) {
+                        if (data.is_watchlist) {
+                            button.innerHTML = '<i class="fas fa-check text-sm"></i> Added to Watchlist';
+                            window.showToast('Added to watchlist.', 'success');
+                        } else {
+                            button.innerHTML = '<i class="fas fa-plus text-sm"></i> Add to Watchlist';
+                            window.showToast('Removed from watchlist.', 'success');
+                        }
+                    } else {
+                        window.showToast(data.error || 'Could not update watchlist.', 'error');
+                    }
+                })
+                .catch(function() {
+                    window.showToast('Network error.', 'error');
+                })
+                .finally(function() {
+                    button.disabled = false;
+                });
+            });
+        });
+
         const rows = document.querySelectorAll('.carousel-group');
+        
 
         rows.forEach((row) => {
             const wrapper = row.querySelector('.scrolling-wrapper');
@@ -256,6 +357,7 @@
                 // Scroll by roughly 3-4 movie cards at a time (600px)
                 wrapper.scrollBy({ left: -600, behavior: 'smooth' });
             });
+            
 
             // Scroll Right Button Click
             rightBtn.addEventListener('click', function(e) {

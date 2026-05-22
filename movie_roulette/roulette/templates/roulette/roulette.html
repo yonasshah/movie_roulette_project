@@ -88,39 +88,115 @@
 }
 .fx-select:focus { border-color: rgba(99,102,241,0.4); }
 .fx-select option { background: #131420; color: #e5e7eb; }
+
+.cx-card-soft {
+    background: rgba(255,255,255,0.018);
+    border: 1px solid rgba(255,255,255,0.055);
+    border-radius: 16px;
+}
+
+.result-card {
+    transform: scale(0.98);
+    opacity: 1;
+    transition: all 0.35s ease;
+}
+
+.result-card.show {
+    transform: scale(1);
+    opacity: 1;
+}
+
+.filter-wrap:not([open]) summary {
+    margin-bottom: 0;
+}
+
+.filter-wrap summary {
+    list-style: none;
+}
+
+.filter-wrap summary::-webkit-details-marker {
+    display: none;
+}
+
+.filter-wrap[open] .chev {
+    transform: rotate(180deg);
+}
+
+@media (max-width: 640px) {
+    .toggle-opt {
+        padding-left: 22px;
+        padding-right: 22px;
+    }
+
+    .spin-glow {
+        width: 100%;
+        justify-content: center;
+        padding-left: 24px;
+        padding-right: 24px;
+    }
+
+    .spin-btn-wrap {
+        width: 100%;
+    }
+}
 {% endblock %}
 
 {% block content %}
-<div class="max-w-3xl mx-auto">
+<div class="max-w-4xl mx-auto">
 
     {# ===== HERO ===== #}
-    <div class="text-center pt-6 pb-2">
-        <h1 class="font-display text-4xl md:text-5xl font-bold tracking-tight leading-tight mb-2">
-            What should you <span class="bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">watch tonight</span>?
-        </h1>
-        <p class="text-gray-500 text-[15px]">Spin the reel and discover your next obsession</p>
-    </div>
+    <section class="text-center mb-8">
+    <h1 class="font-display text-4xl md:text-6xl font-bold tracking-tight leading-tight mb-3">
+        What should you
+        <span class="bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+            watch tonight?
+        </span>
+    </h1>
 
-    {# ===== TOGGLE ===== #}
-    <div class="flex justify-center py-6">
-        <div class="toggle-pill" id="type-toggle">
-            <div class="toggle-opt active" data-val="movie">Movies</div>
-            <div class="toggle-opt" data-val="tv">TV Shows</div>
+    <p class="text-gray-500 text-[15px] md:text-base">
+        Pick a few filters, spin the reel, and find a movie or show to watch.
+    </p>
+</section>
+
+    {# ===== CONTROL CARD ===== #}
+    <section class="cx-card p-4 md:p-5 mb-7">
+
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-5 mb-5">
+            <div>
+                <p class="text-[11px] text-gray-700 uppercase tracking-wider font-semibold mb-2">
+                    Choose type
+                </p>
+
+                <div class="toggle-pill" id="type-toggle">
+                    <div class="toggle-opt active" data-val="movie">Movies</div>
+                    <div class="toggle-opt" data-val="tv">TV Shows</div>
+                </div>
+            </div>
+
+            <div class="text-left md:text-right">
+                <p class="text-xs text-gray-600">Start broad, then narrow it down.</p>
+                <p class="text-xs text-gray-700 mt-1">Works for both movies and TV shows.</p>
+            </div>
         </div>
-    </div>
 
-    {# ===== FILTERS ===== #}
-    <details class="filter-wrap cx-card mb-6">
-        <summary class="flex items-center justify-between cursor-pointer px-5 py-3.5 hover:bg-white/[0.015] rounded-[14px] transition-colors">
-            <span class="flex items-center gap-2 text-sm font-medium text-gray-400">
-                <i class="fas fa-sliders-h text-indigo-400 text-xs"></i>Filters
-            </span>
-            <i class="fas fa-chevron-down chev text-[10px] text-gray-600 transition-transform duration-200"></i>
-        </summary>
-        <div class="px-5 pb-5 pt-1">
+        {# ===== FILTERS ===== #}
+        <details class="filter-wrap" open>
+            <summary class="flex items-center justify-between cursor-pointer border-t border-white/[0.05] pt-4">
+                <span class="flex items-center gap-2 text-sm font-semibold text-gray-400">
+                    <i class="fas fa-sliders-h text-indigo-400 text-xs"></i>
+                    Filters
+                    <span class="text-xs text-gray-700 font-normal normal-case">
+                        Optional
+                    </span>
+                </span>
+                <i class="fas fa-chevron-down chev text-[10px] text-gray-600 transition-transform duration-200"></i>
+            </summary>
+
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                    <label for="region-select" class="block text-[11px] text-gray-600 uppercase tracking-wider font-semibold mb-1.5">Region</label>
+                    <label for="region-select" class="block text-[11px] text-gray-600 uppercase tracking-wider font-semibold mb-1.5">
+                        Region
+                    </label>
                     <select id="region-select" class="fx-select">
                         <option value="US">United States</option>
                         <option value="GB">United Kingdom</option>
@@ -129,61 +205,150 @@
                         <option value="DE">Germany</option>
                     </select>
                 </div>
+
                 <div>
-                    <label for="genre-select" class="block text-[11px] text-gray-600 uppercase tracking-wider font-semibold mb-1.5">Genre</label>
+                    <label for="genre-select" class="block text-[11px] text-gray-600 uppercase tracking-wider font-semibold mb-1.5">
+                        Genre
+                    </label>
                     <select id="genre-select" class="fx-select"></select>
                 </div>
+
                 <div>
-                    <label class="block text-[11px] text-gray-600 uppercase tracking-wider font-semibold mb-1.5">Year</label>
+                    <label class="block text-[11px] text-gray-600 uppercase tracking-wider font-semibold mb-1.5">
+                        Year
+                    </label>
                     <input type="range" id="year-select" min="1950" max="2025" value="1990" class="w-full accent-indigo-500">
                     <span id="year-label" class="block text-center text-xs text-gray-600 mt-1">After 1990</span>
                 </div>
+
                 <div>
-                    <label class="block text-[11px] text-gray-600 uppercase tracking-wider font-semibold mb-1.5">Rating</label>
+                    <label class="block text-[11px] text-gray-600 uppercase tracking-wider font-semibold mb-1.5">
+                        Rating
+                    </label>
                     <input type="range" id="rating-select" min="0" max="10" value="0" step="0.5" class="w-full accent-indigo-500">
                     <span id="rating-label" class="block text-center text-xs text-gray-600 mt-1">Any</span>
                 </div>
+
                 <div class="md:col-span-2">
-                    <label class="block text-[11px] text-gray-600 uppercase tracking-wider font-semibold mb-2">Platform</label>
+                    <label class="block text-[11px] text-gray-600 uppercase tracking-wider font-semibold mb-2">
+                        Platform
+                    </label>
+
                     <div id="platform-select" class="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-2">
-                        <label class="flex items-center gap-2 text-sm text-gray-400 cursor-pointer"><input type="checkbox" name="platform" value="8" class="accent-indigo-500 rounded"><span>Netflix</span></label>
-                        <label class="flex items-center gap-2 text-sm text-gray-400 cursor-pointer"><input type="checkbox" name="platform" value="9" class="accent-indigo-500 rounded"><span>Prime Video</span></label>
-                        <label class="flex items-center gap-2 text-sm text-gray-400 cursor-pointer"><input type="checkbox" name="platform" value="337" class="accent-indigo-500 rounded"><span>Disney+</span></label>
-                        <label class="flex items-center gap-2 text-sm text-gray-400 cursor-pointer"><input type="checkbox" name="platform" value="384" class="accent-indigo-500 rounded"><span>HBO Max</span></label>
+                        <label class="flex items-center gap-2 text-sm text-gray-400 cursor-pointer">
+                            <input type="checkbox" name="platform" value="8" class="accent-indigo-500 rounded">
+                            <span>Netflix</span>
+                        </label>
+
+                        <label class="flex items-center gap-2 text-sm text-gray-400 cursor-pointer">
+                            <input type="checkbox" name="platform" value="9" class="accent-indigo-500 rounded">
+                            <span>Prime Video</span>
+                        </label>
+
+                        <label class="flex items-center gap-2 text-sm text-gray-400 cursor-pointer">
+                            <input type="checkbox" name="platform" value="337" class="accent-indigo-500 rounded">
+                            <span>Disney+</span>
+                        </label>
+
+                        <label class="flex items-center gap-2 text-sm text-gray-400 cursor-pointer">
+                            <input type="checkbox" name="platform" value="384" class="accent-indigo-500 rounded">
+                            <span>HBO Max</span>
+                        </label>
                     </div>
                 </div>
+
+                {% if user.is_authenticated %}
+                <div id="avoid-filters" class="md:col-span-2 mt-3 pt-4 pl-4 border-t border-white/[0.04]">
+                    <label class="block text-[10px] text-gray-700 uppercase tracking-wider font-semibold mb-3">
+                        Avoid showing
+                    </label>
+
+                    <div id="exclude-select" class="flex flex-wrap gap-x-8 gap-y-2">
+                        <label class="inline-flex items-center gap-2 text-xs text-gray-600 cursor-pointer hover:text-gray-400 transition-colors">
+                            <input type="checkbox" id="exclude-watchlist" class="w-3.5 h-3.5 accent-indigo-500 rounded opacity-70">
+                            <span>Watchlist</span>
+                        </label>
+
+                        <label class="inline-flex items-center gap-2 text-xs text-gray-600 cursor-pointer hover:text-gray-400 transition-colors">
+                            <input type="checkbox" id="exclude-favorites" class="w-3.5 h-3.5 accent-indigo-500 rounded opacity-70">
+                            <span>Favorites</span>
+                        </label>
+
+                        <label class="inline-flex items-center gap-2 text-xs text-gray-600 cursor-pointer hover:text-gray-400 transition-colors">
+                            <input type="checkbox" id="exclude-history" class="w-3.5 h-3.5 accent-indigo-500 rounded opacity-70">
+                            <span>Already rolled</span>
+                        </label>
+                    </div>
+                </div>
+                {% endif %}
             </div>
-        </div>
-    </details>
+        </details>
+    </section>
 
     {# ===== SPIN ===== #}
-    <div class="text-center py-8">
+    <section class="text-center mb-8">
         <div class="spin-btn-wrap">
             <button id="spin-btn" class="spin-glow">
-                <i class="fas fa-dice-d20 text-xl"></i>Spin the reel
+                <i class="fas fa-dice-d20 text-xl"></i>
+                Spin the reel
             </button>
         </div>
+
         <div class="mt-5 h-12 flex justify-center items-center">
             <div id="spinner" class="spinner-box">
                 <div class="w-full h-full rounded-lg bg-gradient-to-br from-indigo-500/30 to-purple-500/30 border border-indigo-500/40"></div>
             </div>
         </div>
-    </div>
+    </section>
 
     {# ===== RESULT ===== #}
-    <div id="movie-result" class="result-card cx-card overflow-hidden"></div>
+    <section class="mb-10">
+        <div id="movie-result" class="result-card cx-card overflow-hidden min-h-[120px]">
+            <div class="text-center py-10 px-5">
+                <div class="w-12 h-12 rounded-2xl bg-white/[0.035] border border-white/[0.06] flex items-center justify-center mx-auto mb-3 text-gray-700">
+                    <i class="fas fa-film"></i>
+                </div>
+                <p class="text-sm text-gray-600">
+                    Your next movie or show will appear here.
+                </p>
+            </div>
+        </div>
+    </section>
 
-    {# ===== TABS ===== #}
-    <div class="mt-12">
+    {# ===== USER LISTS OR GUEST CTA ===== #}
+    {% if user.is_authenticated %}
+    <section class="cx-card p-1">
         <div class="flex border-b border-white/[0.06]">
             <div id="tab-watchlist" class="cx-tab active">Watchlist</div>
             <div id="tab-favorites" class="cx-tab">Favorites</div>
             <div id="tab-history" class="cx-tab">History</div>
         </div>
-        <div id="watchlist-content" class="py-4"></div>
-        <div id="favorites-content" class="py-4 hidden"></div>
-        <div id="history-content" class="py-4 hidden"></div>
-    </div>
+
+        <div id="watchlist-content" class="py-4 px-2"></div>
+        <div id="favorites-content" class="py-4 px-2 hidden"></div>
+        <div id="history-content" class="py-4 px-2 hidden"></div>
+    </section>
+    {% else %}
+    <section class="cx-card p-6 md:p-8 text-center">
+        <h3 class="font-display text-2xl font-bold text-white mb-2">
+            Save what you discover
+        </h3>
+
+        <p class="text-sm text-gray-500 max-w-xl mx-auto mb-6">
+            Create an account to build a watchlist, favorite movies and shows, keep your roulette history, and leave reviews.
+        </p>
+
+        <div class="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <a href="{% url 'users:signup' %}" class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2.5 px-5 rounded-lg text-sm transition-colors">
+                Create account
+            </a>
+
+            <a href="{% url 'users:login' %}" class="w-full sm:w-auto border border-white/[0.08] hover:bg-white/[0.04] text-gray-400 hover:text-white font-semibold py-2.5 px-5 rounded-lg text-sm transition-colors">
+                Log in
+            </a>
+        </div>
+    </section>
+    {% endif %}
 </div>
 
 {# ===== MODAL ===== #}
@@ -221,8 +386,10 @@
 
     var csrfToken = '{{ csrf_token }}';
     var tmdbApiKey = '{{ settings.TMDB_API_KEY }}';
+    var isAuthenticated = {{ user.is_authenticated|yesno:"true,false" }};
     var URLS = {
         login:"{% url 'users:login' %}", random:"{% url 'roulette:get_random_content' %}",
+        signup:"{% url 'users:signup' %}",
         lists:"{% url 'roulette:get_user_lists' %}", favToggle:"{% url 'roulette:toggle_favorite' %}",
         watchToggle:"{% url 'roulette:toggle_watchlist' %}", addItem:"{% url 'roulette:list_add_item' %}",
         createList:"{% url 'roulette:list_create' %}", allLists:"{% url 'roulette:list_all' %}"
@@ -282,12 +449,32 @@
     function spin() {
         spinner.classList.add('spinning'); result.classList.remove('show'); spinBtn.disabled=true;
         var plats=Array.from($$('#platform-select input:checked')).map(function(c){return c.value}).join('|');
-        var url=URLS.random+'?content_type='+contentType+'&watch_region='+regionSelect.value+'&genre='+genreSelect.value
-            +'&with_watch_providers='+plats+'&primary_release_date.gte='+yearSelect.value+'&vote_average_gte='+ratingSelect.value;
+        var excludeWatchlistInput = $('#exclude-watchlist');
+        var excludeFavoritesInput = $('#exclude-favorites');
+        var excludeHistoryInput = $('#exclude-history');
+
+        var excludeWatchlist = excludeWatchlistInput ? excludeWatchlistInput.checked : false;
+        var excludeFavorites = excludeFavoritesInput ? excludeFavoritesInput.checked : false;
+        var excludeHistory = excludeHistoryInput ? excludeHistoryInput.checked : false;
+
+        var url = URLS.random
+            + '?content_type=' + contentType
+            + '&watch_region=' + regionSelect.value
+            + '&genre=' + genreSelect.value
+            + '&with_watch_providers=' + plats
+            + '&primary_release_date.gte=' + yearSelect.value
+            + '&vote_average_gte=' + ratingSelect.value
+            + '&exclude_watchlist=' + excludeWatchlist
+            + '&exclude_favorites=' + excludeFavorites
+            + '&exclude_history=' + excludeHistory;
         fetchAuth(url).then(function(r){
             if(!r.ok)return r.json().then(function(d){throw new Error(d.error||'No results.');});
             return r.json();
-        }).then(function(d){ currentContent=d; showResult(d); updateLists(); })
+        }).then(function(d){
+                currentContent = d;
+                showResult(d);
+                if (isAuthenticated) updateLists();
+            })
         .catch(function(e){ window.showToast(e.message,'error'); result.innerHTML=''; })
         .finally(function(){ spinner.classList.remove('spinning'); spinBtn.disabled=false; });
     }
@@ -333,10 +520,34 @@
         '</div>';
 
         result.classList.add('show');
-        var ab=$('#add-to-list-btn'); if(ab)ab.addEventListener('click',openModal);
+        var ab = $('#add-to-list-btn');
+
+        if (ab) {
+            ab.addEventListener('click', function() {
+                if (!isAuthenticated) {
+                    showSignupPrompt('Create an account to save movies and shows to custom lists.');
+                    return;
+                }
+
+                openModal();
+            });
+        }
         $('#spin-again-btn').addEventListener('click',spin);
-        $('#like-btn').addEventListener('click',function(){toggleList('favorite')});
-        $('#watchlist-btn').addEventListener('click',function(){toggleList('watchlist')});
+        $('#like-btn').addEventListener('click', function(){
+            if (!isAuthenticated) {
+                showSignupPrompt('Create an account to favorite movies and shows.');
+                return;
+            }
+            toggleList('favorite');
+        });
+
+        $('#watchlist-btn').addEventListener('click', function(){
+            if (!isAuthenticated) {
+                showSignupPrompt('Create an account to save movies and shows to your watchlist.');
+                return;
+            }
+            toggleList('watchlist');
+        });
     }
 
     // Lists
@@ -366,6 +577,40 @@
             el.innerHTML=(ps?'<img src="'+ps+'" class="w-9 h-[52px] object-cover rounded-md flex-shrink-0" alt="">':'<div class="w-9 h-[52px] bg-white/[0.03] rounded-md flex-shrink-0"></div>')+
                 '<div class="flex-grow min-w-0"><a href="'+du+'" class="text-sm font-medium text-gray-200 hover:text-indigo-400 transition-colors truncate block">'+esc(it.title)+'</a><p class="text-xs text-gray-600">'+esc(it.release_year)+'</p></div>'+rm;
             cont.appendChild(el);
+        });
+    }
+    function showSignupPrompt(message) {
+        var existing = document.getElementById('signup-prompt-modal');
+        if (existing) existing.remove();
+
+        var modal = document.createElement('div');
+        modal.id = 'signup-prompt-modal';
+        modal.className = 'fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 px-4';
+
+        modal.innerHTML =
+            '<div class="cx-card max-w-sm w-full p-6 text-center border border-white/[0.08]">' +
+                '<div class="w-12 h-12 mx-auto mb-4 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-400">' +
+                    '<i class="fas fa-lock"></i>' +
+                '</div>' +
+                '<h3 class="font-display text-xl font-semibold text-white mb-2">Create an account</h3>' +
+                '<p class="text-sm text-gray-500 leading-relaxed mb-6">' +
+                    (message || 'Sign up to save movies, build your watchlist, and keep track of your favorites.') +
+                '</p>' +
+                '<div class="flex flex-col gap-2">' +
+                    '<a href="' + URLS.signup + '" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2.5 px-5 rounded-lg text-sm transition-colors">Sign up</a>' +
+                    '<a href="' + URLS.login + '?next=' + encodeURIComponent(location.pathname) + '" class="border border-white/[0.08] hover:bg-white/[0.04] text-gray-400 hover:text-white font-semibold py-2.5 px-5 rounded-lg text-sm transition-colors">Log in</a>' +
+                    '<button type="button" id="signup-prompt-close" class="text-gray-600 hover:text-gray-400 text-sm py-2">Maybe later</button>' +
+                '</div>' +
+            '</div>';
+
+        document.body.appendChild(modal);
+
+        document.getElementById('signup-prompt-close').addEventListener('click', function() {
+            modal.remove();
+        });
+
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) modal.remove();
         });
     }
 
@@ -426,6 +671,7 @@
             if(!d.success)throw new Error(d.error||'Failed.'); window.showToast(d.message,'success'); return addToList(d.list.id,d.list.name);
         }).catch(function(e){window.showToast(e.message||'Error.','error');if(modalMsg)modalMsg.innerHTML='';});
     }
+    
 
     // Events
     spinBtn.addEventListener('click',spin);
@@ -444,7 +690,7 @@
 
     // Init
     fetchGenres();
-    updateLists();
+    if (isAuthenticated) updateLists();
 })();
 </script>
 {% endblock %}

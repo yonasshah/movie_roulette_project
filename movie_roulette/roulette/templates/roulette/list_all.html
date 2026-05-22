@@ -1,52 +1,288 @@
 {# roulette/templates/roulette/list_all.html #}
 {% extends 'roulette/base.html' %}
 
-{% block title %}My Custom Lists{% endblock %}
+{% block title %}My Lists{% endblock %}
+
+{% block style %}
+.list-hero {
+    position: relative;
+    overflow: hidden;
+    background: rgba(255,255,255,0.025);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 24px;
+}
+
+.list-hero::before {
+    content: '';
+    position: absolute;
+    top: -120px;
+    right: -100px;
+    width: 320px;
+    height: 320px;
+    background: radial-gradient(circle, rgba(99,102,241,0.18), transparent 65%);
+    pointer-events: none;
+}
+
+.list-hero::after {
+    content: '';
+    position: absolute;
+    bottom: -140px;
+    left: -100px;
+    width: 300px;
+    height: 300px;
+    background: radial-gradient(circle, rgba(124,58,237,0.12), transparent 65%);
+    pointer-events: none;
+}
+
+.create-panel,
+.lists-panel {
+    background: rgba(255,255,255,0.025);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 18px;
+}
+
+.list-input {
+    width: 100%;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 14px;
+    padding: 13px 15px;
+    color: #e5e7eb;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+
+.list-input:focus {
+    border-color: rgba(129,140,248,0.65);
+    background: rgba(255,255,255,0.055);
+    box-shadow: 0 0 0 4px rgba(99,102,241,0.12);
+}
+
+.list-input::placeholder {
+    color: #4b5563;
+}
+
+.user-list-item {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px;
+    border-radius: 16px;
+    background: rgba(255,255,255,0.018);
+    border: 1px solid rgba(255,255,255,0.055);
+    transition: background 0.15s, border-color 0.15s, transform 0.15s;
+}
+
+.user-list-item:hover {
+    background: rgba(255,255,255,0.035);
+    border-color: rgba(129,140,248,0.22);
+    transform: translateY(-1px);
+}
+
+.list-icon-box {
+    width: 46px;
+    height: 46px;
+    border-radius: 14px;
+    background: rgba(99,102,241,0.10);
+    border: 1px solid rgba(129,140,248,0.18);
+    color: #a5b4fc;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.delete-list-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    color: #4b5563;
+    background: rgba(255,255,255,0.025);
+    border: 1px solid rgba(255,255,255,0.045);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+
+.delete-list-btn:hover {
+    color: #f87171;
+    background: rgba(239,68,68,0.08);
+    border-color: rgba(239,68,68,0.18);
+}
+
+.empty-lists-card {
+    border: 1px dashed rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.015);
+    border-radius: 18px;
+}
+
+.list-card-enter {
+    animation: listCardEnter 0.22s ease-out;
+}
+
+@keyframes listCardEnter {
+    from {
+        opacity: 0;
+        transform: translateY(8px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+{% endblock %}
 
 {% block content %}
-<div class="bg-gray-800 p-8 rounded-lg shadow-2xl max-w-3xl mx-auto">
-    <h2 class="text-3xl font-extrabold text-white mb-6 border-b border-gray-700 pb-4">
-        <i class="fas fa-list-ul mr-3 text-indigo-400"></i>My Custom Lists
-    </h2>
+<div class="max-w-5xl mx-auto">
 
-    {# --- REMOVED message-container for Django messages --- #}
+    {# ===== HERO ===== #}
+    <section class="list-hero p-6 md:p-8 mb-6">
+        <div class="relative z-10 flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+            <div>
+                
 
-    <div class="mb-8 p-6 bg-gray-700 rounded-lg">
-        <h3 class="text-xl font-semibold text-white mb-4">Create a New List</h3>
-        <form id="create-list-form" action="{% url 'roulette:list_create' %}" method="POST" class="flex items-center space-x-3">
-            {% csrf_token %}
-            <div class="flex-grow">
-                {{ form.name }}
-                <div id="form-name-errors" class="text-xs text-red-400 mt-1"></div> {# Keep for specific field errors if needed #}
+                <h1 class="font-display text-4xl md:text-5xl font-bold tracking-tight text-white mb-3">
+                    My lists
+                </h1>
+
+                <p class="text-gray-500 text-sm md:text-base max-w-2xl leading-relaxed">
+                    Organize movies and shows into custom collections for later. Make lists for moods, genres, watch plans, or anything else.
+                </p>
             </div>
-            <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-5 rounded-md">
-                <i class="fas fa-plus mr-1"></i> Create
-            </button>
-        </form>
-    </div>
 
-    <div>
-        <h3 class="text-xl font-semibold text-white mb-4">Your Lists</h3>
-        <div id="user-lists-container" class="space-y-3">
-            {% for list in lists %}
-                <div class="user-list-item flex items-center justify-between p-4 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors" data-list-id="{{ list.id }}">
-                    <a href="{% url 'roulette:list_detail' list_id=list.id %}" class="font-semibold text-lg text-indigo-300 hover:text-indigo-100 flex-grow mr-4 list-name">
-                        {{ list.name }}
-                    </a>
-                    <button type="button" class="delete-list-btn text-red-500 hover:text-red-400 text-lg"
-                            data-list-id="{{ list.id }}"
-                            data-list-name="{{ list.name|escapejs }}"
-                            data-delete-url="{% url 'roulette:list_delete' list_id=list.id %}"
-                            title="Delete List">
-                        <i class="fas fa-trash"></i>
+            <div class="grid grid-cols-2 gap-3 min-w-[220px]">
+                <div class="rounded-2xl bg-white/[0.035] border border-white/[0.06] p-4">
+                    <p class="font-display text-2xl font-bold text-white">{{ lists|length }}</p>
+                    <p class="text-xs text-gray-600 mt-1">Custom list{{ lists|length|pluralize }}</p>
+                </div>
+
+                <div class="rounded-2xl bg-white/[0.035] border border-white/[0.06] p-4">
+                    <p class="font-display text-2xl font-bold text-white">
+                        <i class="fas fa-bookmark text-indigo-400"></i>
+                    </p>
+                    <p class="text-xs text-gray-600 mt-1">Saved picks</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div class="grid grid-cols-1 lg:grid-cols-[0.95fr_1.35fr] gap-6">
+
+        {# ===== CREATE LIST ===== #}
+        <section class="create-panel p-5 md:p-6 h-fit">
+            <div class="flex items-start gap-4 mb-5">
+                <div class="w-11 h-11 rounded-2xl bg-indigo-500/10 border border-indigo-400/20 flex items-center justify-center text-indigo-300">
+                    <i class="fas fa-plus"></i>
+                </div>
+
+                <div>
+                    <h2 class="font-display text-xl font-bold text-white">Create a list</h2>
+                    <p class="text-sm text-gray-600 mt-1">
+                        Start a new collection for movies or TV shows.
+                    </p>
+                </div>
+            </div>
+
+            <form id="create-list-form" action="{% url 'roulette:list_create' %}" method="POST" class="space-y-3">
+                {% csrf_token %}
+
+                <div>
+                    {{ form.name }}
+                    <div id="form-name-errors" class="text-xs text-red-400 mt-2"></div>
+                </div>
+
+                <button type="submit"
+                        class="w-full inline-flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 px-5 rounded-2xl text-sm transition-all shadow-lg shadow-indigo-600/20 hover:shadow-indigo-500/30 hover:-translate-y-0.5 disabled:opacity-60 disabled:cursor-wait disabled:hover:translate-y-0">
+                    <i class="fas fa-plus text-xs"></i>
+                    Create list
+                </button>
+            </form>
+
+            <div class="mt-6 pt-5 border-t border-white/[0.06]">
+                <h3 class="text-[11px] text-gray-600 uppercase tracking-wider font-semibold mb-3">
+                    List ideas
+                </h3>
+
+                <div class="flex flex-wrap gap-2">
+                    <button type="button" class="list-suggestion px-3 py-1.5 rounded-lg bg-white/[0.035] border border-white/[0.06] text-xs text-gray-500 hover:text-gray-300 hover:bg-white/[0.05] transition-colors">
+                        Weekend watch
+                    </button>
+                    <button type="button" class="list-suggestion px-3 py-1.5 rounded-lg bg-white/[0.035] border border-white/[0.06] text-xs text-gray-500 hover:text-gray-300 hover:bg-white/[0.05] transition-colors">
+                        Horror night
+                    </button>
+                    <button type="button" class="list-suggestion px-3 py-1.5 rounded-lg bg-white/[0.035] border border-white/[0.06] text-xs text-gray-500 hover:text-gray-300 hover:bg-white/[0.05] transition-colors">
+                        Comfort shows
+                    </button>
+                    <button type="button" class="list-suggestion px-3 py-1.5 rounded-lg bg-white/[0.035] border border-white/[0.06] text-xs text-gray-500 hover:text-gray-300 hover:bg-white/[0.05] transition-colors">
+                        Date night
                     </button>
                 </div>
-            {% empty %}
-                <p id="no-lists-message" class="text-gray-400 text-center py-4">You haven't created any custom lists yet.</p>
-            {% endfor %}
-        </div>
-    </div>
+            </div>
+        </section>
 
+        {# ===== LISTS ===== #}
+        <section class="lists-panel p-5 md:p-6">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+                <div>
+                    <h2 class="font-display text-xl font-bold text-white">Your lists</h2>
+                    <p class="text-sm text-gray-600 mt-1">
+                        Open a list to view, manage, or share it.
+                    </p>
+                </div>
+            </div>
+
+            <div id="user-lists-container" class="space-y-3">
+                {% for list in lists %}
+                    <div class="user-list-item" data-list-id="{{ list.id }}">
+                        <a href="{% url 'roulette:list_detail' list_id=list.id %}" class="list-icon-box">
+                            <i class="fas fa-list-ul"></i>
+                        </a>
+
+                        <a href="{% url 'roulette:list_detail' list_id=list.id %}" class="min-w-0 flex-1 list-name group">
+                            <span class="block font-display text-lg font-semibold text-white truncate group-hover:text-indigo-300 transition-colors">
+                                {{ list.name }}
+                            </span>
+                            <span class="block text-xs text-gray-600 mt-0.5">
+                                Custom collection
+                            </span>
+                        </a>
+
+                        <a href="{% url 'roulette:list_detail' list_id=list.id %}"
+                           class="hidden sm:flex w-9 h-9 rounded-xl items-center justify-center text-gray-700 hover:text-indigo-300 hover:bg-indigo-500/10 transition-colors"
+                           title="Open list">
+                            <i class="fas fa-chevron-right text-xs"></i>
+                        </a>
+
+                        <button type="button"
+                                class="delete-list-btn"
+                                data-list-id="{{ list.id }}"
+                                data-list-name="{{ list.name|escapejs }}"
+                                data-delete-url="{% url 'roulette:list_delete' list_id=list.id %}"
+                                title="Delete list">
+                            <i class="fas fa-trash text-xs"></i>
+                        </button>
+                    </div>
+                {% empty %}
+                    <div id="no-lists-message" class="empty-lists-card text-center py-14 px-5">
+                        <div class="w-14 h-14 rounded-2xl bg-white/[0.035] border border-white/[0.06] flex items-center justify-center mx-auto mb-4 text-gray-700">
+                            <i class="fas fa-list-ul text-xl"></i>
+                        </div>
+
+                        <h3 class="font-display text-xl font-semibold text-white mb-2">
+                            No custom lists yet
+                        </h3>
+
+                        <p class="text-sm text-gray-600 max-w-sm mx-auto">
+                            Create your first list to start organizing movies and shows.
+                        </p>
+                    </div>
+                {% endfor %}
+            </div>
+        </section>
+    </div>
 </div>
 {% endblock %}
 
@@ -56,125 +292,211 @@
 document.addEventListener('DOMContentLoaded', function() {
     const createListForm = document.getElementById('create-list-form');
     const nameInput = createListForm ? createListForm.querySelector('input[name="name"]') : null;
-    const nameErrorsDiv = document.getElementById('form-name-errors'); // Kept for specific field errors
+    const nameErrorsDiv = document.getElementById('form-name-errors');
     const listsContainer = document.getElementById('user-lists-container');
     let noListsMessage = document.getElementById('no-lists-message');
     const csrfToken = '{{ csrf_token }}';
 
-    // --- REMOVE local displayMessage function ---
+    // Style the Django-generated form input
+    if (nameInput) {
+        nameInput.className = 'list-input';
+        nameInput.placeholder = 'Example: Weekend watchlist';
+        nameInput.setAttribute('autocomplete', 'off');
+    }
 
-    // --- Function to add a new list item to the page (no changes needed) ---
+    // Fill input from suggestion chips
+    document.querySelectorAll('.list-suggestion').forEach(function(button) {
+        button.addEventListener('click', function() {
+            if (!nameInput) return;
+            nameInput.value = button.textContent.trim();
+            nameInput.focus();
+        });
+    });
+
+    function escapeHtml(value) {
+        const div = document.createElement('div');
+        div.textContent = value || '';
+        return div.innerHTML;
+    }
+
     function addListToPage(listData) {
         noListsMessage = document.getElementById('no-lists-message');
+
         if (noListsMessage) {
             noListsMessage.remove();
             noListsMessage = null;
         }
+
         const listItemDiv = document.createElement('div');
-        listItemDiv.className = 'user-list-item flex items-center justify-between p-4 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors';
+        listItemDiv.className = 'user-list-item list-card-enter';
         listItemDiv.dataset.listId = listData.id;
+
         const detailUrl = `/list/${listData.id}/`;
         const deleteUrl = `/list/${listData.id}/delete/`;
+        const safeName = escapeHtml(listData.name);
         const escapedListName = listData.name.replace(/'/g, "\\'").replace(/"/g, "&quot;");
+
         listItemDiv.innerHTML = `
-            <a href="${detailUrl}" class="font-semibold text-lg text-indigo-300 hover:text-indigo-100 flex-grow mr-4 list-name">
-                ${ listData.name }
+            <a href="${detailUrl}" class="list-icon-box">
+                <i class="fas fa-list-ul"></i>
             </a>
-            <button type="button" class="delete-list-btn text-red-500 hover:text-red-400 text-lg"
-                    data-list-id="${listData.id}" data-list-name="${escapedListName}" data-delete-url="${deleteUrl}" title="Delete List">
-                <i class="fas fa-trash"></i>
+
+            <a href="${detailUrl}" class="min-w-0 flex-1 list-name group">
+                <span class="block font-display text-lg font-semibold text-white truncate group-hover:text-indigo-300 transition-colors">
+                    ${safeName}
+                </span>
+                <span class="block text-xs text-gray-600 mt-0.5">
+                    Custom collection
+                </span>
+            </a>
+
+            <a href="${detailUrl}"
+               class="hidden sm:flex w-9 h-9 rounded-xl items-center justify-center text-gray-700 hover:text-indigo-300 hover:bg-indigo-500/10 transition-colors"
+               title="Open list">
+                <i class="fas fa-chevron-right text-xs"></i>
+            </a>
+
+            <button type="button"
+                    class="delete-list-btn"
+                    data-list-id="${listData.id}"
+                    data-list-name="${escapedListName}"
+                    data-delete-url="${deleteUrl}"
+                    title="Delete list">
+                <i class="fas fa-trash text-xs"></i>
             </button>
         `;
-        listsContainer.appendChild(listItemDiv);
+
+        listsContainer.prepend(listItemDiv);
+
         const newDeleteBtn = listItemDiv.querySelector('.delete-list-btn');
         if (newDeleteBtn) {
             newDeleteBtn.addEventListener('click', handleDeleteListClick);
         }
     }
 
-    // --- Handler for creating a new list (AJAX) ---
     if (createListForm) {
         createListForm.addEventListener('submit', async function(event) {
             event.preventDefault();
-            if(nameErrorsDiv) nameErrorsDiv.textContent = ''; // Clear specific errors
+
+            if (nameErrorsDiv) nameErrorsDiv.textContent = '';
+
             const formData = new FormData(createListForm);
             const submitButton = createListForm.querySelector('button[type="submit"]');
-            if(submitButton) submitButton.disabled = true;
+
+            if (submitButton) submitButton.disabled = true;
 
             try {
                 const response = await fetch(createListForm.action, {
                     method: 'POST',
-                    headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
+                    headers: {
+                        'X-CSRFToken': csrfToken,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
                     body: formData
                 });
+
                 const data = await response.json();
+
                 if (response.ok && data.success) {
-                    window.showToast(data.message, 'success'); // USE TOAST
+                    window.showToast(data.message || 'List created.', 'success');
                     addListToPage(data.list);
+
                     if (nameInput) nameInput.value = '';
                 } else {
-                    window.showToast(data.error || 'Could not create list.', 'error'); // USE TOAST
-                    // Optionally show error near field if it relates to the name
-                    if (data.error && nameErrorsDiv && data.error.toLowerCase().includes("name")) {
-                         nameErrorsDiv.textContent = data.error;
+                    window.showToast(data.error || 'Could not create list.', 'error');
+
+                    if (data.error && nameErrorsDiv && data.error.toLowerCase().includes('name')) {
+                        nameErrorsDiv.textContent = data.error;
                     }
                 }
             } catch (error) {
-                console.error("List creation error:", error);
-                window.showToast('An unexpected error occurred.', 'error'); // USE TOAST
+                console.error('List creation error:', error);
+                window.showToast('An unexpected error occurred.', 'error');
             } finally {
-                 if(submitButton) submitButton.disabled = false;
+                if (submitButton) submitButton.disabled = false;
             }
         });
     }
 
-    // --- Handler for deleting a list (AJAX) ---
     async function handleListDelete(buttonElement) {
         const listId = buttonElement.dataset.listId;
         const listName = buttonElement.dataset.listName;
         const deleteUrl = buttonElement.dataset.deleteUrl;
+
         if (!listId || !deleteUrl) return;
-        if (!confirm(`Are you sure you want to delete the list '${listName}'? This action cannot be undone.`)) {
+
+        if (!confirm(`Delete '${listName}'? This action cannot be undone.`)) {
             return;
         }
+
+        buttonElement.disabled = true;
+
         try {
             const response = await fetch(deleteUrl, {
-                method: 'POST', headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' }
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
             });
+
             const data = await response.json();
+
             if (response.ok && data.success) {
                 const listItemElement = buttonElement.closest('.user-list-item');
+
                 if (listItemElement) {
-                    listItemElement.remove();
-                    window.showToast(data.message || 'List deleted successfully.', 'success'); // USE TOAST
-                    noListsMessage = document.getElementById('no-lists-message'); // Re-check
-                    if (listsContainer && !listsContainer.querySelector('.user-list-item') && !noListsMessage) {
-                        const p = document.createElement('p');
-                        p.id = 'no-lists-message';
-                        p.className = 'text-gray-400 text-center py-4';
-                        p.textContent = "You haven't created any custom lists yet.";
-                        listsContainer.appendChild(p);
-                    }
+                    listItemElement.style.opacity = '0';
+                    listItemElement.style.transform = 'translateY(6px) scale(0.98)';
+
+                    setTimeout(function() {
+                        listItemElement.remove();
+
+                        noListsMessage = document.getElementById('no-lists-message');
+
+                        if (listsContainer && !listsContainer.querySelector('.user-list-item') && !noListsMessage) {
+                            const empty = document.createElement('div');
+                            empty.id = 'no-lists-message';
+                            empty.className = 'empty-lists-card text-center py-14 px-5';
+                            empty.innerHTML = `
+                                <div class="w-14 h-14 rounded-2xl bg-white/[0.035] border border-white/[0.06] flex items-center justify-center mx-auto mb-4 text-gray-700">
+                                    <i class="fas fa-list-ul text-xl"></i>
+                                </div>
+
+                                <h3 class="font-display text-xl font-semibold text-white mb-2">
+                                    No custom lists yet
+                                </h3>
+
+                                <p class="text-sm text-gray-600 max-w-sm mx-auto">
+                                    Create your first list to start organizing movies and shows.
+                                </p>
+                            `;
+                            listsContainer.appendChild(empty);
+                        }
+                    }, 160);
                 }
+
+                window.showToast(data.message || 'List deleted.', 'success');
             } else {
-                 window.showToast(data.error || 'Failed to delete list.', 'error'); // USE TOAST
+                buttonElement.disabled = false;
+                window.showToast(data.error || 'Failed to delete list.', 'error');
             }
         } catch (error) {
-            console.error("List deletion error:", error);
-            window.showToast('A network error occurred while deleting.', 'error'); // USE TOAST
+            console.error('List deletion error:', error);
+            buttonElement.disabled = false;
+            window.showToast('A network error occurred while deleting.', 'error');
         }
     }
 
-    // Helper function to attach listener
-    function handleDeleteListClick() { handleListDelete(this); }
+    function handleDeleteListClick() {
+        handleListDelete(this);
+    }
 
-    // Attach listeners to initial delete buttons
     if (listsContainer) {
-        listsContainer.querySelectorAll('.delete-list-btn').forEach(button => {
+        listsContainer.querySelectorAll('.delete-list-btn').forEach(function(button) {
             button.addEventListener('click', handleDeleteListClick);
         });
     }
-
 });
 </script>
 {% endblock %}

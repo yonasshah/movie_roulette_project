@@ -4,51 +4,196 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Log In - Movie Roulette</title>
+
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+
     <style>
-        body { font-family: 'Poppins', sans-serif; background-color: #111827; color: #f3f4f6; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background:
+                radial-gradient(circle at top left, rgba(99, 102, 241, 0.18), transparent 32%),
+                radial-gradient(circle at bottom right, rgba(124, 58, 237, 0.14), transparent 34%),
+                #050507;
+            color: #f9fafb;
+        }
+
+        .font-display {
+            font-family: 'Space Grotesk', sans-serif;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.035);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 30px 90px rgba(0, 0, 0, 0.45);
+            backdrop-filter: blur(18px);
+        }
+
+        .field {
+            background: rgba(255, 255, 255, 0.045);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .field:focus {
+            outline: none;
+            border-color: rgba(129, 140, 248, 0.7);
+            background: rgba(255, 255, 255, 0.065);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.13);
+        }
+
+        .movie-strip {
+            background-image: linear-gradient(
+                90deg,
+                rgba(255,255,255,0.08) 0 8px,
+                transparent 8px 18px
+            );
+            background-size: 36px 100%;
+        }
     </style>
 </head>
-<body class="min-h-screen flex items-center justify-center p-4">
 
-    <div class="w-full max-w-md p-8 space-y-6 bg-gray-800 rounded-lg shadow-lg">
-        <div>
-            <h2 class="mt-6 text-center text-3xl font-extrabold text-white">
-                Log in to your account
-            </h2>
+<body class="min-h-screen">
+
+    <main class="min-h-screen flex items-center justify-center px-4 py-10">
+        <div class="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-[1.05fr_0.95fr] gap-6 items-stretch">
+
+            <!-- Left promo panel -->
+            <section class="hidden lg:flex glass-card rounded-3xl p-8 xl:p-10 flex-col justify-between overflow-hidden relative">
+                <div class="absolute -top-24 -right-24 w-72 h-72 bg-indigo-500/20 rounded-full blur-3xl"></div>
+                <div class="absolute -bottom-28 -left-24 w-72 h-72 bg-purple-500/20 rounded-full blur-3xl"></div>
+
+                <div class="relative z-10">
+                    <a href="{% url 'roulette:roulette_view' %}" class="inline-flex items-center gap-2 text-gray-400 hover:text-white transition-colors mb-10">
+                        <span class="w-9 h-9 rounded-xl bg-indigo-500/10 border border-indigo-400/20 flex items-center justify-center text-indigo-300">
+                            🎬
+                        </span>
+                        <span class="font-display font-bold tracking-tight text-white">Movie Roulette</span>
+                    </a>
+
+                    <h1 class="font-display text-5xl font-bold tracking-tight leading-tight mb-5">
+                        Find something worth watching tonight.
+                    </h1>
+
+                    <p class="text-gray-400 leading-relaxed max-w-md">
+                        Log in to save your picks, build watchlists, favorite movies, review what you watch, and follow other users.
+                    </p>
+                </div>
+
+                <div class="relative z-10 mt-12">
+                    <div class="movie-strip h-8 rounded-xl opacity-40 mb-6"></div>
+
+                    <div class="grid grid-cols-3 gap-3">
+                        <div class="rounded-2xl bg-white/[0.035] border border-white/[0.06] p-4">
+                            <p class="text-2xl font-display font-bold text-white">Spin</p>
+                            <p class="text-xs text-gray-500 mt-1">discover picks</p>
+                        </div>
+                        <div class="rounded-2xl bg-white/[0.035] border border-white/[0.06] p-4">
+                            <p class="text-2xl font-display font-bold text-white">Save</p>
+                            <p class="text-xs text-gray-500 mt-1">watchlists</p>
+                        </div>
+                        <div class="rounded-2xl bg-white/[0.035] border border-white/[0.06] p-4">
+                            <p class="text-2xl font-display font-bold text-white">Review</p>
+                            <p class="text-xs text-gray-500 mt-1">share takes</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Login card -->
+            <section class="glass-card rounded-3xl p-6 sm:p-8 lg:p-10">
+                <div class="mb-8">
+                    <a href="{% url 'roulette:roulette_view' %}" class="lg:hidden inline-flex items-center gap-2 text-gray-400 hover:text-white transition-colors mb-8">
+                        <span class="w-9 h-9 rounded-xl bg-indigo-500/10 border border-indigo-400/20 flex items-center justify-center text-indigo-300">
+                            🎬
+                        </span>
+                        <span class="font-display font-bold tracking-tight text-white">Movie Roulette</span>
+                    </a>
+
+                    <p class="text-sm text-indigo-300 font-semibold mb-3">Welcome back</p>
+                    <h2 class="font-display text-3xl sm:text-4xl font-bold tracking-tight text-white">
+                        Log in to your account
+                    </h2>
+                    <p class="text-gray-500 text-sm mt-3">
+                        Continue building your watchlist and tracking your favorite picks.
+                    </p>
+                </div>
+
+                {% if form.errors %}
+                    <div class="mb-6 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3">
+                        <p class="text-sm text-red-300">
+                            Your username and password did not match. Please try again.
+                        </p>
+                    </div>
+                {% endif %}
+
+                <form method="POST" class="space-y-5">
+                    {% csrf_token %}
+
+                    {% if next %}
+                        <input type="hidden" name="next" value="{{ next }}">
+                    {% endif %}
+
+                    <div>
+                        <label for="id_username" class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                            Username
+                        </label>
+                        <input
+                            name="username"
+                            id="id_username"
+                            type="text"
+                            required
+                            autocomplete="username"
+                            placeholder="Enter your username"
+                            class="field w-full rounded-2xl px-4 py-3.5 text-white placeholder-gray-700"
+                        >
+                    </div>
+
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <label for="id_password" class="block text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                Password
+                            </label>
+                        </div>
+
+                        <input
+                            name="password"
+                            id="id_password"
+                            type="password"
+                            required
+                            autocomplete="current-password"
+                            placeholder="Enter your password"
+                            class="field w-full rounded-2xl px-4 py-3.5 text-white placeholder-gray-700"
+                        >
+                    </div>
+
+                    <button
+                        type="submit"
+                        class="w-full rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3.5 px-5 transition-all shadow-lg shadow-indigo-600/20 hover:shadow-indigo-500/30 hover:-translate-y-0.5"
+                    >
+                        Log in
+                    </button>
+                </form>
+
+                <div class="mt-7 pt-6 border-t border-white/[0.06] text-center">
+                    <p class="text-sm text-gray-500">
+                        Don’t have an account?
+                        <a href="{% url 'users:signup' %}" class="font-semibold text-indigo-300 hover:text-indigo-200 transition-colors">
+                            Sign up
+                        </a>
+                    </p>
+                </div>
+
+                <div class="mt-6 text-center">
+                    <a href="{% url 'roulette:roulette_view' %}" class="text-xs text-gray-600 hover:text-gray-400 transition-colors">
+                        Continue browsing without logging in
+                    </a>
+                </div>
+            </section>
+
         </div>
-        <form class="mt-8 space-y-6" method="POST">
-            {% csrf_token %}
-            
-            <div class="mb-4">
-                <label for="id_username" class="block text-sm font-medium text-gray-300">Username</label>
-                <input name="username" id="id_username" type="text" required 
-                       class="mt-1 block w-full px-3 py-2 border border-gray-700 bg-gray-900 rounded-md placeholder-gray-500 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-            </div>
-            <div class="mb-4">
-                <label for="id_password" class="block text-sm font-medium text-gray-300">Password</label>
-                <input name="password" id="id_password" type="password" required 
-                       class="mt-1 block w-full px-3 py-2 border border-gray-700 bg-gray-900 rounded-md placeholder-gray-500 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-            </div>
-
-            {% if form.errors %}
-                <p class="text-xs text-red-400">Your username and password didn't match. Please try again.</p>
-            {% endif %}
-
-            <div>
-                <button type="submit" class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
-                    Log in
-                </button>
-            </div>
-        </form>
-         <p class="mt-4 text-center text-sm text-gray-400">
-            Don't have an account?
-            <a href="{% url 'users:signup' %}" class="font-medium text-indigo-400 hover:text-indigo-300">
-              Sign up
-            </a>
-          </p>
-    </div>
+    </main>
 
 </body>
 </html>

@@ -44,6 +44,24 @@ def build_comment_tree(comments):
 
     return top_level
 
+def attach_comment_vote_data(comment_list, up_lookup, down_lookup, user_vote_lookup):
+    """
+    Recursively attaches vote counts and current user's vote state
+    to top-level comments and all nested replies.
+    """
+    for comment in comment_list:
+        comment.fetched_up_count = up_lookup.get(comment.id, 0)
+        comment.fetched_down_count = down_lookup.get(comment.id, 0)
+        comment.fetched_user_vote = user_vote_lookup.get(comment.id, 0)
+
+        if hasattr(comment, "replies_list") and comment.replies_list:
+            attach_comment_vote_data(
+                comment.replies_list,
+                up_lookup,
+                down_lookup,
+                user_vote_lookup
+            )
+
 
 @login_required
 def feed_view(request):
@@ -192,10 +210,12 @@ def feed_view(request):
 
             # Attach vote data to each comment object
             for comment_list in comments_by_target.values():
-                for comment in comment_list:
-                    comment.fetched_up_count = comment_up_lookup.get(comment.id, 0)
-                    comment.fetched_down_count = comment_down_lookup.get(comment.id, 0)
-                    comment.fetched_user_vote = user_comment_vote_lookup.get(comment.id, 0)
+                attach_comment_vote_data(
+                    comment_list,
+                    comment_up_lookup,
+                    comment_down_lookup,
+                    user_comment_vote_lookup
+                )
 
         # --- Fetch likes (kept for content detail compatibility) ---
         likes_qs = Like.objects.filter(
@@ -241,8 +261,7 @@ def feed_view(request):
     }
     return render(request, 'roulette/feed.html', context)
 
-# This view is responsible for showing the main page of your app.
-@login_required
+
 def roulette_view(request):
     context = {
         'settings': settings
@@ -330,7 +349,7 @@ def discover_view(request):
 
 
 # --- UPDATED CONTENT DETAIL VIEW ---
-@login_required
+
 def content_detail_view(request, content_type, tmdb_id):
     BASE_URL = "https://api.themoviedb.org/3"
     endpoint_type = 'movie' if content_type == 'movie' else 'tv'
@@ -354,15 +373,23 @@ def content_detail_view(request, content_type, tmdb_id):
                 trailer_key = video.get('key')
                 break
  
-        is_favorite = UserContent.objects.filter(
-            user=request.user, tmdb_id=tmdb_id, list_type=UserContent.ListType.FAVORITE,
-            content_type=model_content_type
-        ).exists()
- 
-        is_watchlist = UserContent.objects.filter(
-            user=request.user, tmdb_id=tmdb_id, list_type=UserContent.ListType.WATCHLIST,
-            content_type=model_content_type
-        ).exists()
+        is_favorite = False
+        is_watchlist = False
+
+        if request.user.is_authenticated:
+            is_favorite = UserContent.objects.filter(
+                user=request.user,
+                tmdb_id=tmdb_id,
+                list_type=UserContent.ListType.FAVORITE,
+                content_type=model_content_type
+            ).exists()
+
+            is_watchlist = UserContent.objects.filter(
+                user=request.user,
+                tmdb_id=tmdb_id,
+                list_type=UserContent.ListType.WATCHLIST,
+                content_type=model_content_type
+            ).exists()
  
         # --- REVIEWS LOGIC ---
         all_reviews = UserReview.objects.filter(
@@ -385,8 +412,11 @@ def content_detail_view(request, content_type, tmdb_id):
             rv_down = review_votes_qs.filter(vote_type=-1).values('object_id').annotate(count=Count('id'))
             rv_down_lookup = {d['object_id']: d['count'] for d in rv_down}
  
-            rv_user = review_votes_qs.filter(user=request.user).values_list('object_id', 'vote_type')
-            rv_user_lookup = {oid: vt for oid, vt in rv_user}
+            if request.user.is_authenticated:
+                rv_user = review_votes_qs.filter(user=request.user).values_list('object_id', 'vote_type')
+                rv_user_lookup = {oid: vt for oid, vt in rv_user}
+            else:
+                rv_user_lookup = {}
         else:
             rv_up_lookup = {}
             rv_down_lookup = {}
@@ -416,15 +446,20 @@ def content_detail_view(request, content_type, tmdb_id):
                 cv_down = cv_qs.filter(vote_type=-1).values('object_id').annotate(count=Count('id'))
                 cv_down_lookup = {d['object_id']: d['count'] for d in cv_down}
  
-                cv_user = cv_qs.filter(user=request.user).values_list('object_id', 'vote_type')
-                cv_user_lookup = {oid: vt for oid, vt in cv_user}
- 
+                if request.user.is_authenticated:
+                    cv_user = cv_qs.filter(user=request.user).values_list('object_id', 'vote_type')
+                    cv_user_lookup = {oid: vt for oid, vt in cv_user}
+                else:
+                    cv_user_lookup = {}
+                
                 # Attach vote data to each comment
                 for comment_list in comments_by_review.values():
-                    for c in comment_list:
-                        c.fetched_up_count = cv_up_lookup.get(c.id, 0)
-                        c.fetched_down_count = cv_down_lookup.get(c.id, 0)
-                        c.fetched_user_vote = cv_user_lookup.get(c.id, 0)
+                    attach_comment_vote_data(
+                        comment_list,
+                        cv_up_lookup,
+                        cv_down_lookup,
+                        cv_user_lookup
+                    )
             else:
                 for comment_list in comments_by_review.values():
                     for c in comment_list:
@@ -449,7 +484,10 @@ def content_detail_view(request, content_type, tmdb_id):
             review.fetched_comments = comments_by_review.get(review.id, [])
             review.fetched_comment_count = comment_counts.get(review.id, 0)
  
-        user_review = all_reviews.filter(user=request.user).first()
+        user_review = None
+        
+        if request.user.is_authenticated:
+            user_review = all_reviews.filter(user=request.user).first()
  
         avg_rating_data = all_reviews.aggregate(Avg('rating'))
         avg_rating = avg_rating_data['rating__avg']
@@ -575,7 +613,6 @@ def toggle_follow(request):
         'following_count': following_count
     })
 
-@login_required
 def get_random_content(request):
     BASE_URL = "https://api.themoviedb.org/3"
 
@@ -587,6 +624,48 @@ def get_random_content(request):
     vote_average_gte = request.GET.get('vote_average_gte', '0')
 
     model_content_type = UserContent.ContentType.MOVIE if content_type == 'movie' else UserContent.ContentType.TV
+    exclude_watchlist = request.GET.get("exclude_watchlist") == "true"
+    exclude_favorites = request.GET.get("exclude_favorites") == "true"
+    exclude_history = request.GET.get("exclude_history") == "true"
+
+    excluded_ids = set()
+    
+    if request.user.is_authenticated:
+        if exclude_watchlist:
+            excluded_ids.update(
+                UserContent.objects.filter(
+                    user=request.user,
+                    list_type=UserContent.ListType.WATCHLIST,
+                    content_type=model_content_type
+                ).values_list("tmdb_id", flat=True)
+            )
+
+    if exclude_watchlist:
+        excluded_ids.update(
+            UserContent.objects.filter(
+                user=request.user,
+                list_type=UserContent.ListType.WATCHLIST,
+                content_type=model_content_type
+            ).values_list("tmdb_id", flat=True)
+        )
+
+    if exclude_favorites:
+        excluded_ids.update(
+            UserContent.objects.filter(
+                user=request.user,
+                list_type=UserContent.ListType.FAVORITE,
+                content_type=model_content_type
+            ).values_list("tmdb_id", flat=True)
+        )
+
+    if exclude_history:
+        excluded_ids.update(
+            UserContent.objects.filter(
+                user=request.user,
+                list_type=UserContent.ListType.HISTORY,
+                content_type=model_content_type
+            ).values_list("tmdb_id", flat=True)
+        )
     endpoint_type = 'movie' if content_type == 'movie' else 'tv'
     release_date_param = 'primary_release_date.gte' if content_type == 'movie' else 'first_air_date.gte'
 
@@ -603,6 +682,8 @@ def get_random_content(request):
             "vote_count.gte": 100,
             "vote_average.gte": vote_average_gte
         }
+        
+        
 
         discover_res = requests.get(f"{BASE_URL}/discover/{endpoint_type}", params=discover_params)
         discover_res.raise_for_status()
@@ -617,6 +698,12 @@ def get_random_content(request):
         movies_res = requests.get(f"{BASE_URL}/discover/{endpoint_type}", params=discover_params)
         movies_res.raise_for_status()
         results = movies_res.json().get('results', [])
+        
+        if excluded_ids:
+            results = [
+                item for item in results
+                if item.get("id") not in excluded_ids
+            ]
 
         if not results:
             return JsonResponse({'error': 'No content found with the selected filters.'}, status=404)
@@ -637,18 +724,19 @@ def get_random_content(request):
         title_key = 'title' if content_type == 'movie' else 'name'
         date_key = 'release_date' if content_type == 'movie' else 'first_air_date'
 
-        UserContent.objects.update_or_create(
-            user=request.user,
-            tmdb_id=content_id,
-            list_type=UserContent.ListType.HISTORY,
-            content_type=model_content_type,
-            defaults={
-                'title': content_details.get(title_key, 'N/A'),
-                'poster_path': content_details.get('poster_path', ''),
-                'release_year': content_details.get(date_key, '----')[:4],
-                'overview': content_details.get('overview', ''),
-            }
-        )
+        if request.user.is_authenticated:
+            UserContent.objects.update_or_create(
+                user=request.user,
+                tmdb_id=content_id,
+                list_type=UserContent.ListType.HISTORY,
+                content_type=model_content_type,
+                defaults={
+                    'title': content_details.get(title_key, 'N/A'),
+                    'poster_path': content_details.get('poster_path', ''),
+                    'release_year': content_details.get(date_key, '----')[:4],
+                    'overview': content_details.get('overview', ''),
+                }
+            )
 
         return JsonResponse(content_details)
 
@@ -786,7 +874,7 @@ from django.db.models import Q, Count, Exists, OuterRef
 from django.contrib.auth import get_user_model
 from .models import UserFollow  # Ensure this import matches your project structure
 
-@login_required
+
 def search_view(request):
     query = request.GET.get('q', '')
     active_tab = request.GET.get('type', 'all')  # Default to 'all'

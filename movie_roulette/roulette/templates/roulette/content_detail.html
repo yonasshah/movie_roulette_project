@@ -146,65 +146,79 @@
             </div>
 
             {# ===== REVIEWS ===== #}
+            
             <section class="max-w-3xl">
                 <h2 class="text-2xl font-bold text-white mb-8">Community Reviews</h2>
-
-                {% if user_review %}
-                    <div class="your-review-post mb-12" id="your-review-display">
-                        <div class="flex items-center justify-between mb-4">
-                            <div class="flex items-center gap-4">
-                                <img src="{{ request.user.profile.image.url }}" class="w-12 h-12 rounded-xl object-cover" alt="">
-                                <div>
-                                    <p class="text-sm font-bold text-white">@{{ request.user.username }}</p>
-                                    <span class="text-[10px] text-indigo-400 font-black uppercase tracking-widest">Your Review</span>
+                {% if user.is_authenticated %}
+                    {% if user_review %}
+                        <div class="your-review-post mb-12" id="your-review-display">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="flex items-center gap-4">
+                                    <img src="{{ request.user.profile.image.url }}" class="w-12 h-12 rounded-xl object-cover" alt="">
+                                    <div>
+                                        <p class="text-sm font-bold text-white">@{{ request.user.username }}</p>
+                                        <span class="text-[10px] text-indigo-400 font-black uppercase tracking-widest">Your Review</span>
+                                    </div>
                                 </div>
+                                <span class="text-amber-400 font-black text-xl">★ {{ user_review.rating }}/10</span>
                             </div>
-                            <span class="text-amber-400 font-black text-xl">★ {{ user_review.rating }}/10</span>
+                            <p class="text-gray-300 leading-relaxed mb-6">{{ user_review.review_text|linebreaksbr|default:"Rating left without review." }}</p>
+                            <div class="flex gap-4">
+                                <button class="text-xs font-bold text-gray-500 hover:text-white" id="edit-review-toggle"><i class="fas fa-pen mr-2"></i>Edit</button>
+                                <button class="text-xs font-bold text-gray-500 hover:text-red-400" onclick="if(confirm('Delete?'))document.getElementById('delete-review-form').submit();"><i class="fas fa-trash mr-2"></i>Delete</button>
+                            </div>
                         </div>
-                        <p class="text-gray-300 leading-relaxed mb-6">{{ user_review.review_text|linebreaksbr|default:"Rating left without review." }}</p>
-                        <div class="flex gap-4">
-                            <button class="text-xs font-bold text-gray-500 hover:text-white" id="edit-review-toggle"><i class="fas fa-pen mr-2"></i>Edit</button>
-                            <button class="text-xs font-bold text-gray-500 hover:text-red-400" onclick="if(confirm('Delete?'))document.getElementById('delete-review-form').submit();"><i class="fas fa-trash mr-2"></i>Delete</button>
-                        </div>
-                    </div>
-                    <div class="your-review-post mb-12 hidden" id="your-review-edit">
-                        <form action="{% url 'roulette:add_review' content_type=content_type tmdb_id=content.id %}" method="POST">
-                            {% csrf_token %}
-                            <input type="hidden" name="title" value="{% if content_type == 'movie' %}{{ content.title|escapejs }}{% else %}{{ content.name|escapejs }}{% endif %}">
-                            <input type="hidden" name="poster_path" value="{{ content.poster_path }}">
-                            <input type="hidden" name="overview" value="{{ content.overview }}">
-                            <div class="space-y-6">
-                                <div class="flex justify-between items-center">
-                                    <h3 class="font-bold text-white">Modify Review</h3>
-                                    <button type="button" id="cancel-edit-review" class="text-xs text-gray-500 hover:text-white">Cancel</button>
+                        <div class="your-review-post mb-12 hidden" id="your-review-edit">
+                            <form action="{% url 'roulette:add_review' content_type=content_type tmdb_id=content.id %}" method="POST">
+                                {% csrf_token %}
+                                <input type="hidden" name="title" value="{% if content_type == 'movie' %}{{ content.title|escapejs }}{% else %}{{ content.name|escapejs }}{% endif %}">
+                                <input type="hidden" name="poster_path" value="{{ content.poster_path }}">
+                                <input type="hidden" name="overview" value="{{ content.overview }}">
+                                <div class="space-y-6">
+                                    <div class="flex justify-between items-center">
+                                        <h3 class="font-bold text-white">Modify Review</h3>
+                                        <button type="button" id="cancel-edit-review" class="text-xs text-gray-500 hover:text-white">Cancel</button>
+                                    </div>
+                                    <select name="rating" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white">
+                                        {% for value, label in review_form.rating.field.choices %}
+                                            <option value="{{ value }}" {% if user_review.rating|stringformat:"d" == value|stringformat:"d" %}selected{% endif %}>{{ label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <textarea name="review_text" rows="4" class="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white outline-none focus:border-indigo-500 transition-colors">{{ user_review.review_text }}</textarea>
+                                    <button type="submit" class="bg-indigo-600 text-white font-bold py-3 px-8 rounded-xl hover:bg-indigo-500">Update Review</button>
                                 </div>
-                                <select name="rating" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white">
-                                    {% for value, label in review_form.rating.field.choices %}
-                                        <option value="{{ value }}" {% if user_review.rating|stringformat:"d" == value|stringformat:"d" %}selected{% endif %}>{{ label }}</option>
-                                    {% endfor %}
-                                </select>
-                                <textarea name="review_text" rows="4" class="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white outline-none focus:border-indigo-500 transition-colors">{{ user_review.review_text }}</textarea>
-                                <button type="submit" class="bg-indigo-600 text-white font-bold py-3 px-8 rounded-xl hover:bg-indigo-500">Update Review</button>
-                            </div>
-                        </form>
-                    </div>
-                    <form id="delete-review-form" action="{% url 'roulette:delete_review' review_id=user_review.id %}" method="POST" class="hidden">{% csrf_token %}</form>
+                            </form>
+                        </div>
+                        <form id="delete-review-form" action="{% url 'roulette:delete_review' review_id=user_review.id %}" method="POST" class="hidden">{% csrf_token %}</form>
+                    {% else %}
+                        <div class="bg-white/[0.03] border border-white/10 rounded-2xl p-8 mb-12">
+                            <h3 class="font-bold text-white mb-6">Leave your thoughts</h3>
+                            <form action="{% url 'roulette:add_review' content_type=content_type tmdb_id=content.id %}" method="POST">
+                                {% csrf_token %}
+                                <input type="hidden" name="title" value="{% if content_type == 'movie' %}{{ content.title|escapejs }}{% else %}{{ content.name|escapejs }}{% endif %}">
+                                <input type="hidden" name="poster_path" value="{{ content.poster_path }}">
+                                <input type="hidden" name="overview" value="{{ content.overview }}">
+                                <div class="space-y-6">
+                                    <select name="rating" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white">
+                                        {% for value, label in review_form.rating.field.choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+                                    </select>
+                                    <textarea name="review_text" rows="3" placeholder="Write a review..." class="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white outline-none focus:border-indigo-500 transition-colors"></textarea>
+                                    <button type="submit" class="bg-indigo-600 text-white font-bold py-3 px-8 rounded-xl hover:bg-indigo-500">Post Review</button>
+                                </div>
+                            </form>
+                        </div>
+                    {% endif %}
                 {% else %}
-                    <div class="bg-white/[0.03] border border-white/10 rounded-2xl p-8 mb-12">
-                        <h3 class="font-bold text-white mb-6">Leave your thoughts</h3>
-                        <form action="{% url 'roulette:add_review' content_type=content_type tmdb_id=content.id %}" method="POST">
-                            {% csrf_token %}
-                            <input type="hidden" name="title" value="{% if content_type == 'movie' %}{{ content.title|escapejs }}{% else %}{{ content.name|escapejs }}{% endif %}">
-                            <input type="hidden" name="poster_path" value="{{ content.poster_path }}">
-                            <input type="hidden" name="overview" value="{{ content.overview }}">
-                            <div class="space-y-6">
-                                <select name="rating" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white">
-                                    {% for value, label in review_form.rating.field.choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
-                                </select>
-                                <textarea name="review_text" rows="3" placeholder="Write a review..." class="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white outline-none focus:border-indigo-500 transition-colors"></textarea>
-                                <button type="submit" class="bg-indigo-600 text-white font-bold py-3 px-8 rounded-xl hover:bg-indigo-500">Post Review</button>
-                            </div>
-                        </form>
+                    <div class="cx-card p-6 text-center mb-12">
+                        <h3 class="font-display text-lg font-semibold text-white mb-2">
+                            Want to leave a review?
+                        </h3>
+                        <p class="text-sm text-gray-500 mb-4">
+                            Sign up to rate movies, write reviews, and join the discussion.
+                        </p>
+                        <a href="{% url 'users:signup' %}" class="inline-flex bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2.5 px-5 rounded-lg text-sm transition-colors">
+                            Create an account
+                        </a>
                     </div>
                 {% endif %}
 
@@ -283,20 +297,87 @@
 
 {# === ADD TO LIST MODAL === #}
 <div id="add-to-list-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 hidden px-4">
-    <div class="bg-[#131420] border border-white/10 p-8 rounded-3xl max-w-md w-full shadow-2xl">
-        <h3 class="text-xl font-bold text-white mb-6">Manage Collections</h3>
-        <div id="custom-lists-container" class="space-y-1 max-h-48 overflow-y-auto mb-6 custom-scrollbar bg-white/5 p-2 rounded-xl border border-white/5">
-            <p class="text-gray-500 text-sm p-4">Loading lists...</p>
-        </div>
-        <div class="pt-6 border-t border-white/5">
-            <label class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3 block">Create New Collection</label>
-            <div class="flex gap-2">
-                <input type="text" id="new-list-name-input" placeholder="List title..." class="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white outline-none focus:border-indigo-500">
-                <button id="create-and-add-btn" class="bg-green-600 hover:bg-green-500 text-white font-bold px-4 rounded-xl text-sm transition-colors">Create</button>
+    <div class="relative max-w-md w-full overflow-hidden rounded-3xl bg-[#11121c]/95 border border-white/[0.08] shadow-2xl shadow-black/70">
+
+        <div class="absolute -top-24 -right-24 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute -bottom-28 -left-24 w-64 h-64 bg-purple-500/12 rounded-full blur-3xl pointer-events-none"></div>
+
+        <div class="relative z-10">
+
+            <!-- Header -->
+            <div class="px-6 pt-6 pb-5 border-b border-white/[0.06]">
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <div class="w-11 h-11 rounded-2xl bg-indigo-500/10 border border-indigo-400/20 flex items-center justify-center text-indigo-300 mb-4">
+                            <i class="fas fa-layer-group"></i>
+                        </div>
+
+                        <h3 class="font-display text-2xl font-bold text-white">
+                            Add to list
+                        </h3>
+
+                        <p class="text-sm text-gray-600 mt-1">
+                            Save this movie or show to one of your collections.
+                        </p>
+                    </div>
+
+                    <button id="cancel-add-to-list-x"
+                            type="button"
+                            class="w-9 h-9 rounded-xl bg-white/[0.035] border border-white/[0.06] text-gray-600 hover:text-white hover:bg-white/[0.06] transition-colors flex items-center justify-center">
+                        <i class="fas fa-times text-xs"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Existing lists -->
+            <div class="px-6 py-5">
+                <div class="flex items-center justify-between mb-3">
+                    <label class="text-[11px] font-bold text-gray-600 uppercase tracking-wider">
+                        Choose a list
+                    </label>
+
+                    <span class="text-[11px] text-gray-700">
+                        Existing
+                    </span>
+                </div>
+
+                <div id="custom-lists-container"
+                     class="custom-scrollbar space-y-2 max-h-52 overflow-y-auto rounded-2xl bg-white/[0.025] border border-white/[0.055] p-2">
+                    <p class="text-gray-600 text-sm p-3">Loading lists...</p>
+                </div>
+            </div>
+
+            <!-- Create new -->
+            <div class="px-6 py-5 border-t border-white/[0.06] bg-black/[0.12]">
+                <label class="text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-3 block">
+                    Create new list
+                </label>
+
+                <div class="flex gap-2">
+                    <input type="text"
+                           id="new-list-name-input"
+                           placeholder="List name..."
+                           class="flex-1 min-w-0 bg-white/[0.04] border border-white/[0.07] rounded-2xl px-4 py-3 text-sm text-white placeholder-gray-700 outline-none focus:border-indigo-400/60 focus:bg-white/[0.055] transition-colors">
+
+                    <button id="create-and-add-btn"
+                            type="button"
+                            class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-5 rounded-2xl text-sm transition-colors disabled:opacity-60 disabled:cursor-wait">
+                        Create
+                    </button>
+                </div>
+
+                <div id="modal-message-container" class="mt-3 text-xs min-h-[18px]"></div>
+            </div>
+
+            <!-- Footer -->
+            <div class="px-6 py-4 border-t border-white/[0.06]">
+                <button id="cancel-add-to-list"
+                        type="button"
+                        class="w-full py-3 rounded-2xl text-sm font-semibold text-gray-500 hover:text-white bg-white/[0.035] hover:bg-white/[0.06] border border-white/[0.05] transition-all">
+                    Done
+                </button>
             </div>
         </div>
-        <div id="modal-message-container" class="mt-4 text-xs"></div>
-        <button id="cancel-add-to-list" class="w-full mt-8 py-3 rounded-xl text-sm font-bold text-gray-500 hover:text-white bg-white/5 transition-all">Close</button>
     </div>
 </div>
 {% endblock %}
@@ -307,9 +388,14 @@
 (function() {
     'use strict';
     var csrfToken = '{{ csrf_token }}';
+    var isAuthenticated = {{ user.is_authenticated|yesno:"true,false" }};
     var reviewCtypeId = '{{ review_content_type_id }}';
     var commentCtypeId = '{{ comment_ctype_id }}';
     var INITIAL_REPLIES = 2;
+    var URLS = {
+        login: "{% url 'users:login' %}",
+        signup: "{% url 'users:signup' %}"
+    };
     var contentInfo = {
         tmdb_id: '{{ content.id }}',
         content_type: '{{ content_type }}',
@@ -321,10 +407,47 @@
 
     const $ = s => document.querySelector(s);
     var likeBtn = $('#like-btn'), watchBtn = $('#watchlist-btn'), addBtn = $('#add-to-list-btn');
-    var modal = $('#add-to-list-modal'), modalCancel = $('#cancel-add-to-list');
+    var modal = $('#add-to-list-modal'),
+        modalCancel = $('#cancel-add-to-list'),
+        modalCancelX = $('#cancel-add-to-list-x');
     var listsCont = $('#custom-lists-container'), modalMsg = $('#modal-message-container');
     var newInput = $('#new-list-name-input'), createBtn = $('#create-and-add-btn');
     var reviewsContainer = $('#reviews-container');
+
+    function showSignupPrompt(message) {
+        var existing = document.getElementById('signup-prompt-modal');
+        if (existing) existing.remove();
+
+        var promptModal = document.createElement('div');
+        promptModal.id = 'signup-prompt-modal';
+        promptModal.className = 'fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 px-4';
+
+        promptModal.innerHTML =
+            '<div class="cx-card max-w-sm w-full p-6 text-center border border-white/[0.08]">' +
+                '<div class="w-12 h-12 mx-auto mb-4 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-400">' +
+                    '<i class="fas fa-lock"></i>' +
+                '</div>' +
+                '<h3 class="font-display text-xl font-semibold text-white mb-2">Create an account</h3>' +
+                '<p class="text-sm text-gray-500 leading-relaxed mb-6">' +
+                    (message || 'Sign up to save movies, build your watchlist, and join the discussion.') +
+                '</p>' +
+                '<div class="flex flex-col gap-2">' +
+                    '<a href="' + URLS.signup + '" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2.5 px-5 rounded-lg text-sm transition-colors">Sign up</a>' +
+                    '<a href="' + URLS.login + '?next=' + encodeURIComponent(location.pathname) + '" class="border border-white/[0.08] hover:bg-white/[0.04] text-gray-400 hover:text-white font-semibold py-2.5 px-5 rounded-lg text-sm transition-colors">Log in</a>' +
+                    '<button type="button" id="signup-prompt-close" class="text-gray-600 hover:text-gray-400 text-sm py-2">Maybe later</button>' +
+                '</div>' +
+            '</div>';
+
+        document.body.appendChild(promptModal);
+
+        document.getElementById('signup-prompt-close').addEventListener('click', function() {
+            promptModal.remove();
+        });
+
+        promptModal.addEventListener('click', function(e) {
+            if (e.target === promptModal) promptModal.remove();
+        });
+    }
 
     // ===== Collapse replies on load =====
     function initCollapseState() {
@@ -517,8 +640,25 @@
     // === EVENT DELEGATION ===
     if (reviewsContainer) {
         reviewsContainer.addEventListener('click', function(e) {
-            var vb = e.target.closest('.review-vote-btn'); if (vb) { handleReviewVote(vb); return; }
-            var cvb = e.target.closest('.comment-vote-btn'); if (cvb) { handleCommentVote(cvb); return; }
+            var vb = e.target.closest('.review-vote-btn');
+            if (vb) {
+                if (!isAuthenticated) {
+                    showSignupPrompt('Create an account to vote on reviews.');
+                    return;
+                }
+                handleReviewVote(vb);
+                return;
+            }
+
+            var cvb = e.target.closest('.comment-vote-btn');
+            if (cvb) {
+                if (!isAuthenticated) {
+                    showSignupPrompt('Create an account to vote on comments.');
+                    return;
+                }
+                handleCommentVote(cvb);
+                return;
+            }
             var ecb = e.target.closest('.edit-comment-btn'); if (ecb) { handleEditComment(ecb); return; }
             var seb = e.target.closest('.save-edit-btn'); if (seb) { handleSaveEdit(seb); return; }
             var ceb = e.target.closest('.cancel-edit-btn'); if (ceb) { handleCancelEdit(ceb); return; }
@@ -537,6 +677,12 @@
     $('#edit-review-toggle')?.addEventListener('click', () => { $('#your-review-display').classList.add('hidden'); $('#your-review-edit').classList.remove('hidden'); });
     $('#cancel-edit-review')?.addEventListener('click', () => { $('#your-review-edit').classList.add('hidden'); $('#your-review-display').classList.remove('hidden'); });
 
+    function esc(s) {
+        if (!s) return '';
+        var d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
+    }
     // === LIST/FAVORITE TOGGLES ===
     function toggleList(listType) {
         var fd = new FormData();
@@ -550,15 +696,38 @@
             }
         });
     }
-    likeBtn?.addEventListener('click', () => toggleList('favorite'));
-    watchBtn?.addEventListener('click', () => toggleList('watchlist'));
+    likeBtn?.addEventListener('click', function() {
+        if (!isAuthenticated) {
+            showSignupPrompt('Create an account to favorite movies and shows.');
+            return;
+        }
+
+        toggleList('favorite');
+    });
+
+    watchBtn?.addEventListener('click', function() {
+        if (!isAuthenticated) {
+            showSignupPrompt('Create an account to save movies and shows to your watchlist.');
+            return;
+        }
+
+        toggleList('watchlist');
+    });
 
     // === MODAL ===
     function loadLists() {
         fetch("{% url 'roulette:get_user_lists' %}").then(r => r.json()).then(d => {
             var ls = d.custom_lists || []; listsCont.innerHTML = '';
             if (!ls.length) { listsCont.innerHTML = '<p class="text-gray-500 text-xs p-4 italic">No collections yet.</p>'; return; }
-            ls.forEach(l => { var b = document.createElement('button'); b.textContent = l.name; b.className = 'modal-list-btn font-bold text-sm'; b.addEventListener('click', () => addToList(l.id, l.name)); listsCont.appendChild(b); });
+            ls.forEach(l => { var b = document.createElement('button'); b.innerHTML =
+    '<span class="w-9 h-9 rounded-xl bg-white/[0.035] border border-white/[0.05] flex items-center justify-center text-gray-600 group-hover:text-indigo-300 group-hover:border-indigo-400/20 group-hover:bg-indigo-500/10 transition-all">' +
+        '<i class="fas fa-list-ul text-xs"></i>' +
+    '</span>' +
+    '<span class="flex-1 min-w-0">' +
+        '<span class="block font-semibold truncate">' + esc(l.name) + '</span>' +
+        '<span class="block text-[11px] text-gray-700 group-hover:text-gray-600">Add to this list</span>' +
+    '</span>' +
+    '<i class="fas fa-plus text-[10px] text-gray-700 group-hover:text-indigo-300"></i>'; b.className = 'group w-full flex items-center gap-3 text-left p-3 rounded-xl text-sm text-gray-400 hover:bg-white/[0.045] hover:text-white transition-colors'; b.addEventListener('click', () => addToList(l.id, l.name)); listsCont.appendChild(b); });
         });
     }
     function addToList(listId) {
@@ -567,8 +736,17 @@
         fetch("{% url 'roulette:list_add_item' %}", { method: 'POST', headers: { 'X-CSRFToken': csrfToken }, body: fd })
         .then(r => r.json()).then(d => { window.showToast(d.message || d.error, d.success ? 'success' : 'error'); if (d.success) modal.classList.add('hidden'); });
     }
-    addBtn?.addEventListener('click', () => { modal.classList.remove('hidden'); loadLists(); });
+    addBtn?.addEventListener('click', function() {
+        if (!isAuthenticated) {
+            showSignupPrompt('Create an account to save movies and shows to custom lists.');
+            return;
+        }
+
+        modal.classList.remove('hidden');
+        loadLists();
+    });
     modalCancel?.addEventListener('click', () => modal.classList.add('hidden'));
+    modalCancelX?.addEventListener('click', () => modal.classList.add('hidden'));
     createBtn?.addEventListener('click', () => {
         var fd = new FormData(); fd.append('name', newInput.value.trim());
         fetch("{% url 'roulette:list_create' %}", { method: 'POST', headers: { 'X-CSRFToken': csrfToken }, body: fd })

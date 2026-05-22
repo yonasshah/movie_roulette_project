@@ -154,7 +154,12 @@
                                 <img src="{{ user.profile.image.url }}" class="w-4 h-4 rounded-full object-cover flex-shrink-0" alt="">
                                 {% endif %}
                                 <textarea class="reply-text-input flex-1" rows="1" placeholder="Reply..." maxlength="500"></textarea>
-                                <button type="button" class="submit-reply-btn reply-btn flex-shrink-0 text-indigo-400 font-bold text-xs hover:text-indigo-300 transition-colors">Reply</button>
+                                <button
+                                    type="button"
+                                    class="submit-reply-btn flex-shrink-0 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-[12px] px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-wait"
+                                >
+                                    Reply
+                                </button>
                                 <button type="button" class="cancel-reply-btn text-[10px] text-gray-600 hover:text-gray-400 cursor-pointer">Cancel</button>
                             </div>
                         </div>
@@ -167,7 +172,12 @@
                             <input type="hidden" name="next" value="{{ request.path }}">
                             <img src="{{ user.profile.image.url }}" class="w-6 h-6 rounded-full object-cover flex-shrink-0" alt="">
                             <textarea name="text" rows="1" placeholder="Add a comment..." class="reply-input flex-1 bg-transparent border-none text-[13px] text-gray-200 focus:ring-0 p-0 m-0 resize-none overflow-hidden placeholder-gray-600" maxlength="500" required></textarea>
-                            <button type="submit" class="reply-btn flex-shrink-0 text-indigo-500 font-bold text-[13px] hover:text-indigo-400 transition-colors">Post</button>
+                            <button
+                                type="submit"
+                                class="flex-shrink-0 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-[12px] px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-wait"
+                            >
+                                Post
+                            </button>
                             <div class="comment-form-errors text-[10px] text-red-400 hidden"></div>
                         </form>
                         {% endif %}
@@ -392,21 +402,35 @@
 
     function handleToggleReplies(btn) {
         const rg = btn.closest('.replies-group');
-        const wrappers = rg.querySelectorAll(':scope > .reply-wrapper');
+        if (!rg) return;
+
+        const wrappers = Array.from(rg.querySelectorAll(':scope > .reply-wrapper'));
+        const hiddenCount = Math.max(wrappers.length - 2, 0);
         const isCollapsed = btn.dataset.state === 'collapsed';
-        
+
+        if (wrappers.length <= 2) {
+            btn.remove();
+            return;
+        }
+
         if (isCollapsed) {
-            // Expand everything
-            wrappers.forEach(w => w.classList.remove('hidden'));
+            wrappers.forEach(function(w) {
+                w.classList.remove('hidden');
+            });
+
             btn.dataset.state = 'expanded';
             btn.innerHTML = '<i class="fas fa-chevron-up mr-1"></i> Hide replies';
         } else {
-            // Collapse back to the first 2
-            wrappers.forEach((w, i) => { if (i >= 2) w.classList.add('hidden'); });
+            wrappers.forEach(function(w, i) {
+                w.classList.toggle('hidden', i >= 2);
+            });
+
             btn.dataset.state = 'collapsed';
-            // Recalculate the hidden count
-            const extra = wrappers.length - 2;
-            btn.innerHTML = `<i class="fas fa-chevron-down mr-1"></i> View ${extra} more replies`;
+            btn.innerHTML =
+                '<i class="fas fa-chevron-down mr-1"></i> View ' +
+                hiddenCount +
+                ' more repl' +
+                (hiddenCount === 1 ? 'y' : 'ies');
         }
     }
 

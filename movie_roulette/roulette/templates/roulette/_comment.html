@@ -52,24 +52,28 @@
                 {% endif %}
             </div>
 
-            {# === NESTED REPLIES === #}
-{% if comment.replies_list %}
-    <div class="replies-group mt-2">
-        {% for reply in comment.replies_list %}
-            {# If it's a deep reply (is_reply is already true), we HIDE it by default #}
-            <div class="reply-wrapper {% if is_reply or forloop.counter > 2 %}hidden{% endif %}">
-                {% include 'roulette/_comment.html' with comment=reply is_reply=True %}
-            </div>
-        {% endfor %}
-        
-        {% if comment.replies_list|length > 0 %}
-            <button class="comment-toggle-btn toggle-replies-btn text-[11px] text-gray-500 font-medium" data-state="collapsed">
-                <i class="fas fa-chevron-down mr-1"></i> 
-                View {{ comment.replies_list|length }} replies
-            </button>
-        {% endif %}
-    </div>
-{% endif %}
+{# === NESTED REPLIES === #}
+    {% if comment.replies_list %}
+        <div class="replies-group mt-2">
+            {% for reply in comment.replies_list %}
+                <div class="reply-wrapper {% if forloop.counter > 2 %}hidden{% endif %}">
+                    {% include 'roulette/_comment.html' with comment=reply is_reply=True %}
+                </div>
+            {% endfor %}
+
+            {% if comment.replies_list|length > 2 %}
+                <button
+                    type="button"
+                    class="comment-toggle-btn toggle-replies-btn text-[11px] text-gray-500 font-medium"
+                    data-state="collapsed"
+                    data-total="{{ comment.replies_list|length }}"
+                >
+                    <i class="fas fa-chevron-down mr-1"></i>
+                    View {{ comment.replies_list|length|add:"-2" }} more repl{{ comment.replies_list|length|add:"-2"|pluralize:"y,ies" }}
+                </button>
+            {% endif %}
+        </div>
+    {% endif %}
         </div>
     </div>
 </div>
