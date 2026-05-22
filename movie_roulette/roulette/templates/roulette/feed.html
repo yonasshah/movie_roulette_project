@@ -235,19 +235,30 @@
         btn.closest('.comment-expand-controls')?.remove();
     }
 
-    // 3. Review Clamping (unchanged)
+    // =====================================================
+    // BUG #6 FIX: Review "See more" clamping with click handler
+    // =====================================================
     function initReviewClamping() {
         document.querySelectorAll('.review-block').forEach(function(rb) {
             var textEl = rb.querySelector('.review-text'), btn = rb.querySelector('.review-see-more');
             if (textEl && btn) { 
-                if (textEl.scrollHeight > textEl.offsetHeight + 4) btn.classList.remove('hidden'); 
-                else { rb.classList.remove('clamped'); btn.classList.add('hidden'); } 
+                if (textEl.scrollHeight > textEl.offsetHeight + 4) {
+                    btn.classList.remove('hidden');
+                    // FIX: Attach click handler to expand the review
+                    btn.addEventListener('click', function() {
+                        rb.classList.remove('clamped');
+                        btn.classList.add('hidden');
+                    });
+                } else { 
+                    rb.classList.remove('clamped'); 
+                    btn.classList.add('hidden'); 
+                } 
             }
         });
     }
     window.addEventListener('load', initReviewClamping);
 
-    // 4. Voting Logic (unchanged)
+    // 4. Voting Logic (for feed item posts)
     function handleVote(btn) {
         var fd = new FormData(); fd.append('content_type_id', btn.dataset.ctypeId); fd.append('object_id', btn.dataset.objId); fd.append('vote_type', btn.dataset.vote);
         fetch("{% url 'roulette:toggle_vote' %}", { method: 'POST', headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' }, body: fd })
@@ -257,6 +268,29 @@
                 if (up) { up.classList.toggle('active', d.user_vote === 1); up.querySelector('.up-count').textContent = d.up_count; }
                 if (dn) { dn.classList.toggle('active', d.user_vote === -1); dn.querySelector('.down-count').textContent = d.down_count; }
             }
+        });
+    }
+
+    // =====================================================
+    // BUG #2 FIX: Add missing handleCommentVote function
+    // =====================================================
+    function handleCommentVote(btn) {
+        var fd = new FormData();
+        fd.append('content_type_id', commentCtypeId);
+        fd.append('object_id', btn.dataset.commentId);
+        fd.append('vote_type', btn.dataset.vote);
+        fetch("{% url 'roulette:toggle_vote' %}", { method: 'POST', headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' }, body: fd })
+        .then(function(r) { return r.json(); }).then(function(d) {
+            if (d.success) {
+                var ci = btn.closest('.comment-item');
+                var up = ci.querySelector(':scope > .flex .cvote-up'), dn = ci.querySelector(':scope > .flex .cvote-down');
+                if (up) { up.classList.toggle('active', d.user_vote === 1); up.querySelector('.cup-count').textContent = d.up_count; }
+                if (dn) { dn.classList.toggle('active', d.user_vote === -1); dn.querySelector('.cdown-count').textContent = d.down_count; }
+            } else {
+                if (window.showToast) window.showToast(d.error || 'Failed.', 'error');
+            }
+        }).catch(function() {
+            if (window.showToast) window.showToast('Network error.', 'error');
         });
     }
 
@@ -286,7 +320,6 @@
                 if (cl) { 
                     var wrapper = document.createElement('div'); 
                     
-                    // --- THE FIX ---
                     // Count how many TOP-LEVEL comments are already visible
                     var currentCount = cl.querySelectorAll(':scope > .comment-thread').length;
                     
@@ -302,7 +335,6 @@
                 }
                 updCount(fi);
                 
-                // Optional: Show a toast so the user knows it posted even if it's hidden
                 if (window.showToast) window.showToast('Comment posted!', 'success');
             }
         }
@@ -315,13 +347,15 @@
     });
 }
 
-    // 6. Reply Toggles & Submission (unchanged)
+    // 6. Reply Toggles & Submission
     function handleReplyToggle(btn) {
         var commentId = btn.dataset.commentId, username = btn.dataset.username, ci = btn.closest('.comment-item');
         var section = ci.closest('.comments-section'), floatingForm = section.querySelector('#floating-reply-form');
         if (!floatingForm) return;
         if (floatingForm.dataset.activeParent === commentId && !floatingForm.classList.contains('hidden')) {
-            floatingForm.classList.add('hidden'); return;
+            floatingForm.classList.add('hidden');
+            floatingForm.dataset.activeParent = '';
+            return;
         }
         ci.querySelector(':scope > .flex > .flex-1').appendChild(floatingForm);
         floatingForm.classList.remove('hidden');
@@ -340,7 +374,9 @@
         fetch("{% url 'roulette:add_comment' %}", { method: 'POST', headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' }, body: fd })
         .then(function(r) { return r.json(); }).then(function(d) {
             if (d.success) {
-                ta.value = ''; floatingForm.classList.add('hidden');
+                ta.value = '';
+                floatingForm.classList.add('hidden');
+                floatingForm.dataset.activeParent = '';
                 var parentCI = fi.querySelector('.comment-item[data-comment-id="' + parentId + '"]');
                 if (parentCI && d.comment_html) {
                     var parentFlex = parentCI.querySelector(':scope > .flex > .flex-1');
@@ -380,125 +416,154 @@
         if (d && l) { var s = d.querySelector('.count-number'); if (s) s.textContent = l.querySelectorAll('.comment-item').length; } 
     }
 
-    // Replace your entire click listener with this clean delegation
-fc.addEventListener('click', function(e) {
-    const target = e.target;
-    
-    // 1. Voting
-    const vb = target.closest('.vote-btn'); if (vb) handleVote(vb);
-    const cvb = target.closest('.comment-vote-btn'); if (cvb) handleCommentVote(cvb);
+    // Click delegation
+    fc.addEventListener('click', function(e) {
+        const target = e.target;
+        
+        // 1. Voting (feed-item level)
+        const vb = target.closest('.vote-btn'); if (vb) handleVote(vb);
 
-    // 2. Editing (Fixes the broken logic)
-    const editBtn = target.closest('.edit-comment-btn');
-    if (editBtn) {
-        const ci = editBtn.closest('.comment-item');
-        ci.querySelector('.comment-display').classList.add('hidden');
-        ci.querySelector('.comment-edit-form').classList.remove('hidden');
-    }
+        // BUG #2 FIX: Comment voting now calls the defined handleCommentVote
+        const cvb = target.closest('.comment-vote-btn'); if (cvb) handleCommentVote(cvb);
 
-    const cancelEdit = target.closest('.cancel-edit-btn');
-    if (cancelEdit) {
-        const ci = cancelEdit.closest('.comment-item');
-        ci.querySelector('.comment-edit-form').classList.add('hidden');
-        ci.querySelector('.comment-display').classList.remove('hidden');
-    }
+        // 2. Editing
+        const editBtn = target.closest('.edit-comment-btn');
+        if (editBtn) {
+            const ci = editBtn.closest('.comment-item');
+            ci.querySelector('.comment-display').classList.add('hidden');
+            ci.querySelector('.comment-edit-form').classList.remove('hidden');
+        }
 
-    const saveEdit = target.closest('.save-edit-btn');
-    if (saveEdit) handleSaveEdit(saveEdit);
-
-    // 3. Deleting
-    const delBtn = target.closest('.delete-comment-btn');
-    if (delBtn) handleDeleteComment(delBtn);
-
-    // 4. Replies & Toggles
-    const vac = target.closest('.view-all-comments-btn'); if (vac) handleViewAll(vac);
-    const trb = target.closest('.toggle-replies-btn'); if (trb) handleToggleReplies(trb);
-    const rtb = target.closest('.reply-toggle-btn'); if (rtb) handleReplyToggle(rtb);
-    const srb = target.closest('.submit-reply-btn'); if (srb) handleSubmitReply(srb);
-});
-
-// Update the Edit Save function to correctly find elements
-function handleSaveEdit(btn) {
-    const ci = btn.closest('.comment-item');
-    const ta = ci.querySelector('.edit-textarea');
-    const url = btn.dataset.editUrl;
-    const newText = ta.value.trim();
-    if (!newText) return;
-
-    btn.disabled = true;
-    const fd = new FormData(); fd.append('text', newText);
-    fetch(url, { method: 'POST', headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' }, body: fd })
-    .then(r => r.json()).then(d => {
-        if (d.success) {
-            ci.querySelector('.comment-text-content').innerHTML = d.text.replace(/\n/g, '<br>');
+        const cancelEdit = target.closest('.cancel-edit-btn');
+        if (cancelEdit) {
+            const ci = cancelEdit.closest('.comment-item');
             ci.querySelector('.comment-edit-form').classList.add('hidden');
             ci.querySelector('.comment-display').classList.remove('hidden');
         }
-    }).finally(() => { btn.disabled = false; });
-}
-function handleDeleteComment(btn) {
-    if (!confirm('Delete this comment?')) return;
-    
-    const url = btn.dataset.deleteUrl;
-    const ci = btn.closest('.comment-item'); // Finds the specific comment container
-    
-    btn.disabled = true;
-    fetch(url, { 
-        method: 'POST', 
-        headers: { 
-            'X-CSRFToken': csrfToken, 
-            'X-Requested-With': 'XMLHttpRequest' 
-        } 
-    })
-    .then(r => r.json())
-    .then(d => {
-        if (d.success) {
-            // Find the closest feed-item to update the count
-            const fi = ci.closest('.feed-item');
-            ci.remove(); // Delete the HTML
-            if (fi) updCount(fi); // Update the "42 comments" text
-            window.showToast('Deleted successfully.', 'success');
-        } else {
-            window.showToast(d.error || 'Failed to delete.', 'error');
+
+        const saveEdit = target.closest('.save-edit-btn');
+        if (saveEdit) handleSaveEdit(saveEdit);
+
+        // 3. Deleting
+        const delBtn = target.closest('.delete-comment-btn');
+        if (delBtn) handleDeleteComment(delBtn);
+
+        // 4. Replies & Toggles
+        const vac = target.closest('.view-all-comments-btn'); if (vac) handleViewAll(vac);
+        const trb = target.closest('.toggle-replies-btn'); if (trb) handleToggleReplies(trb);
+        const rtb = target.closest('.reply-toggle-btn'); if (rtb) handleReplyToggle(rtb);
+        const srb = target.closest('.submit-reply-btn'); if (srb) handleSubmitReply(srb);
+
+        // =====================================================
+        // BUG #3 FIX: Cancel reply now resets activeParent
+        // =====================================================
+        const crb = target.closest('.cancel-reply-btn');
+        if (crb) {
+            var floatingForm = crb.closest('#floating-reply-form') || crb.closest('.inline-reply-form');
+            if (floatingForm) {
+                floatingForm.classList.add('hidden');
+                floatingForm.dataset.activeParent = '';
+            }
         }
-    })
-    .catch(() => window.showToast('Network error.', 'error'))
-    .finally(() => btn.disabled = false);
-}
-    // 8. WebSocket connection (unchanged)
+
+        // BUG #6 FIX: Handle "See more" clicks on review blocks via delegation too
+        const seeMore = target.closest('.review-see-more');
+        if (seeMore) {
+            var reviewBlock = seeMore.closest('.review-block');
+            if (reviewBlock) {
+                reviewBlock.classList.remove('clamped');
+                seeMore.classList.add('hidden');
+            }
+        }
+    });
+
+    // Edit Save function
+    function handleSaveEdit(btn) {
+        const ci = btn.closest('.comment-item');
+        const ta = ci.querySelector('.edit-textarea');
+        const url = btn.dataset.editUrl;
+        const newText = ta.value.trim();
+        if (!newText) return;
+
+        btn.disabled = true;
+        const fd = new FormData(); fd.append('text', newText);
+        fetch(url, { method: 'POST', headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' }, body: fd })
+        .then(r => r.json()).then(d => {
+            if (d.success) {
+                ci.querySelector('.comment-text-content').innerHTML = d.text.replace(/\n/g, '<br>');
+                ci.querySelector('.comment-edit-form').classList.add('hidden');
+                ci.querySelector('.comment-display').classList.remove('hidden');
+            }
+        }).finally(() => { btn.disabled = false; });
+    }
+
+    function handleDeleteComment(btn) {
+        if (!confirm('Delete this comment?')) return;
+        
+        const url = btn.dataset.deleteUrl;
+        const ci = btn.closest('.comment-item');
+        
+        btn.disabled = true;
+        fetch(url, { 
+            method: 'POST', 
+            headers: { 
+                'X-CSRFToken': csrfToken, 
+                'X-Requested-With': 'XMLHttpRequest' 
+            } 
+        })
+        .then(r => r.json())
+        .then(d => {
+            if (d.success) {
+                const fi = ci.closest('.feed-item');
+                ci.remove();
+                if (fi) updCount(fi);
+                window.showToast('Deleted successfully.', 'success');
+            } else {
+                window.showToast(d.error || 'Failed to delete.', 'error');
+            }
+        })
+        .catch(() => window.showToast('Network error.', 'error'))
+        .finally(() => btn.disabled = false);
+    }
+
+    // =====================================================
+    // BUG #1 FIX: WebSocket — removed duplicate nested handler
+    // =====================================================
     function connectFeed() {
         var ws = new WebSocket((location.protocol === 'https:' ? 'wss:' : 'ws:') + '//' + location.host + '/ws/feed/');
         ws.onmessage = function(e) { 
             var msg = JSON.parse(e.data);
+
+            // Handle new comments via WebSocket
             if (msg.type === 'new_comment' && msg.data) {
-                var cd = msg.data; if (String(cd.commenter_id) === String(userId)) return;
+                var cd = msg.data;
+                // Skip if this is our own comment (we already added it optimistically)
+                if (String(cd.commenter_id) === String(userId)) return;
+
                 var tgt = fc.querySelector('.feed-item[data-ctype-id="' + cd.ctype_id + '"][data-item-id="' + cd.obj_id + '"]');
-                if (tgt) { 
-                    var cl = tgt.querySelector('.comments-list'); 
+                if (tgt) {
+                    var cl = tgt.querySelector('.comments-list');
                     if (cl && cd.comment_html) {
-                        var wrapper = document.createElement('div'); 
-                        wrapper.className = 'comment-thread hidden'; // Hide new incoming comments if list is long
-                        wrapper.innerHTML = cd.comment_html; cl.appendChild(wrapper); 
-                        updCount(tgt); 
-                    } 
-                } 
-                if (msg.type === 'new_comment' && msg.data) {
-                    var cd = msg.data;
-                    var tgt = fc.querySelector('.feed-item[data-ctype-id="' + cd.ctype_id + '"][data-item-id="' + cd.obj_id + '"]');
-                    if (tgt) {
-                        var cl = tgt.querySelector('.comments-list');
-                        if (cl && cd.comment_html) {
-                            var wrapper = document.createElement('div');
-                            // FIX: Check how many comments are already there
-                            var currentCount = cl.querySelectorAll(':scope > .comment-thread').length;
-                            wrapper.className = 'comment-thread' + (currentCount >= 2 ? ' hidden' : '');
-                            wrapper.innerHTML = cd.comment_html;
-                            cl.appendChild(wrapper);
-                            updCount(tgt);
-                        }
+                        var wrapper = document.createElement('div');
+                        var currentCount = cl.querySelectorAll(':scope > .comment-thread').length;
+                        wrapper.className = 'comment-thread' + (currentCount >= 2 ? ' hidden' : '');
+                        wrapper.innerHTML = cd.comment_html;
+                        cl.appendChild(wrapper);
+                        updCount(tgt);
                     }
                 }
-            } 
+            }
+
+            // Handle like updates via WebSocket
+            if (msg.type === 'like_update' && msg.data) {
+                var ld = msg.data;
+                var tgtLike = fc.querySelector('.feed-item[data-ctype-id="' + ld.ctype_id + '"][data-item-id="' + ld.obj_id + '"]');
+                if (tgtLike) {
+                    // Update like count display if present
+                    var likeDisplay = tgtLike.querySelector('.like-count');
+                    if (likeDisplay) likeDisplay.textContent = ld.like_count;
+                }
+            }
         };
         ws.onclose = function() { setTimeout(connectFeed, 5000); };
     }

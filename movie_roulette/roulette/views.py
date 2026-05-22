@@ -47,7 +47,7 @@ def build_comment_tree(comments):
 
 @login_required
 def feed_view(request):
-    """Displays a chronological feed including reviews, list items, and shared lists."""
+    """Displays a chronological feed including reviews, list items, shared lists, and follows."""
     followed_user_ids = list(request.user.following.values_list('followed_id', flat=True))
     user_ids_to_include = followed_user_ids + [request.user.id]
 
@@ -94,6 +94,25 @@ def feed_view(request):
         item.user = item.user if hasattr(item, 'user') else None
         raw_feed_items.append(item)
 
+    # =====================================================
+    # BUG #5 FIX: Include follow events in feed
+    # The template already handles item.type == 'follow' but the
+    # queryset was never fetching UserFollow objects.
+    # =====================================================
+    follows = UserFollow.objects.filter(
+        Q(follower_id__in=user_ids_to_include) | Q(followed_id__in=user_ids_to_include)
+    ).select_related(
+        'follower', 'follower__profile',
+        'followed', 'followed__profile'
+    ).order_by('-timestamp')[:50]
+
+    for item in follows:
+        item.type = 'follow'
+        item.ctype_id = None  # Follows don't have votes/comments
+        item.obj_id = None
+        item.user = item.follower
+        raw_feed_items.append(item)
+
     raw_feed_items.sort(key=attrgetter('timestamp'), reverse=True)
     feed_items_limited = raw_feed_items[:50]
 
@@ -103,6 +122,7 @@ def feed_view(request):
     object_ids_by_ctype = {}
 
     for item in feed_items_limited:
+        # Skip follow items — they don't have comments/votes
         if item.ctype_id and item.obj_id:
             lookup_key = (item.ctype_id, item.obj_id)
             item_lookup[lookup_key] = item
@@ -578,7 +598,7 @@ def get_random_content(request):
             "include_adult": "false",
             "watch_region": watch_region,
             "with_watch_providers": platform,
-            "with_genres": genre, # 'mood_genre' has been removed
+            "with_genres": genre,
             release_date_param: f"{year}-01-01",
             "vote_count.gte": 100,
             "vote_average.gte": vote_average_gte
@@ -635,7 +655,6 @@ def get_random_content(request):
     except requests.exceptions.RequestException as e:
         return JsonResponse({'error': f"API request failed: {e}"}, status=500)
 
-    # The duplicate code block has been removed from here
 
 # --- FIXED get_user_lists VIEW ---
 @login_required
@@ -685,7 +704,6 @@ def toggle_favorite(request):
 
     model_content_type = UserContent.ContentType.MOVIE if content_type_str == 'movie' else UserContent.ContentType.TV
 
-    # This is the new, more robust logic
     try:
         favorite_instance = UserContent.objects.get(
             user=request.user,
@@ -698,12 +716,10 @@ def toggle_favorite(request):
         is_favorite = False
     except UserContent.DoesNotExist:
         # If it does not exist, create it.
-        # Get the rest of the data needed for creation.
         title = request.POST.get('title')
         poster_path = request.POST.get('poster_path', '')
         release_year = request.POST.get('release_year')
 
-        # Check that we have the data needed to create a new favorite
         if not title or not release_year:
             return JsonResponse({'success': False, 'error': 'Missing title or year for new favorite.'}, status=400)
 
@@ -1231,13 +1247,6 @@ def share_list_to_feed_view(request, list_id):
         message_from_form = form.cleaned_data.get('message', '').strip()
         if message_from_form:
              final_share_message = message_from_form
-    # else: # Should generally be valid unless manipulated
-    #     error_msg = "Invalid message submitted."
-    #     if is_ajax:
-    #          return JsonResponse({'success': False, 'error': error_msg}, status=400)
-    #     else:
-    #          messages.error(request, error_msg)
-    #          return redirect(user_list.get_absolute_url())
 
     try:
         # Create the SharedListPost object
