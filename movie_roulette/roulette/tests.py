@@ -451,8 +451,12 @@ class AIFeatureTests(TestCase):
             content_type = "movie"
             genre_names = ["Comedy", "Action"]
             genre_ids = [35, 28]
+            avoid_genre_names = ["Horror"]
+            avoid_genre_ids = [27]
             min_rating = 6.0
             year_after = 2010
+            max_runtime = 120
+            sort_by = "popularity.desc"
             explanation = "I focused on comedy and action."
 
         mock_generate.return_value = FakeFilters()
@@ -474,6 +478,9 @@ class AIFeatureTests(TestCase):
         self.assertEqual(data["filters"]["genre_ids"], [35, 28])
         self.assertEqual(data["filters"]["min_rating"], 6.0)
         self.assertEqual(data["filters"]["year_after"], 2010)
+        self.assertEqual(data["filters"]["avoid_genre_ids"], [27])
+        self.assertEqual(data["filters"]["max_runtime"], 120)
+        self.assertEqual(data["filters"]["sort_by"], "popularity.desc")
         self.assertIn("comedy", data["explanation"].lower())
         
     @patch("roulette.views.generate_recommendation_explanation")

@@ -622,9 +622,12 @@ def get_random_content(request):
     content_type = request.GET.get('content_type', 'movie')
     watch_region = request.GET.get('watch_region', 'US')
     genre = request.GET.get('genre', '')
+    avoid_genre = request.GET.get('avoid_genre', '')
     platform = request.GET.get('with_watch_providers', '')
     year = request.GET.get('primary_release_date.gte', '1950')
     vote_average_gte = request.GET.get('vote_average_gte', '0')
+    max_runtime = request.GET.get('max_runtime', '')
+    sort_by = request.GET.get('sort_by', 'popularity.desc')
 
     model_content_type = UserContent.ContentType.MOVIE if content_type == 'movie' else UserContent.ContentType.TV
     exclude_watchlist = request.GET.get("exclude_watchlist") == "true"
@@ -632,7 +635,7 @@ def get_random_content(request):
     exclude_history = request.GET.get("exclude_history") == "true"
 
     excluded_ids = set()
-    
+
     if request.user.is_authenticated:
         if exclude_watchlist:
             excluded_ids.update(
@@ -643,48 +646,66 @@ def get_random_content(request):
                 ).values_list("tmdb_id", flat=True)
             )
 
-    if exclude_watchlist:
-        excluded_ids.update(
-            UserContent.objects.filter(
-                user=request.user,
-                list_type=UserContent.ListType.WATCHLIST,
-                content_type=model_content_type
-            ).values_list("tmdb_id", flat=True)
-        )
+        if exclude_favorites:
+            excluded_ids.update(
+                UserContent.objects.filter(
+                    user=request.user,
+                    list_type=UserContent.ListType.FAVORITE,
+                    content_type=model_content_type
+                ).values_list("tmdb_id", flat=True)
+            )
 
-    if exclude_favorites:
-        excluded_ids.update(
-            UserContent.objects.filter(
-                user=request.user,
-                list_type=UserContent.ListType.FAVORITE,
-                content_type=model_content_type
-            ).values_list("tmdb_id", flat=True)
-        )
-
-    if exclude_history:
-        excluded_ids.update(
-            UserContent.objects.filter(
-                user=request.user,
-                list_type=UserContent.ListType.HISTORY,
-                content_type=model_content_type
-            ).values_list("tmdb_id", flat=True)
-        )
+        if exclude_history:
+            excluded_ids.update(
+                UserContent.objects.filter(
+                    user=request.user,
+                    list_type=UserContent.ListType.HISTORY,
+                    content_type=model_content_type
+                ).values_list("tmdb_id", flat=True)
+            )
     endpoint_type = 'movie' if content_type == 'movie' else 'tv'
     release_date_param = 'primary_release_date.gte' if content_type == 'movie' else 'first_air_date.gte'
+    
+    allowed_sort_values = {
+        "popularity.desc",
+        "vote_average.desc",
+        "primary_release_date.desc",
+        "first_air_date.desc",
+        "revenue.desc",
+    }
+
+    if sort_by not in allowed_sort_values:
+        sort_by = "popularity.desc"
+
+    # TMDb uses different date sort fields for movies and TV.
+    if content_type == "tv" and sort_by == "primary_release_date.desc":
+        sort_by = "first_air_date.desc"
+
+    if content_type == "movie" and sort_by == "first_air_date.desc":
+        sort_by = "primary_release_date.desc"
 
     try:
         discover_params = {
             "api_key": settings.TMDB_API_KEY,
             "language": "en-US",
-            "sort_by": "popularity.desc",
+            "sort_by": sort_by,
             "include_adult": "false",
             "watch_region": watch_region,
             "with_watch_providers": platform,
             "with_genres": genre,
+            "without_genres": avoid_genre,
             release_date_param: f"{year}-01-01",
             "vote_count.gte": 100,
             "vote_average.gte": vote_average_gte
         }
+        
+        if content_type == "movie" and max_runtime:
+            try:
+                max_runtime_int = int(max_runtime)
+                if 30 <= max_runtime_int <= 300:
+                    discover_params["with_runtime.lte"] = max_runtime_int
+            except ValueError:
+                pass
         
         
 
@@ -1503,8 +1524,12 @@ def generate_mood_filters_view(request):
             "content_type": filters.content_type,
             "genre_names": filters.genre_names,
             "genre_ids": filters.genre_ids,
+            "avoid_genre_names": filters.avoid_genre_names,
+            "avoid_genre_ids": filters.avoid_genre_ids,
             "min_rating": filters.min_rating,
             "year_after": filters.year_after,
+            "max_runtime": filters.max_runtime,
+            "sort_by": filters.sort_by,
         },
         "explanation": filters.explanation,
     })

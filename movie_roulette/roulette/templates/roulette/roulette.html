@@ -249,6 +249,12 @@
                     </label>
                     <select id="genre-select" class="fx-select"></select>
                 </div>
+                <div>
+                    <label for="avoid-genre-select" class="block text-[11px] text-gray-600 uppercase tracking-wider font-semibold mb-1.5">
+                        Avoid genre
+                    </label>
+                    <select id="avoid-genre-select" class="fx-select"></select>
+                </div>
 
                 <div>
                     <label class="block text-[11px] text-gray-600 uppercase tracking-wider font-semibold mb-1.5">
@@ -264,6 +270,28 @@
                     </label>
                     <input type="range" id="rating-select" min="0" max="10" value="0" step="0.5" class="w-full accent-indigo-500">
                     <span id="rating-label" class="block text-center text-xs text-gray-600 mt-1">Any</span>
+                </div>
+                <div>
+                    <label for="runtime-select" class="block text-[11px] text-gray-600 uppercase tracking-wider font-semibold mb-1.5">
+                        Runtime
+                    </label>
+                    <select id="runtime-select" class="fx-select">
+                        <option value="">Any length</option>
+                        <option value="90">Under 90 minutes</option>
+                        <option value="120">Under 2 hours</option>
+                        <option value="150">Under 2.5 hours</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="sort-select" class="block text-[11px] text-gray-600 uppercase tracking-wider font-semibold mb-1.5">
+                        Sort by
+                    </label>
+                    <select id="sort-select" class="fx-select">
+                        <option value="popularity.desc">Popular</option>
+                        <option value="vote_average.desc">Top rated</option>
+                        <option value="primary_release_date.desc">Newest</option>
+                    </select>
                 </div>
 
                 <div class="md:col-span-2">
@@ -458,8 +486,11 @@
     function $(s){return document.querySelector(s)} function $$(s){return document.querySelectorAll(s)}
 
     var spinBtn=$('#spin-btn'), spinner=$('#spinner'), result=$('#movie-result'),
-        genreSelect=$('#genre-select'), yearSelect=$('#year-select'), yearLabel=$('#year-label'),
-        ratingSelect=$('#rating-select'), ratingLabel=$('#rating-label'), regionSelect=$('#region-select'),
+        genreSelect=$('#genre-select'), avoidGenreSelect=$('#avoid-genre-select'),
+        yearSelect=$('#year-select'), yearLabel=$('#year-label'),
+        ratingSelect=$('#rating-select'), ratingLabel=$('#rating-label'),
+        runtimeSelect=$('#runtime-select'), sortSelect=$('#sort-select'),
+        regionSelect=$('#region-select'),
         tabF=$('#tab-favorites'), tabW=$('#tab-watchlist'), tabH=$('#tab-history'),
         cF=$('#favorites-content'), cW=$('#watchlist-content'), cH=$('#history-content'),
         modal=$('#add-to-list-modal'), modalCancel=$('#cancel-add-to-list'),
@@ -499,20 +530,35 @@
     }
 
     // Genres
-    function fetchGenres(selectedGenreId) {
+    function fetchGenres(selectedGenreId, selectedAvoidGenreId) {
         fetch('https://api.themoviedb.org/3/genre/'+contentType+'/list?api_key='+tmdbApiKey+'&language=en-US')
         .then(function(r){return r.json()}).then(function(d){
             genreSelect.innerHTML='<option value="">Any genre</option>';
 
+            if (avoidGenreSelect) {
+                avoidGenreSelect.innerHTML='<option value="">No excluded genre</option>';
+            }
+
             (d.genres||[]).forEach(function(g){
-                genreSelect.innerHTML += '<option value="'+g.id+'">'+esc(g.name)+'</option>';
+                var optionHtml = '<option value="'+g.id+'">'+esc(g.name)+'</option>';
+                genreSelect.innerHTML += optionHtml;
+
+                if (avoidGenreSelect) {
+                    avoidGenreSelect.innerHTML += optionHtml;
+                }
             });
 
             if (selectedGenreId) {
                 genreSelect.value = String(selectedGenreId);
             }
+
+            if (selectedAvoidGenreId && avoidGenreSelect) {
+                avoidGenreSelect.value = String(selectedAvoidGenreId);
+            }
         }).catch(function(e){console.error(e);});
     }
+
+
     function applyMoodFilters(filters) {
         if (!filters) return;
 
@@ -534,13 +580,26 @@
             yearLabel.textContent = 'After ' + filters.year_after;
         }
 
+        if (filters.max_runtime !== undefined && runtimeSelect) {
+            runtimeSelect.value = filters.max_runtime ? String(filters.max_runtime) : '';
+        }
+
+        if (filters.sort_by && sortSelect) {
+            sortSelect.value = filters.sort_by;
+        }
+
         var selectedGenreId = null;
+        var selectedAvoidGenreId = null;
 
         if (filters.genre_ids && filters.genre_ids.length) {
             selectedGenreId = filters.genre_ids[0];
         }
 
-        fetchGenres(selectedGenreId);
+        if (filters.avoid_genre_ids && filters.avoid_genre_ids.length) {
+            selectedAvoidGenreId = filters.avoid_genre_ids[0];
+        }
+
+        fetchGenres(selectedGenreId, selectedAvoidGenreId);
     }
 
     function explainCurrentPick(content) {
@@ -596,13 +655,20 @@
         var excludeFavorites = excludeFavoritesInput ? excludeFavoritesInput.checked : false;
         var excludeHistory = excludeHistoryInput ? excludeHistoryInput.checked : false;
 
+        var avoidGenreValue = avoidGenreSelect ? avoidGenreSelect.value : '';
+        var runtimeValue = runtimeSelect ? runtimeSelect.value : '';
+        var sortValue = sortSelect ? sortSelect.value : 'popularity.desc';
+
         var url = URLS.random
             + '?content_type=' + contentType
             + '&watch_region=' + regionSelect.value
             + '&genre=' + genreSelect.value
+            + '&avoid_genre=' + avoidGenreValue
             + '&with_watch_providers=' + plats
             + '&primary_release_date.gte=' + yearSelect.value
             + '&vote_average_gte=' + ratingSelect.value
+            + '&max_runtime=' + runtimeValue
+            + '&sort_by=' + sortValue
             + '&exclude_watchlist=' + excludeWatchlist
             + '&exclude_favorites=' + excludeFavorites
             + '&exclude_history=' + excludeHistory;

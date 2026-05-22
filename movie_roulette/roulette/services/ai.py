@@ -35,8 +35,12 @@ class MoodFilters:
     content_type: str
     genre_names: list[str]
     genre_ids: list[int]
+    avoid_genre_names: list[str]
+    avoid_genre_ids: list[int]
     min_rating: float
     year_after: int
+    max_runtime: int | None
+    sort_by: str
     explanation: str
 
 
@@ -101,10 +105,22 @@ Return this exact JSON shape:
 {{
   "content_type": "movie",
   "genre_names": ["Comedy"],
+  "avoid_genre_names": ["Horror"],
   "min_rating": 6.5,
   "year_after": 2000,
+  "max_runtime": 120,
+  "sort_by": "popularity.desc",
   "explanation": "I focused on comedies because you asked for something light."
 }}
+
+sort_by must be one of:
+- "popularity.desc" for popular/mainstream picks
+- "vote_average.desc" for highly rated picks
+- "primary_release_date.desc" for newer movie picks
+- "first_air_date.desc" for newer TV picks
+
+max_runtime should be null unless the user asks for something short, quick, or not too long.
+Use 90 for very short movies, 120 for under two hours, and 150 for under two and a half hours.
 """
 
     response = client.models.generate_content(
@@ -136,6 +152,24 @@ Return this exact JSON shape:
             clean_genre_names.append(name)
             genre_ids.append(genre_id)
 
+    avoid_genre_names = data.get("avoid_genre_names", [])
+    if not isinstance(avoid_genre_names, list):
+        avoid_genre_names = []
+
+    clean_avoid_genre_names = []
+    avoid_genre_ids = []
+
+    for name in avoid_genre_names[:2]:
+        if not isinstance(name, str):
+            continue
+
+        name = name.strip()
+        genre_id = GENRE_NAME_TO_ID.get(name)
+
+        if genre_id:
+            clean_avoid_genre_names.append(name)
+            avoid_genre_ids.append(genre_id)
+
     try:
         min_rating = float(data.get("min_rating", 0))
     except (TypeError, ValueError):
@@ -150,6 +184,34 @@ Return this exact JSON shape:
 
     year_after = max(1950, min(year_after, 2025))
 
+    raw_max_runtime = data.get("max_runtime", None)
+    max_runtime = None
+
+    if raw_max_runtime not in [None, "", "null"]:
+        try:
+            max_runtime = int(raw_max_runtime)
+            if max_runtime not in [90, 120, 150]:
+                max_runtime = None
+        except (TypeError, ValueError):
+            max_runtime = None
+
+    sort_by = data.get("sort_by", "popularity.desc")
+    allowed_sort_values = {
+        "popularity.desc",
+        "vote_average.desc",
+        "primary_release_date.desc",
+        "first_air_date.desc",
+    }
+
+    if sort_by not in allowed_sort_values:
+        sort_by = "popularity.desc"
+
+    if content_type == "tv" and sort_by == "primary_release_date.desc":
+        sort_by = "first_air_date.desc"
+
+    if content_type == "movie" and sort_by == "first_air_date.desc":
+        sort_by = "primary_release_date.desc"
+
     explanation = data.get("explanation", "")
     if not isinstance(explanation, str):
         explanation = ""
@@ -158,8 +220,12 @@ Return this exact JSON shape:
         content_type=content_type,
         genre_names=clean_genre_names,
         genre_ids=genre_ids,
+        avoid_genre_names=clean_avoid_genre_names,
+        avoid_genre_ids=avoid_genre_ids,
         min_rating=min_rating,
         year_after=year_after,
+        max_runtime=max_runtime,
+        sort_by=sort_by,
         explanation=explanation[:240],
     )
 
