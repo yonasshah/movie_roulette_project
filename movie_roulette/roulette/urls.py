@@ -8,6 +8,8 @@ urlpatterns = [
     path('', views.roulette_view, name='roulette_view'),
     path('discover/', views.discover_view, name='discover'),
     path('search/', views.search_view, name='search_results'),
+    path("ai/mood-filters/", views.generate_mood_filters_view, name="generate_mood_filters"),
+    path("ai/explain-pick/", views.explain_recommendation_view, name="explain_recommendation"),
 
     # Content Detail & Reviews
     path('content/<str:content_type>/<int:tmdb_id>/', views.content_detail_view, name='content_detail'),

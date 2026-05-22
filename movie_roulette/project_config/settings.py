@@ -1,6 +1,9 @@
 from pathlib import Path
 import os
 import dj_database_url
+from dotenv import load_dotenv
+
+load_dotenv()  # Load environment variables from .env file
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -109,6 +112,9 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Your TMDb Key
 TMDB_API_KEY = "4547cf64feadcde0dac8544e88aec9ee"
+
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+AI_FEATURES_ENABLED = os.environ.get("AI_FEATURES_ENABLED", "False") == "True"
 
 # Redirects for login/logout
 LOGIN_REDIRECT_URL = '/'

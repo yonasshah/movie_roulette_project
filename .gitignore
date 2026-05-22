@@ -1,0 +1,27 @@
+# Environment variables
+.env
+movie_roulette/.env
+
+# Virtual environment
+venv/
+.venv/
+
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Local databases
+db.sqlite3
+*.sqlite3
+*.sqlite3-journal
+movie_roulette/db.sqlite3
+
+# Uploaded media
+media/
+movie_roulette/media/
+
+# Editor / OS
+.vscode/
+.DS_Store

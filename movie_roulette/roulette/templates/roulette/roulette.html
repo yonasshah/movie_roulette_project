@@ -157,7 +157,44 @@
         Pick a few filters, spin the reel, and find a movie or show to watch.
     </p>
 </section>
+    {# ===== MOOD SPIN ===== #}
+    <section class="cx-card p-4 md:p-5 mb-6">
+        <div class="flex items-start gap-4 mb-4">
+            <div class="w-11 h-11 rounded-2xl bg-indigo-500/10 border border-indigo-400/20 flex items-center justify-center text-indigo-300 flex-shrink-0">
+                <i class="fas fa-wand-magic-sparkles"></i>
+            </div>
 
+            <div>
+                <h2 class="font-display text-xl font-bold text-white">Mood Spin</h2>
+                <p class="text-sm text-gray-600 mt-1">
+                    Describe what you feel like watching and let AI suggest filters.
+                </p>
+            </div>
+        </div>
+
+        <div class="space-y-3">
+            <textarea
+                id="mood-input"
+                rows="3"
+                maxlength="500"
+                placeholder="Example: something funny, fast-paced, and not too serious..."
+                class="w-full bg-white/[0.04] border border-white/[0.07] rounded-2xl px-4 py-3 text-sm text-white placeholder-gray-700 outline-none focus:border-indigo-400/60 focus:bg-white/[0.055] transition-colors resize-none"
+            ></textarea>
+
+            <div class="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+                <button
+                    id="generate-mood-filters-btn"
+                    type="button"
+                    class="inline-flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2.5 px-5 rounded-xl text-sm transition-colors disabled:opacity-60 disabled:cursor-wait"
+                >
+                    <i class="fas fa-wand-magic-sparkles text-xs"></i>
+                    Generate filters
+                </button>
+
+                <p id="mood-ai-message" class="text-xs text-gray-600"></p>
+            </div>
+        </div>
+    </section>
     {# ===== CONTROL CARD ===== #}
     <section class="cx-card p-4 md:p-5 mb-7">
 
@@ -313,6 +350,23 @@
                 </p>
             </div>
         </div>
+
+        <div id="ai-explanation-card" class="hidden mt-4 cx-card p-5 border border-white/[0.06]">
+            <div class="flex items-start gap-3">
+                <div class="w-9 h-9 rounded-xl bg-indigo-500/10 border border-indigo-400/20 flex items-center justify-center text-indigo-300 flex-shrink-0">
+                    <i class="fas fa-wand-magic-sparkles text-xs"></i>
+                </div>
+
+                <div class="min-w-0">
+                    <h3 class="font-display text-lg font-bold text-white mb-1">
+                        Why this pick?
+                    </h3>
+                    <p id="ai-explanation-text" class="text-sm text-gray-500 leading-relaxed">
+                        Thinking through why this matches...
+                    </p>
+                </div>
+            </div>
+        </div>
     </section>
 
     {# ===== USER LISTS OR GUEST CTA ===== #}
@@ -388,11 +442,17 @@
     var tmdbApiKey = '{{ settings.TMDB_API_KEY }}';
     var isAuthenticated = {{ user.is_authenticated|yesno:"true,false" }};
     var URLS = {
-        login:"{% url 'users:login' %}", random:"{% url 'roulette:get_random_content' %}",
+        login:"{% url 'users:login' %}",
         signup:"{% url 'users:signup' %}",
-        lists:"{% url 'roulette:get_user_lists' %}", favToggle:"{% url 'roulette:toggle_favorite' %}",
-        watchToggle:"{% url 'roulette:toggle_watchlist' %}", addItem:"{% url 'roulette:list_add_item' %}",
-        createList:"{% url 'roulette:list_create' %}", allLists:"{% url 'roulette:list_all' %}"
+        random:"{% url 'roulette:get_random_content' %}",
+        lists:"{% url 'roulette:get_user_lists' %}",
+        favToggle:"{% url 'roulette:toggle_favorite' %}",
+        watchToggle:"{% url 'roulette:toggle_watchlist' %}",
+        addItem:"{% url 'roulette:list_add_item' %}",
+        createList:"{% url 'roulette:list_create' %}",
+        allLists:"{% url 'roulette:list_all' %}",
+        moodFilters:"{% url 'roulette:generate_mood_filters' %}",
+        explainPick:"{% url 'roulette:explain_recommendation' %}"
     };
 
     function $(s){return document.querySelector(s)} function $$(s){return document.querySelectorAll(s)}
@@ -408,6 +468,8 @@
 
     var contentType = 'movie';
     var currentContent = null;
+    var lastMoodPrompt = '';
+    var lastMoodFilters = null;
 
     // Toggle
     var togglePill = $('#type-toggle');
@@ -437,12 +499,89 @@
     }
 
     // Genres
-    function fetchGenres() {
+    function fetchGenres(selectedGenreId) {
         fetch('https://api.themoviedb.org/3/genre/'+contentType+'/list?api_key='+tmdbApiKey+'&language=en-US')
         .then(function(r){return r.json()}).then(function(d){
             genreSelect.innerHTML='<option value="">Any genre</option>';
-            (d.genres||[]).forEach(function(g){ genreSelect.innerHTML+='<option value="'+g.id+'">'+esc(g.name)+'</option>'; });
+
+            (d.genres||[]).forEach(function(g){
+                genreSelect.innerHTML += '<option value="'+g.id+'">'+esc(g.name)+'</option>';
+            });
+
+            if (selectedGenreId) {
+                genreSelect.value = String(selectedGenreId);
+            }
         }).catch(function(e){console.error(e);});
+    }
+    function applyMoodFilters(filters) {
+        if (!filters) return;
+
+        if (filters.content_type) {
+            contentType = filters.content_type;
+
+            document.querySelectorAll('#type-toggle .toggle-opt').forEach(function(opt) {
+                opt.classList.toggle('active', opt.dataset.val === contentType);
+            });
+        }
+
+        if (filters.min_rating !== undefined && ratingSelect) {
+            ratingSelect.value = filters.min_rating;
+            ratingLabel.textContent = filters.min_rating > 0 ? 'At least ' + filters.min_rating + ' / 10' : 'Any';
+        }
+
+        if (filters.year_after !== undefined && yearSelect) {
+            yearSelect.value = filters.year_after;
+            yearLabel.textContent = 'After ' + filters.year_after;
+        }
+
+        var selectedGenreId = null;
+
+        if (filters.genre_ids && filters.genre_ids.length) {
+            selectedGenreId = filters.genre_ids[0];
+        }
+
+        fetchGenres(selectedGenreId);
+    }
+
+    function explainCurrentPick(content) {
+        var explanationCard = document.getElementById('ai-explanation-card');
+        var explanationText = document.getElementById('ai-explanation-text');
+
+        if (!explanationCard || !explanationText) return;
+        if (!lastMoodPrompt) return;
+
+        explanationCard.classList.remove('hidden');
+        explanationText.textContent = 'Thinking through why this matches...';
+
+        var resultContent = Object.assign({}, content);
+        resultContent.content_type = contentType;
+
+        fetch(URLS.explainPick, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken,
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({
+                mood: lastMoodPrompt,
+                filters: lastMoodFilters || {},
+                content: resultContent
+            })
+        })
+        .then(function(response) {
+            return response.json();
+        })
+        .then(function(data) {
+            if (data.success) {
+                explanationText.textContent = data.explanation;
+            } else {
+                explanationText.textContent = 'This pick matched your selected mood filters.';
+            }
+        })
+        .catch(function() {
+            explanationText.textContent = 'This pick matched your selected mood filters.';
+        });
     }
 
     // Spin
@@ -471,10 +610,18 @@
             if(!r.ok)return r.json().then(function(d){throw new Error(d.error||'No results.');});
             return r.json();
         }).then(function(d){
-                currentContent = d;
-                showResult(d);
-                if (isAuthenticated) updateLists();
-            })
+            currentContent = d;
+            showResult(d);
+
+            if (isAuthenticated) updateLists();
+
+            if (lastMoodPrompt) {
+                explainCurrentPick(d);
+            } else {
+                var explanationCard = document.getElementById('ai-explanation-card');
+                if (explanationCard) explanationCard.classList.add('hidden');
+            }
+        })
         .catch(function(e){ window.showToast(e.message,'error'); result.innerHTML=''; })
         .finally(function(){ spinner.classList.remove('spinning'); spinBtn.disabled=false; });
     }
@@ -672,14 +819,77 @@
         }).catch(function(e){window.showToast(e.message||'Error.','error');if(modalMsg)modalMsg.innerHTML='';});
     }
     
+    var moodInput = document.getElementById('mood-input');
+    var moodButton = document.getElementById('generate-mood-filters-btn');
+    var moodMessage = document.getElementById('mood-ai-message');
+
+    function generateMoodFilters() {
+        console.log('Mood button clicked');
+
+        if (!moodInput || !moodButton) {
+            console.log('Mood input or button missing');
+            return;
+        }
+
+        var mood = moodInput.value.trim();
+
+        if (!mood) {
+            window.showToast('Describe what you are in the mood for first.', 'error');
+            return;
+        }
+
+        moodButton.disabled = true;
+        moodMessage.textContent = 'Generating filters...';
+
+        fetch(URLS.moodFilters, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken,
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({
+                mood: mood
+            })
+        })
+        .then(function(response) {
+            return response.json();
+        })
+        .then(function(data) {
+            console.log('Mood filters response:', data);
+
+            if (!data.success) {
+                window.showToast(data.error || 'Could not generate filters.', 'error');
+                moodMessage.textContent = '';
+                return;
+            }
+
+            lastMoodPrompt = mood;
+            lastMoodFilters = data.filters;
+
+            applyMoodFilters(data.filters);
+
+            moodMessage.textContent = data.explanation || 'Filters updated.';
+            window.showToast('Filters updated from your mood.', 'success');
+        })
+        .catch(function() {
+            window.showToast('AI is temporarily unavailable. Try again later.', 'error');
+            moodMessage.textContent = 'AI is temporarily unavailable. You can still adjust filters manually.';
+        })
+        .finally(function() {
+            moodButton.disabled = false;
+        });
+    }
 
     // Events
+    if (moodButton) moodButton.addEventListener('click', generateMoodFilters);
+
     spinBtn.addEventListener('click',spin);
     yearSelect.addEventListener('input',function(){yearLabel.textContent='After '+yearSelect.value});
     ratingSelect.addEventListener('input',function(){ratingLabel.textContent=ratingSelect.value>0?'At least '+ratingSelect.value+' / 10':'Any'});
-    tabF.addEventListener('click',function(){switchTab('favorites')});
-    tabW.addEventListener('click',function(){switchTab('watchlist')});
-    tabH.addEventListener('click',function(){switchTab('history')});
+    if (tabF) tabF.addEventListener('click', function(){ switchTab('favorites'); });
+    if (tabW) tabW.addEventListener('click', function(){ switchTab('watchlist'); });
+    if (tabH) tabH.addEventListener('click', function(){ switchTab('history'); });
     modalCancel.addEventListener('click',closeModal);
     createBtn.addEventListener('click',createAndAdd);
     modal.addEventListener('click',function(e){if(e.target===modal)closeModal()});

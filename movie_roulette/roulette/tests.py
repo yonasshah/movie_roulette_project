@@ -2,6 +2,8 @@ from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from django.test import TestCase
 from django.urls import reverse
+from unittest.mock import patch
+from django.test import override_settings
 
 from roulette.models import (
     UserList,
@@ -441,3 +443,82 @@ class CustomListItemTests(TestCase):
             ).exists()
         )
         
+@override_settings(AI_FEATURES_ENABLED=True, GEMINI_API_KEY="fake-test-key")
+class AIFeatureTests(TestCase):
+    @patch("roulette.views.generate_mood_filters")
+    def test_generate_mood_filters_endpoint(self, mock_generate):
+        class FakeFilters:
+            content_type = "movie"
+            genre_names = ["Comedy", "Action"]
+            genre_ids = [35, 28]
+            min_rating = 6.0
+            year_after = 2010
+            explanation = "I focused on comedy and action."
+
+        mock_generate.return_value = FakeFilters()
+
+        response = self.client.post(
+            reverse("roulette:generate_mood_filters"),
+            data='{"mood": "something funny and fast-paced"}',
+            content_type="application/json",
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest"
+        )
+
+        self.assertEqual(response.status_code, 200)
+
+        data = response.json()
+
+        self.assertTrue(data["success"])
+        self.assertEqual(data["filters"]["content_type"], "movie")
+        self.assertEqual(data["filters"]["genre_names"], ["Comedy", "Action"])
+        self.assertEqual(data["filters"]["genre_ids"], [35, 28])
+        self.assertEqual(data["filters"]["min_rating"], 6.0)
+        self.assertEqual(data["filters"]["year_after"], 2010)
+        self.assertIn("comedy", data["explanation"].lower())
+        
+    @patch("roulette.views.generate_recommendation_explanation")
+    def test_explain_recommendation_endpoint(self, mock_explain):
+        mock_explain.return_value = "This fits because it is light, funny, and fast-paced."
+
+        response = self.client.post(
+            reverse("roulette:explain_recommendation"),
+            data='{"mood":"something funny","filters":{"content_type":"movie"},"content":{"title":"Test Movie","overview":"A fun action comedy."}}',
+            content_type="application/json",
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest"
+        )
+
+        self.assertEqual(response.status_code, 200)
+
+        data = response.json()
+
+        self.assertTrue(data["success"])
+        self.assertIn("fits", data["explanation"].lower())
+        
+    @override_settings(AI_FEATURES_ENABLED=False)
+    def test_generate_mood_filters_disabled(self):
+        response = self.client.post(
+            reverse("roulette:generate_mood_filters"),
+            data='{"mood": "something funny"}',
+            content_type="application/json",
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest"
+        )
+
+        self.assertEqual(response.status_code, 503)
+
+        data = response.json()
+        self.assertFalse(data["success"])
+        
+    @override_settings(AI_FEATURES_ENABLED=False)
+    def test_explain_recommendation_disabled(self):
+        response = self.client.post(
+            reverse("roulette:explain_recommendation"),
+            data='{"mood":"funny","filters":{},"content":{"title":"Test Movie"}}',
+            content_type="application/json",
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest"
+        )
+
+        self.assertEqual(response.status_code, 503)
+
+        data = response.json()
+        self.assertFalse(data["success"])
+

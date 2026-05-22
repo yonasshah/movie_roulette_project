@@ -1,5 +1,7 @@
 # movie_roulette/roulette/views.py
 
+import json
+
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
 from django.http import Http404, JsonResponse, HttpResponseForbidden
@@ -15,6 +17,7 @@ from django.contrib.contenttypes.models import ContentType
 from .forms import ShareListForm, UserListForm, ReviewForm, CommentForm # Add CommentForm
 from .models import Notification, SharedListPost, UserContent, UserFollow, UserList, UserReview, Comment, Like, SharedListPost, Vote # Add Comment, Like
 import random
+from .services.ai import generate_mood_filters, generate_recommendation_explanation
 from django.contrib.auth import get_user_model
 from django.db.models import Q, Count, Avg
 from django.db import IntegrityError # To handle duplicate list names
@@ -1456,3 +1459,95 @@ def edit_comment_view(request, comment_id):
         return JsonResponse({'success': True, 'text': comment.text})
     messages.success(request, 'Comment updated.')
     return redirect(request.POST.get('next', 'roulette:feed'))
+
+@require_POST
+def generate_mood_filters_view(request):
+    if not settings.AI_FEATURES_ENABLED:
+        return JsonResponse({
+            "success": False,
+            "error": "AI features are currently disabled."
+        }, status=503)
+
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+    except json.JSONDecodeError:
+        return JsonResponse({
+            "success": False,
+            "error": "Invalid request."
+        }, status=400)
+
+    mood = payload.get("mood", "").strip()
+
+    if not mood:
+        return JsonResponse({
+            "success": False,
+            "error": "Tell us what you are in the mood for."
+        }, status=400)
+
+    try:
+        filters = generate_mood_filters(mood)
+    except ValueError as e:
+        return JsonResponse({
+            "success": False,
+            "error": str(e)
+        }, status=400)
+    except Exception:
+        return JsonResponse({
+            "success": False,
+            "error": "Could not generate filters right now."
+        }, status=500)
+
+    return JsonResponse({
+        "success": True,
+        "filters": {
+            "content_type": filters.content_type,
+            "genre_names": filters.genre_names,
+            "genre_ids": filters.genre_ids,
+            "min_rating": filters.min_rating,
+            "year_after": filters.year_after,
+        },
+        "explanation": filters.explanation,
+    })
+    
+@require_POST
+def explain_recommendation_view(request):
+    if not settings.AI_FEATURES_ENABLED:
+        return JsonResponse({
+            "success": False,
+            "error": "AI features are currently disabled."
+        }, status=503)
+
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+    except json.JSONDecodeError:
+        return JsonResponse({
+            "success": False,
+            "error": "Invalid request."
+        }, status=400)
+
+    mood = payload.get("mood", "").strip()
+    filters = payload.get("filters", {})
+    content = payload.get("content", {})
+
+    if not content:
+        return JsonResponse({
+            "success": False,
+            "error": "Missing content."
+        }, status=400)
+
+    try:
+        explanation = generate_recommendation_explanation(
+            mood_prompt=mood,
+            filters=filters,
+            content=content,
+        )
+    except Exception:
+        return JsonResponse({
+            "success": False,
+            "error": "Could not explain this pick right now."
+        }, status=500)
+
+    return JsonResponse({
+        "success": True,
+        "explanation": explanation,
+    })
