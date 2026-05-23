@@ -261,6 +261,7 @@ def feed_view(request):
         'feed_items': feed_items_limited,
         'comment_form': comment_form,
         'comment_ctype_id': comment_ctype_id,
+        'followed_user_ids': followed_user_ids,
     }
     return render(request, 'roulette/feed.html', context)
 

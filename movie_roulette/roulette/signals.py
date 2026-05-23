@@ -14,19 +14,38 @@ def broadcast_new_feed_item(sender, instance, created, **kwargs):
     if created:
         channel_layer = get_channel_layer()
         group_name = 'feed_updates'
-        item_html = None # Initialize item_html
 
         # Get ContentType ID for SharedListPost
         try:
             shared_list_post_ct = ContentType.objects.get_for_model(SharedListPost)
             ctype_id = shared_list_post_ct.id
         except ContentType.DoesNotExist:
-            print(f"Error: ContentType for SharedListPost not found.")
-            return # Cannot proceed without ContentType
+            print("Error: ContentType for SharedListPost not found.")
+            return
+
+        # Add temporary attributes so the feed card template can render this
+        # SharedListPost object like a normal feed item.
+        instance.type = 'share'
+        instance.ctype_id = ctype_id
+        instance.obj_id = instance.id
+        instance.fetched_user_vote = 0
+        instance.fetched_up_count = 0
+        instance.fetched_down_count = 0
+        instance.fetched_comment_count = 0
+        instance.fetched_comments = []
+
+        item_html = render_to_string(
+            'roulette/partials/_feed_card.html',
+            {
+                'item': instance,
+                'user': instance.user,
+                'request': None,
+            }
+        )
 
         # Prepare data to send via WebSocket
         message_data = {
-            'type': 'share', # Indicate the type of item
+            'type': 'share',
             'post_id': instance.id,
             'user_id': instance.user.id,
             'username': instance.user.username,
@@ -34,19 +53,19 @@ def broadcast_new_feed_item(sender, instance, created, **kwargs):
             'list_id': instance.list.id,
             'list_name': instance.list.name,
             'list_url': instance.list.get_absolute_url(),
-            'list_description': instance.list.description, # Send description
+            'list_description': instance.list.description,
             'share_message': instance.message,
-            'timestamp_iso': instance.timestamp.isoformat(), # Send ISO format for JS parsing
-            # Include IDs needed for like/comment functionality on the SharedListPost itself
+            'timestamp_iso': instance.timestamp.isoformat(),
             'ctype_id': ctype_id,
             'obj_id': instance.id,
+            'html': item_html,
         }
 
         async_to_sync(channel_layer.group_send)(
             group_name,
             {
-                'type': 'feed.new_item', # Use a different type for the consumer method
-                'data': message_data # Send JSON data
+                'type': 'feed.new_item',
+                'data': message_data
             }
         )
 
@@ -65,24 +84,41 @@ def broadcast_new_usercontent_item(sender, instance, created, **kwargs):
         except ContentType.DoesNotExist:
             print(f"Error: ContentType for UserContent not found.")
             return # Cannot proceed
+        
+        instance.type = 'list_item'
+        instance.ctype_id = ctype_id
+        instance.obj_id = instance.id
+        instance.fetched_user_vote = 0
+        instance.fetched_up_count = 0
+        instance.fetched_down_count = 0
+        instance.fetched_comment_count = 0
+        instance.fetched_comments = []
+
+        item_html = render_to_string(
+            'roulette/partials/_feed_card.html',
+            {
+                'item': instance,
+                'user': instance.user,
+                'request': None,
+            }
+        )
 
         # Prepare data to send via WebSocket
         message_data = {
-            'type': 'list_item', # Indicate the type of item
+            'type': 'list_item',
             'user_id': instance.user.id,
             'username': instance.user.username,
             'profile_image_url': instance.user.profile.image.url,
-            'list_type': instance.list_type, # e.g., 'FAVORITE', 'WATCHLIST', 'CUSTOM'
-            'content_type': instance.content_type, # 'MOVIE' or 'TV'
+            'list_type': instance.list_type,
+            'content_type': instance.content_type,
             'tmdb_id': instance.tmdb_id,
             'title': instance.title,
             'poster_path': instance.poster_path,
             'release_year': instance.release_year,
             'timestamp_iso': instance.timestamp.isoformat(),
-            # Include IDs needed for like/comment functionality on the UserContent item itself
             'ctype_id': ctype_id,
             'obj_id': instance.id,
-            # Include custom list details if applicable
+            'html': item_html,
             'custom_list_id': instance.custom_list.id if instance.list_type == UserContent.ListType.CUSTOM and instance.custom_list else None,
             'custom_list_name': instance.custom_list.name if instance.list_type == UserContent.ListType.CUSTOM and instance.custom_list else None,
         }

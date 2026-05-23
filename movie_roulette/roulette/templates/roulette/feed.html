@@ -200,6 +200,7 @@
 (function() {
     'use strict';
     var csrfToken = '{{ csrf_token }}', userId = '{{ user.id|escapejs }}';
+    var followedUserIds = {{ followed_user_ids|safe }};
     var commentCtypeId = '{{ comment_ctype_id }}';
     var fc = document.getElementById('feed-container');
     if (!fc) return;
@@ -243,6 +244,15 @@
 
         // Hide the "View all" button after clicking
         btn.closest('.comment-expand-controls')?.remove();
+    }
+
+    function shouldShowLiveFeedItem(data) {
+        if (!data || !data.user_id) return false;
+
+        var actorId = Number(data.user_id);
+        var currentUserId = Number(userId);
+
+        return actorId === currentUserId || followedUserIds.includes(actorId);
     }
 
     // =====================================================
@@ -557,6 +567,48 @@
         var ws = new WebSocket((location.protocol === 'https:' ? 'wss:' : 'ws:') + '//' + location.host + '/ws/feed/');
         ws.onmessage = function(e) { 
             var msg = JSON.parse(e.data);
+
+            if (msg.type === 'new_item' && msg.data) {
+                var nd = msg.data;
+
+                if (!shouldShowLiveFeedItem(nd)) return;
+                if (!nd.html) return;
+
+                var existing = null;
+                if (nd.ctype_id && nd.obj_id) {
+                    existing = fc.querySelector(
+                        '.feed-item[data-ctype-id="' + nd.ctype_id + '"][data-item-id="' + nd.obj_id + '"]'
+                    );
+                }
+
+                if (existing) return;
+
+                var emptyMsg = document.getElementById('empty-feed-message');
+                if (emptyMsg) emptyMsg.remove();
+
+                var temp = document.createElement('div');
+                temp.innerHTML = nd.html.trim();
+
+                var newCard = temp.firstElementChild;
+                if (!newCard) return;
+
+                fc.prepend(newCard);
+
+                var newForm = newCard.querySelector('.add-comment-form');
+                if (newForm) {
+                    newForm.addEventListener('submit', function(e) {
+                        e.preventDefault();
+                        handleComment(this);
+                    });
+                }
+
+                initCollapseState();
+                initReviewClamping();
+
+                if (window.showToast) {
+                    window.showToast('New feed activity added.', 'info');
+                }
+            }
 
             // Handle new comments via WebSocket
             if (msg.type === 'new_comment' && msg.data) {

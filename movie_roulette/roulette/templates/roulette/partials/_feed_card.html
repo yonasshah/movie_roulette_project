@@ -1,0 +1,42 @@
+<div class="feed-card feed-item"
+     {% if item.type != 'follow' %}data-item-id="{{ item.obj_id }}" data-ctype-id="{{ item.ctype_id }}"{% endif %}>
+    {% if item.type == 'share' %}
+        {% include 'roulette/_feed_item_shared_list.html' with item=item request=request %}
+    {% elif item.type == 'follow' %}
+        {% include 'roulette/_feed_item_content.html' with item=item %}
+    {% else %}
+        {% include 'roulette/_feed_item_content.html' with item=item %}
+        <div class="fc-footer">
+            <button class="vote-btn vote-up {% if item.fetched_user_vote == 1 %}active{% endif %}" data-ctype-id="{{ item.ctype_id }}" data-obj-id="{{ item.obj_id }}" data-vote="1">
+                <i class="fas fa-thumbs-up"></i> <span class="up-count">{{ item.fetched_up_count|default:0 }}</span>
+            </button>
+            <button class="vote-btn vote-down {% if item.fetched_user_vote == -1 %}active{% endif %}" data-ctype-id="{{ item.ctype_id }}" data-obj-id="{{ item.obj_id }}" data-vote="-1">
+                <i class="fas fa-thumbs-down"></i> <span class="down-count">{{ item.fetched_down_count|default:0 }}</span>
+            </button>
+            <div class="footer-sep"></div>
+            <span class="comment-count-display fc-comment-count">
+                <i class="fas fa-comment text-[10px]"></i>
+                <span class="count-number">{{ item.fetched_comment_count|default:0 }}</span> comments
+            </span>
+        </div>
+
+        <div class="comments-section" data-total-comments="{{ item.fetched_comment_count|default:0 }}">
+            <div class="comments-list"></div>
+
+            {% if user.is_authenticated %}
+            <form class="add-comment-form flex items-center gap-3 mt-2 border-t border-white/[0.04] pt-3" method="POST" action="{% url 'roulette:add_comment' %}">
+                {% csrf_token %}
+                <input type="hidden" name="content_type_id" value="{{ item.ctype_id }}">
+                <input type="hidden" name="object_id" value="{{ item.obj_id }}">
+                <input type="hidden" name="next" value="{{ request.path }}">
+                <img src="{{ user.profile.image.url }}" class="w-6 h-6 rounded-full object-cover flex-shrink-0" alt="">
+                <textarea name="text" rows="1" placeholder="Add a comment..." class="reply-input flex-1 bg-transparent border-none text-[13px] text-gray-200 focus:ring-0 p-0 m-0 resize-none overflow-hidden placeholder-gray-600" maxlength="500" required></textarea>
+                <button type="submit" class="flex-shrink-0 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-[12px] px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-wait">
+                    Post
+                </button>
+                <div class="comment-form-errors text-[10px] text-red-400 hidden"></div>
+            </form>
+            {% endif %}
+        </div>
+    {% endif %}
+</div>
