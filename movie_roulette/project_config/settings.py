@@ -3,9 +3,10 @@ import os
 import dj_database_url
 from dotenv import load_dotenv
 
-load_dotenv()  # Load environment variables from .env file
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+load_dotenv(BASE_DIR / ".env")
 
 SECRET_KEY = os.environ.get("SECRET_KEY")
 DEBUG = os.environ.get("DEBUG", "False") == "True"
@@ -13,6 +14,7 @@ TMDB_API_KEY = os.environ.get("TMDB_API_KEY", "")
 ALLOWED_HOSTS = ['movie-roulette-project.onrender.com', '127.0.0.1']
 
 INSTALLED_APPS = [
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -56,6 +58,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'project_config.wsgi.application'
+ASGI_APPLICATION = 'project_config.asgi.application'
 
 # DATABASES = {
 #     'default': dj_database_url.config(
