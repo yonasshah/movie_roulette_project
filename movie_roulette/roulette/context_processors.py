@@ -1,13 +1,27 @@
-# movie_roulette/roulette/context_processors.py
-
 from .models import Notification
 
 def unread_notifications_count(request):
-    """
-    Adds the count of unread notifications to the template context
-    for the logged-in user.
-    """
     if request.user.is_authenticated:
-        count = Notification.objects.filter(recipient=request.user, read=False).count()
-        return {'unread_notifications_count': count}
-    return {'unread_notifications_count': 0} # Return 0 if user is not logged in
+        notifications = Notification.objects.filter(
+            recipient=request.user
+        ).select_related(
+            "actor",
+            "actor__profile",
+            "target_content_type",
+            "action_object_content_type",
+        )[:8]
+
+        count = Notification.objects.filter(
+            recipient=request.user,
+            read=False
+        ).count()
+
+        return {
+            "unread_notifications_count": count,
+            "recent_notifications": notifications,
+        }
+
+    return {
+        "unread_notifications_count": 0,
+        "recent_notifications": [],
+    }
