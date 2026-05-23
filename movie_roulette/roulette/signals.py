@@ -6,6 +6,7 @@ from asgiref.sync import async_to_sync
 from .models import SharedListPost, Notification, Comment, Like, UserContent, Vote
 from django.contrib.contenttypes.models import ContentType
 from django.template.loader import render_to_string
+import html
 
 
 
@@ -28,18 +29,25 @@ def _notification_display_text(notification):
     return verb_map.get(notification.verb, notification.verb)
 
 
+def _clean_title(value):
+    if not value:
+        return ""
+
+    value = str(value)
+    value = value.replace("\\u0027", "'")
+    value = html.unescape(value)
+    return value
+
+
 def _get_target_title(obj):
-    """
-    Gets a human-friendly title/name for notification text.
-    """
     if hasattr(obj, "title") and obj.title:
-        return obj.title
+        return _clean_title(obj.title)
 
     if hasattr(obj, "name") and obj.name:
-        return obj.name
+        return _clean_title(obj.name)
 
     if hasattr(obj, "list") and obj.list:
-        return obj.list.name
+        return _clean_title(obj.list.name)
 
     return "your post"
 

@@ -95,7 +95,19 @@
                     {% elif notification.verb == "followed" %}
                         followed you
                     {% else %}
-                        {{ notification.verb }}
+                        {% if notification.verb == "commented_on_post" %}
+                            commented on your post
+                        {% elif notification.verb == "replied_to_comment" %}
+                            replied to your comment
+                        {% elif notification.verb == "upvoted_post" %}
+                            upvoted your post
+                        {% elif notification.verb == "upvoted_comment" %}
+                            upvoted your comment
+                        {% elif notification.verb == "followed" %}
+                            followed you
+                        {% else %}
+                            {{ notification.verb }}
+                        {% endif %}
                     {% endif %}
 
                     {% if notification.target %}
