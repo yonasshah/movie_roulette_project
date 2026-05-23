@@ -265,14 +265,10 @@ def send_new_comment(sender, instance, created, **kwargs):
     try:
         if instance.parent:
             recipient = instance.parent.user
-            title = _get_target_title(instance.content_object)
-            list_context = _get_list_context(instance.content_object)
-            verb = f"replied to your comment on {title}{list_context}"
+            verb = "replied_to_comment"
         else:
             recipient = _get_notification_owner(instance.content_object)
-            title = _get_target_title(instance.content_object)
-            list_context = _get_list_context(instance.content_object)
-            verb = f"commented on {title}{list_context}"
+            verb = "commented_on_post"
 
         if recipient and recipient != instance.user:
             Notification.objects.create(
@@ -409,9 +405,9 @@ def send_vote_update_on_save(sender, instance, created, **kwargs):
     list_context = _get_list_context(target)
 
     if isinstance(target, Comment):
-        verb = f"upvoted your comment on {title}{list_context}"
+        verb = "upvoted_comment"
     else:
-        verb = f"upvoted {title}{list_context}"
+        verb = "upvoted_post"
 
     _create_notification_once(
         recipient=recipient,
@@ -440,9 +436,9 @@ def send_vote_update_on_delete(sender, instance, **kwargs):
     list_context = _get_list_context(target)
 
     if isinstance(target, Comment):
-        verb = f"upvoted your comment on {title}{list_context}"
+        verb = "upvoted_comment"
     else:
-        verb = f"upvoted {title}{list_context}"
+        verb = "upvoted_post"
 
     Notification.objects.filter(
         recipient=recipient,

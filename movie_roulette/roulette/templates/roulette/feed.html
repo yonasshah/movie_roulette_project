@@ -341,17 +341,8 @@
                 if (cl) { 
                     var wrapper = document.createElement('div'); 
                     
-                    // Count how many TOP-LEVEL comments are already visible
-                    var currentCount = cl.querySelectorAll(':scope > .comment-thread').length;
-                    
-                    // If there are already 2 or more, hide this new one to prevent a wall of text
-                    if (currentCount >= 2) {
-                        wrapper.className = 'comment-thread hidden';
-                    } else {
-                        wrapper.className = 'comment-thread';
-                    }
-                    
-                    wrapper.innerHTML = d.comment_html; 
+                    wrapper.className = 'comment-thread';
+                    wrapper.innerHTML = d.comment_html;
                     cl.appendChild(wrapper); 
                 }
                 updCount(fi);
@@ -715,8 +706,7 @@
                     var cl = tgt.querySelector('.comments-list');
                     if (cl && cd.comment_html) {
                         var wrapper = document.createElement('div');
-                        var currentCount = cl.querySelectorAll(':scope > .comment-thread').length;
-                        wrapper.className = 'comment-thread' + (currentCount >= 2 ? ' hidden' : '');
+                        wrapper.className = 'comment-thread';
                         wrapper.innerHTML = cd.comment_html;
                         cl.appendChild(wrapper);
                         updCount(tgt);
