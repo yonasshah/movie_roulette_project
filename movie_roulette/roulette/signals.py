@@ -6,6 +6,7 @@ from asgiref.sync import async_to_sync
 from .models import SharedListPost, Notification, Comment, Like, UserContent, Vote
 from django.contrib.contenttypes.models import ContentType
 from django.template.loader import render_to_string
+import html
 
 
 
@@ -17,19 +18,36 @@ def _get_notification_owner(obj):
         return obj.user
     return None
 
+def _notification_display_text(notification):
+    verb_map = {
+        "commented_on_post": "commented on your post",
+        "replied_to_comment": "replied to your comment",
+        "upvoted_post": "upvoted your post",
+        "upvoted_comment": "upvoted your comment",
+        "followed": "followed you",
+    }
+    return verb_map.get(notification.verb, notification.verb)
+
+
+def _clean_title(value):
+    if not value:
+        return ""
+
+    value = str(value)
+    value = value.replace("\\u0027", "'")
+    value = html.unescape(value)
+    return value
+
 
 def _get_target_title(obj):
-    """
-    Gets a human-friendly title/name for notification text.
-    """
     if hasattr(obj, "title") and obj.title:
-        return obj.title
+        return _clean_title(obj.title)
 
     if hasattr(obj, "name") and obj.name:
-        return obj.name
+        return _clean_title(obj.name)
 
     if hasattr(obj, "list") and obj.list:
-        return obj.list.name
+        return _clean_title(obj.list.name)
 
     return "your post"
 
@@ -240,7 +258,7 @@ def send_notification_update(sender, instance, created, **kwargs):
         unread_count = Notification.objects.filter(recipient=instance.recipient, read=False).count()
 
         actor_name = instance.actor.username if instance.actor else 'System'
-        message_text = f"@{actor_name} {instance.verb}"
+        message_text = f"@{actor_name} {_notification_display_text(instance)}"
 
         async_to_sync(channel_layer.group_send)(
             user_specific_group,
@@ -265,14 +283,10 @@ def send_new_comment(sender, instance, created, **kwargs):
     try:
         if instance.parent:
             recipient = instance.parent.user
-            title = _get_target_title(instance.content_object)
-            list_context = _get_list_context(instance.content_object)
-            verb = f"replied to your comment on {title}{list_context}"
+            verb = "replied_to_comment"
         else:
             recipient = _get_notification_owner(instance.content_object)
-            title = _get_target_title(instance.content_object)
-            list_context = _get_list_context(instance.content_object)
-            verb = f"commented on {title}{list_context}"
+            verb = "commented_on_post"
 
         if recipient and recipient != instance.user:
             Notification.objects.create(
@@ -409,9 +423,9 @@ def send_vote_update_on_save(sender, instance, created, **kwargs):
     list_context = _get_list_context(target)
 
     if isinstance(target, Comment):
-        verb = f"upvoted your comment on {title}{list_context}"
+        verb = "upvoted_comment"
     else:
-        verb = f"upvoted {title}{list_context}"
+        verb = "upvoted_post"
 
     _create_notification_once(
         recipient=recipient,
@@ -440,9 +454,9 @@ def send_vote_update_on_delete(sender, instance, **kwargs):
     list_context = _get_list_context(target)
 
     if isinstance(target, Comment):
-        verb = f"upvoted your comment on {title}{list_context}"
+        verb = "upvoted_comment"
     else:
-        verb = f"upvoted {title}{list_context}"
+        verb = "upvoted_post"
 
     Notification.objects.filter(
         recipient=recipient,
