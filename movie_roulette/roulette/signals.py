@@ -3,7 +3,7 @@ from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
-from .models import SharedListPost, Notification, Comment, Like, UserContent
+from .models import SharedListPost, Notification, Comment, Like, UserContent, Vote
 from django.contrib.contenttypes.models import ContentType
 from django.template.loader import render_to_string
 
@@ -131,6 +131,40 @@ def broadcast_new_usercontent_item(sender, instance, created, **kwargs):
             }
         )
 
+@receiver(post_delete, sender=UserContent)
+def broadcast_removed_usercontent_item(sender, instance, **kwargs):
+    # Only remove feed cards for list items that appear in the feed.
+    # History items are not shown in the feed.
+    if instance.list_type == UserContent.ListType.HISTORY:
+        return
+
+    channel_layer = get_channel_layer()
+    group_name = 'feed_updates'
+
+    try:
+        usercontent_ct = ContentType.objects.get_for_model(UserContent)
+        ctype_id = usercontent_ct.id
+    except ContentType.DoesNotExist:
+        print("Error: ContentType for UserContent not found.")
+        return
+
+    message_data = {
+        'type': 'list_item',
+        'user_id': instance.user.id,
+        'ctype_id': ctype_id,
+        'obj_id': instance.id,
+        'tmdb_id': instance.tmdb_id,
+        'content_type': instance.content_type,
+        'list_type': instance.list_type,
+    }
+
+    async_to_sync(channel_layer.group_send)(
+        group_name,
+        {
+            'type': 'feed.removed_item',
+            'data': message_data
+        }
+    )
 
 # --- Receiver for Notification ---
 @receiver(post_save, sender=Notification)
@@ -226,3 +260,59 @@ def send_like_update_on_save(sender, instance, created, **kwargs):
 @receiver(post_delete, sender=Like)
 def send_like_update_on_delete(sender, instance, **kwargs):
     send_like_update(instance)
+    
+def send_vote_update(instance):
+    channel_layer = get_channel_layer()
+    group_name = 'feed_updates'
+
+    up_count = Vote.objects.filter(
+        content_type_id=instance.content_type_id,
+        object_id=instance.object_id,
+        vote_type=1
+    ).count()
+
+    down_count = Vote.objects.filter(
+        content_type_id=instance.content_type_id,
+        object_id=instance.object_id,
+        vote_type=-1
+    ).count()
+
+    async_to_sync(channel_layer.group_send)(
+        group_name,
+        {
+            'type': 'feed.vote_update',
+            'data': {
+                'ctype_id': instance.content_type_id,
+                'obj_id': instance.object_id,
+                'up_count': up_count,
+                'down_count': down_count,
+            }
+        }
+    )
+
+
+@receiver(post_save, sender=Vote)
+def send_vote_update_on_save(sender, instance, **kwargs):
+    send_vote_update(instance)
+
+
+@receiver(post_delete, sender=Vote)
+def send_vote_update_on_delete(sender, instance, **kwargs):
+    send_vote_update(instance)
+    
+@receiver(post_delete, sender=Comment)
+def send_deleted_comment(sender, instance, **kwargs):
+    channel_layer = get_channel_layer()
+    group_name = 'feed_updates'
+
+    async_to_sync(channel_layer.group_send)(
+        group_name,
+        {
+            'type': 'feed.deleted_comment',
+            'data': {
+                'comment_id': instance.id,
+                'ctype_id': instance.content_type_id,
+                'obj_id': instance.object_id,
+            }
+        }
+    )

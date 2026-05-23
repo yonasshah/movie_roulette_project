@@ -5,18 +5,105 @@ from asgiref.sync import sync_to_async # Import sync_to_async
 from .models import Notification # Import Notification model
 
 # --- FeedConsumer ---
+# --- FeedConsumer ---
 class FeedConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-        self.group_name = 'feed_updates' # Name of the group
+        self.group_name = 'feed_updates'
 
-        # Join room group
         await self.channel_layer.group_add(
             self.group_name,
             self.channel_name
         )
 
         await self.accept()
-        print(f"FeedConsumer: WebSocket connected and added to group {self.group_name}") # Logging
+        print(f"FeedConsumer: WebSocket connected and added to group {self.group_name}")
+
+    async def disconnect(self, close_code):
+        print(f"FeedConsumer: WebSocket disconnecting from group {self.group_name}...")
+
+        if hasattr(self, 'group_name'):
+            await self.channel_layer.group_discard(
+                self.group_name,
+                self.channel_name
+            )
+
+        print("FeedConsumer: WebSocket disconnected.")
+
+    async def feed_new_item(self, event):
+        message_data = event['data']
+        item_type = message_data.get('type')
+
+        print(f"FeedConsumer: Received feed_new_item of type '{item_type}': {message_data}")
+
+        await self.send(text_data=json.dumps({
+            'type': 'new_item',
+            'data': message_data,
+        }))
+
+        print(f"FeedConsumer: Sent new_item message (type: {item_type}) to client.")
+        
+    
+
+    async def feed_removed_item(self, event):
+        message_data = event['data']
+
+        print(f"FeedConsumer: Received feed_removed_item: {message_data}")
+
+        await self.send(text_data=json.dumps({
+            'type': 'removed_item',
+            'data': message_data,
+        }))
+
+        print("FeedConsumer: Sent removed_item message to client.")
+        
+    async def feed_vote_update(self, event):
+        message_data = event['data']
+
+        print(f"FeedConsumer: Received feed_vote_update: {message_data}")
+
+        await self.send(text_data=json.dumps({
+            'type': 'vote_update',
+            'data': message_data,
+        }))
+
+        print("FeedConsumer: Sent vote_update message to client.")
+
+
+    async def feed_deleted_comment(self, event):
+        message_data = event['data']
+
+        print(f"FeedConsumer: Received feed_deleted_comment: {message_data}")
+
+        await self.send(text_data=json.dumps({
+            'type': 'deleted_comment',
+            'data': message_data,
+        }))
+
+        print("FeedConsumer: Sent deleted_comment message to client.")
+
+    async def feed_new_comment(self, event):
+        message_data = event['data']
+
+        print(f"FeedConsumer: Received feed_new_comment: {message_data}")
+
+        await self.send(text_data=json.dumps({
+            'type': 'new_comment',
+            'data': message_data,
+        }))
+
+        print("FeedConsumer: Sent new_comment message to client.")
+
+    async def feed_like_update(self, event):
+        message_data = event['data']
+
+        print(f"FeedConsumer: Received feed_like_update: {message_data}")
+
+        await self.send(text_data=json.dumps({
+            'type': 'like_update',
+            'data': message_data,
+        }))
+
+        print("FeedConsumer: Sent like_update message to client.")
 
     async def disconnect(self, close_code):
         print(f"FeedConsumer: WebSocket disconnecting from group {self.group_name}...") # Logging

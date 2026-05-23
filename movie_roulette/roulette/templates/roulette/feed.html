@@ -610,6 +610,78 @@
                 }
             }
 
+            if (msg.type === 'removed_item' && msg.data) {
+                var rd = msg.data;
+
+                if (!shouldShowLiveFeedItem(rd)) return;
+
+                var existingRemoved = null;
+
+                if (rd.ctype_id && rd.obj_id) {
+                    existingRemoved = fc.querySelector(
+                        '.feed-item[data-ctype-id="' + rd.ctype_id + '"][data-item-id="' + rd.obj_id + '"]'
+                    );
+                }
+
+                if (existingRemoved) {
+                    existingRemoved.remove();
+
+                    if (window.showToast) {
+                        window.showToast('Feed activity removed.', 'info');
+                    }
+                }
+            }
+
+            if (msg.type === 'vote_update' && msg.data) {
+                var vd = msg.data;
+
+                var voteTarget = fc.querySelector(
+                    '.feed-item[data-ctype-id="' + vd.ctype_id + '"][data-item-id="' + vd.obj_id + '"]'
+                );
+
+                if (voteTarget) {
+                    var upBtn = voteTarget.querySelector('.vote-up');
+                    var downBtn = voteTarget.querySelector('.vote-down');
+
+                    if (upBtn) {
+                        var upCount = upBtn.querySelector('.up-count');
+                        if (upCount) upCount.textContent = vd.up_count;
+                    }
+
+                    if (downBtn) {
+                        var downCount = downBtn.querySelector('.down-count');
+                        if (downCount) downCount.textContent = vd.down_count;
+                    }
+                }
+            }
+
+            if (msg.type === 'deleted_comment' && msg.data) {
+                var dd = msg.data;
+
+                var commentEl = fc.querySelector(
+                    '.comment-item[data-comment-id="' + dd.comment_id + '"]'
+                );
+
+                if (commentEl) {
+                    var feedItem = commentEl.closest('.feed-item');
+
+                    var thread = commentEl.closest('.comment-thread');
+                    var replyWrapper = commentEl.closest('.reply-wrapper');
+
+                    if (replyWrapper) {
+                        replyWrapper.remove();
+                    } else if (thread) {
+                        thread.remove();
+                    } else {
+                        commentEl.remove();
+                    }
+
+                    if (feedItem) {
+                        updCount(feedItem);
+                    }
+                }
+            }
+
             // Handle new comments via WebSocket
             if (msg.type === 'new_comment' && msg.data) {
                 var cd = msg.data;
