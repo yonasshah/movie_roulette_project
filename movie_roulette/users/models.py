@@ -6,9 +6,24 @@ from PIL import Image, ExifTags
 
 class Profile(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    is_favorites_private = models.BooleanField(default=False)
+
+    display_name = models.CharField(max_length=50, blank=True)
     bio = models.TextField(max_length=500, blank=True)
+
     image = models.ImageField(default='default.jpg', upload_to='profile_pics')
+    banner_image = models.ImageField(default='default_banner.jpg', upload_to='profile_banners')
+
+    favorite_genres = models.CharField(max_length=255, blank=True)
+    favorite_movie_title = models.CharField(max_length=150, blank=True)
+    favorite_movie_tmdb_id = models.IntegerField(null=True, blank=True)
+    favorite_show_title = models.CharField(max_length=150, blank=True)
+    favorite_show_tmdb_id = models.IntegerField(null=True, blank=True)
+
+    is_favorites_private = models.BooleanField(default=False)
+    is_watchlist_private = models.BooleanField(default=False)
+    is_reviews_private = models.BooleanField(default=False)
+    is_activity_private = models.BooleanField(default=False)
+    is_profile_private = models.BooleanField(default=False)
 
     def __str__(self):
         return f'{self.user.username} Profile'

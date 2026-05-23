@@ -277,53 +277,100 @@ def roulette_view(request):
 def user_profile_view(request, username):
     User = get_user_model()
     profile_user = get_object_or_404(User, username=username)
+    profile = profile_user.profile
+
+    is_owner = request.user == profile_user
 
     is_following = False
-    if request.user.is_authenticated and request.user != profile_user:
-        is_following = UserFollow.objects.filter(follower=request.user, followed=profile_user).exists()
+    if request.user.is_authenticated and not is_owner:
+        is_following = UserFollow.objects.filter(
+            follower=request.user,
+            followed=profile_user
+        ).exists()
 
+    # Privacy settings
+    is_profile_private = profile.is_profile_private and not is_owner
+    hide_favorites = profile.is_favorites_private and not is_owner
+    hide_watchlist = profile.is_watchlist_private and not is_owner
+    hide_reviews = profile.is_reviews_private and not is_owner
+    hide_activity = profile.is_activity_private and not is_owner
+
+    # Lists
     favorite_list = []
     watchlist_list = []
 
-    is_private = profile_user.profile.is_favorites_private and request.user != profile_user
-
-    if not is_private:
-        # Keep .values() here as we only need specific fields for the grid
+    if not is_profile_private and not hide_favorites:
         favorite_list = list(UserContent.objects.filter(
             user=profile_user,
             list_type=UserContent.ListType.FAVORITE
-        ).order_by('-timestamp').values('tmdb_id', 'title', 'poster_path', 'release_year', 'content_type'))
+        ).order_by('-timestamp').values(
+            'tmdb_id',
+            'title',
+            'poster_path',
+            'release_year',
+            'content_type'
+        ))
 
+    if not is_profile_private and not hide_watchlist:
         watchlist_list = list(UserContent.objects.filter(
             user=profile_user,
             list_type=UserContent.ListType.WATCHLIST
-        ).order_by('-timestamp').values('tmdb_id', 'title', 'poster_path', 'release_year', 'content_type'))
+        ).order_by('-timestamp').values(
+            'tmdb_id',
+            'title',
+            'poster_path',
+            'release_year',
+            'content_type'
+        ))
 
-    # --- MODIFICATION: Fetch full related objects ---
-    # Fetch UserFollow objects, prefetching the related user and their profile
+    # Followers / following
     followers_follows = profile_user.followers.select_related('follower__profile')
     following_follows = profile_user.following.select_related('followed__profile')
-    # --- END MODIFICATION ---
 
-    followers_count = followers_follows.count() # Count directly from the queryset
-    following_count = following_follows.count() # Count directly from the queryset
+    followers_count = followers_follows.count()
+    following_count = following_follows.count()
 
-    user_reviews = UserReview.objects.filter(user=profile_user)
+    # Reviews
+    if is_profile_private or hide_reviews:
+        user_reviews = UserReview.objects.none()
+    else:
+        user_reviews = UserReview.objects.filter(user=profile_user).order_by('-timestamp')
+
+    # Favorite genres stored as comma-separated text
+    genre_list = [
+        genre.strip()
+        for genre in profile.favorite_genres.split(',')
+        if genre.strip()
+    ]
 
     context = {
         'profile_user': profile_user,
+        'profile': profile,
+
+        'is_owner': is_owner,
         'is_following': is_following,
+
         'favorite_list': favorite_list,
         'watchlist_list': watchlist_list,
-        'is_private': is_private,
-        'is_owner': request.user == profile_user,
-        # --- MODIFICATION: Pass the querysets ---
-        'followers_follows': followers_follows, # Pass the queryset of UserFollow objects
-        'following_follows': following_follows, # Pass the queryset of UserFollow objects
-        # --- END MODIFICATION ---
+        'user_reviews': user_reviews,
+
+        'followers_follows': followers_follows,
+        'following_follows': following_follows,
         'followers_count': followers_count,
         'following_count': following_count,
-        'user_reviews': user_reviews,
+
+        'genre_list': genre_list,
+
+        # New privacy flags
+        'is_profile_private': is_profile_private,
+        'hide_favorites': hide_favorites,
+        'hide_watchlist': hide_watchlist,
+        'hide_reviews': hide_reviews,
+        'hide_activity': hide_activity,
+
+        # Temporary backwards-compatible variable.
+        # Keep this only if profile.html still uses "is_private".
+        'is_private': is_profile_private,
     }
 
     return render(request, 'roulette/profile.html', context)

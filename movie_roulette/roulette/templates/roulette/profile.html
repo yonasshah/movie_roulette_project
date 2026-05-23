@@ -1,8 +1,117 @@
 {% extends 'roulette/base.html' %}
 
-{% block title %}{{ profile_user.username }}'s Profile{% endblock %}
+{% block title %}
+    {% if profile_user.profile.display_name %}
+        {{ profile_user.profile.display_name }}'s Profile
+    {% else %}
+        {{ profile_user.username }}'s Profile
+    {% endif %}
+{% endblock %}
 
 {% block style %}
+.profile-hero {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 22px;
+    background: rgba(255,255,255,0.02);
+    margin-bottom: 24px;
+}
+
+.profile-banner {
+    height: 180px;
+    background-size: cover;
+    background-position: center;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.profile-hero-body {
+    padding: 0 24px 24px;
+}
+
+.profile-hero-avatar {
+    width: 104px;
+    height: 104px;
+    margin-top: -52px;
+    border-radius: 999px;
+    object-fit: cover;
+    border: 5px solid #050507;
+    background: #050507;
+    cursor: pointer;
+}
+
+.profile-display-name {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    color: #fff;
+    line-height: 1.1;
+}
+
+.profile-handle {
+    margin-top: 2px;
+    font-size: 13px;
+    color: #6b7280;
+}
+
+.profile-genre-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin-top: 14px;
+}
+
+.profile-genre-tag {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 5px 10px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #d1d5db;
+    background: rgba(255,255,255,0.055);
+    border: 1px solid rgba(255,255,255,0.07);
+}
+
+.profile-favorites-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 18px;
+}
+
+.profile-favorite-card {
+    border: 1px solid rgba(255,255,255,0.06);
+    background: rgba(0,0,0,0.16);
+    border-radius: 14px;
+    padding: 13px 14px;
+}
+
+.profile-favorite-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-weight: 800;
+    color: #4b5563;
+    margin-bottom: 5px;
+}
+
+.profile-favorite-value {
+    font-size: 13px;
+    font-weight: 650;
+    color: #e5e7eb;
+}
+
+@media (max-width: 640px) {
+    .profile-banner {
+        height: 140px;
+    }
+
+    .profile-favorites-row {
+        grid-template-columns: 1fr;
+    }
+}
 .prof-avatar {
     width: 80px; height: 80px; border-radius: 50%; object-fit: cover;
     border: 3px solid rgba(99,102,241,0.25); flex-shrink: 0;
@@ -117,26 +226,78 @@
 <div class="max-w-3xl mx-auto">
 
     {# ===== PROFILE HEADER ===== #}
-    <div class="flex items-center gap-5 mb-7">
-        <img id="profile-picture-main" src="{{ profile_user.profile.image.url }}"
-             class="prof-avatar" alt="{{ profile_user.username }}">
-        <div class="flex-1 min-w-0">
-            <h1 class="font-display text-2xl font-bold tracking-tight text-white">{{ profile_user.username }}</h1>
-            {% if profile_user.profile.bio %}
-                <p class="text-sm text-gray-400 mt-1 leading-relaxed">{{ profile_user.profile.bio|linebreaksbr }}</p>
-            {% endif %}
+    <div class="profile-hero">
+        <div class="profile-banner"
+            style="background-image: url('{{ profile_user.profile.banner_image.url }}');">
         </div>
-        <div class="flex-shrink-0">
-            {% if not is_owner %}
-                <button id="follow-btn" data-user-id="{{ profile_user.id }}"
-                        class="follow-btn {% if is_following %}is-following{% else %}not-following{% endif %}">
-                    {% if is_following %}Following{% else %}Follow{% endif %}
-                </button>
-            {% else %}
-                <a href="{% url 'users:profile_settings' %}"
-                   class="inline-flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-medium text-gray-400 border border-white/[0.06] hover:bg-white/[0.04] hover:text-white transition-all">
-                    <i class="fas fa-pen text-xs"></i>Edit profile
-                </a>
+
+        <div class="profile-hero-body">
+            <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-5">
+                <div class="flex items-end gap-5">
+                    <img id="profile-picture-main"
+                        src="{{ profile_user.profile.image.url }}"
+                        class="profile-hero-avatar"
+                        alt="{{ profile_user.username }}">
+
+                    <div class="pb-1 min-w-0">
+                        <h1 class="profile-display-name">
+                            {% if profile_user.profile.display_name %}
+                                {{ profile_user.profile.display_name }}
+                            {% else %}
+                                {{ profile_user.username }}
+                            {% endif %}
+                        </h1>
+
+                        <p class="profile-handle">@{{ profile_user.username }}</p>
+                    </div>
+                </div>
+
+                <div class="sm:pb-2">
+                    {% if not is_owner %}
+                        <button id="follow-btn"
+                                data-user-id="{{ profile_user.id }}"
+                                class="follow-btn {% if is_following %}is-following{% else %}not-following{% endif %}">
+                            {% if is_following %}Following{% else %}Follow{% endif %}
+                        </button>
+                    {% else %}
+                        <a href="{% url 'users:profile_settings' %}"
+                        class="inline-flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-medium text-gray-400 border border-white/[0.06] hover:bg-white/[0.04] hover:text-white transition-all">
+                            <i class="fas fa-pen text-xs"></i>Edit profile
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if profile_user.profile.bio %}
+                <p class="text-sm text-gray-400 mt-5 leading-relaxed max-w-2xl">
+                    {{ profile_user.profile.bio|linebreaksbr }}
+                </p>
+            {% endif %}
+
+            {% if genre_list %}
+                <div class="profile-genre-row">
+                    {% for genre in genre_list %}
+                        <span class="profile-genre-tag">{{ genre }}</span>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            {% if profile_user.profile.favorite_movie_title or profile_user.profile.favorite_show_title %}
+                <div class="profile-favorites-row">
+                    {% if profile_user.profile.favorite_movie_title %}
+                        <div class="profile-favorite-card">
+                            <p class="profile-favorite-label">Favorite movie</p>
+                            <p class="profile-favorite-value">{{ profile_user.profile.favorite_movie_title }}</p>
+                        </div>
+                    {% endif %}
+
+                    {% if profile_user.profile.favorite_show_title %}
+                        <div class="profile-favorite-card">
+                            <p class="profile-favorite-label">Favorite show</p>
+                            <p class="profile-favorite-value">{{ profile_user.profile.favorite_show_title }}</p>
+                        </div>
+                    {% endif %}
+                </div>
             {% endif %}
         </div>
     </div>
@@ -174,7 +335,12 @@
 
     {# ===== FAVORITES ===== #}
     <div id="content-favorites" class="tab-content">
-        {% if is_private %}
+        {% if is_profile_private %}
+            <div class="text-center py-16">
+                <div class="text-gray-700 text-3xl mb-2"><i class="fas fa-lock"></i></div>
+                <p class="text-gray-600 text-sm">This profile is private.</p>
+            </div>
+        {% elif hide_favorites %}
             <div class="text-center py-16">
                 <div class="text-gray-700 text-3xl mb-2"><i class="fas fa-lock"></i></div>
                 <p class="text-gray-600 text-sm">This user's favorites are private.</p>
@@ -186,7 +352,12 @@
 
     {# ===== WATCHLIST ===== #}
     <div id="content-watchlist" class="tab-content hidden">
-        {% if is_private %}
+        {% if is_profile_private %}
+            <div class="text-center py-16">
+                <div class="text-gray-700 text-3xl mb-2"><i class="fas fa-lock"></i></div>
+                <p class="text-gray-600 text-sm">This profile is private.</p>
+            </div>
+        {% elif hide_watchlist %}
             <div class="text-center py-16">
                 <div class="text-gray-700 text-3xl mb-2"><i class="fas fa-lock"></i></div>
                 <p class="text-gray-600 text-sm">This user's watchlist is private.</p>
@@ -213,8 +384,19 @@
 
     {# ===== REVIEWS ===== #}
     <div id="content-reviews" class="tab-content hidden">
-        <div class="space-y-3">
-            {% for review in user_reviews %}
+        {% if is_profile_private %}
+            <div class="text-center py-16">
+                <div class="text-gray-700 text-3xl mb-2"><i class="fas fa-lock"></i></div>
+                <p class="text-gray-600 text-sm">This profile is private.</p>
+            </div>
+        {% elif hide_reviews %}
+            <div class="text-center py-16">
+                <div class="text-gray-700 text-3xl mb-2"><i class="fas fa-lock"></i></div>
+                <p class="text-gray-600 text-sm">This user's reviews are private.</p>
+            </div>
+        {% else %}
+            <div class="space-y-3">
+                {% for review in user_reviews %}
                 <div class="profile-review">
                     <a href="{% url 'roulette:content_detail' content_type=review.content_type|lower tmdb_id=review.tmdb_id %}" class="flex-shrink-0">
                         {% if review.poster_path %}
@@ -244,6 +426,7 @@
                 <p class="text-gray-600 text-sm text-center py-12">No reviews yet.</p>
             {% endfor %}
         </div>
+    {% endif %}
     </div>
 
 </div>
@@ -409,7 +592,7 @@
     (function() {
         var cont = $('#favorite-list-content');
         if (!cont) return;
-        if ({{ is_private|yesno:"true,false" }}) return;
+        if ({{ is_profile_private|yesno:"true,false" }} || {{ hide_favorites|yesno:"true,false" }}) return;
         var dataEl = document.getElementById('favorite-data');
         var items = [];
         try { items = dataEl ? JSON.parse(dataEl.textContent) : []; } catch(e) { return; }

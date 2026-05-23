@@ -2,73 +2,361 @@
 
 {% block title %}Profile Settings{% endblock %}
 
+{% block style %}
+.settings-page {
+    max-width: 1080px;
+    margin: 0 auto;
+}
+
+.settings-header {
+    margin-bottom: 26px;
+}
+
+.settings-kicker {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #818cf8;
+    margin-bottom: 8px;
+}
+
+.settings-title {
+    font-size: 30px;
+    font-weight: 750;
+    letter-spacing: -0.04em;
+    color: #fff;
+}
+
+.settings-subtitle {
+    margin-top: 6px;
+    color: #6b7280;
+    font-size: 14px;
+}
+
+.settings-tabs {
+    display: flex;
+    gap: 6px;
+    padding: 4px;
+    width: fit-content;
+    border: 1px solid rgba(255,255,255,0.07);
+    background: rgba(255,255,255,0.025);
+    border-radius: 999px;
+    margin-bottom: 22px;
+}
+
+.settings-tab {
+    padding: 8px 15px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 650;
+    color: #6b7280;
+    transition: 0.15s ease;
+}
+
+.settings-tab:hover {
+    color: #d1d5db;
+}
+
+.settings-tab.active {
+    color: #fff;
+    background: rgba(255,255,255,0.075);
+}
+
+.settings-grid {
+    display: grid;
+    grid-template-columns: 310px minmax(0, 1fr);
+    gap: 22px;
+}
+
+.settings-preview,
+.settings-card {
+    border: 1px solid rgba(255,255,255,0.075);
+    background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.018));
+    border-radius: 22px;
+}
+
+.settings-preview {
+    height: fit-content;
+    overflow: hidden;
+}
+
+.preview-cover {
+    height: 88px;
+    background:
+        radial-gradient(circle at 20% 10%, rgba(99,102,241,0.35), transparent 35%),
+        radial-gradient(circle at 85% 30%, rgba(129,140,248,0.20), transparent 35%),
+        rgba(255,255,255,0.025);
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+
+.preview-body {
+    padding: 0 22px 22px;
+}
+
+.preview-avatar {
+    width: 86px;
+    height: 86px;
+    margin-top: -43px;
+    border-radius: 999px;
+    object-fit: cover;
+    border: 4px solid #08090f;
+    background: #08090f;
+}
+
+.preview-name {
+    margin-top: 12px;
+    font-size: 19px;
+    font-weight: 750;
+    color: #fff;
+    letter-spacing: -0.02em;
+}
+
+.preview-link {
+    margin-top: 2px;
+    display: inline-block;
+    font-size: 12px;
+    color: #818cf8;
+}
+
+.preview-bio {
+    margin-top: 14px;
+    color: #8b93a1;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.settings-section {
+    padding: 24px;
+    border-bottom: 1px solid rgba(255,255,255,0.065);
+}
+
+.settings-section:last-child {
+    border-bottom: 0;
+}
+
+.section-top {
+    display: flex;
+    justify-content: space-between;
+    gap: 22px;
+    margin-bottom: 16px;
+}
+
+.section-label {
+    color: #fff;
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.section-help {
+    margin-top: 4px;
+    color: #6b7280;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.avatar-edit {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+}
+
+.avatar-edit img {
+    width: 74px;
+    height: 74px;
+    border-radius: 18px;
+    object-fit: cover;
+    border: 1px solid rgba(255,255,255,0.1);
+}
+
+.file-input {
+    color: #6b7280;
+    font-size: 13px;
+}
+
+.file-input::file-selector-button {
+    margin-right: 12px;
+    border: 0;
+    border-radius: 10px;
+    background: #4f46e5;
+    color: #fff;
+    padding: 9px 13px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.file-input::file-selector-button:hover {
+    background: #6366f1;
+}
+
+.bio-field textarea {
+    width: 100%;
+    min-height: 118px;
+    border-radius: 14px !important;
+    border: 1px solid rgba(255,255,255,0.085) !important;
+    background: rgba(0,0,0,0.24) !important;
+    color: #e5e7eb !important;
+    padding: 13px 14px !important;
+    font-size: 14px !important;
+    resize: vertical;
+}
+
+.bio-field textarea:focus {
+    outline: none !important;
+    border-color: rgba(99,102,241,0.55) !important;
+    box-shadow: 0 0 0 3px rgba(99,102,241,0.12);
+}
+
+.privacy-box {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    border: 1px solid rgba(255,255,255,0.07);
+    background: rgba(255,255,255,0.025);
+    border-radius: 16px;
+    padding: 16px;
+}
+
+.form-footer {
+    padding: 18px 24px;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 12px;
+    background: rgba(0,0,0,0.14);
+}
+
+.cancel-link {
+    color: #6b7280;
+    font-size: 13px;
+    font-weight: 650;
+}
+
+.cancel-link:hover {
+    color: #d1d5db;
+}
+
+.save-btn {
+    border-radius: 11px;
+    background: #4f46e5;
+    color: white;
+    padding: 10px 16px;
+    font-size: 13px;
+    font-weight: 700;
+    transition: 0.15s ease;
+}
+
+.save-btn:hover {
+    background: #6366f1;
+}
+
+@media (max-width: 900px) {
+    .settings-grid {
+        grid-template-columns: 1fr;
+    }
+}
+{% endblock %}
+
 {% block content %}
-<div class="bg-gray-800 p-8 rounded-lg shadow-2xl max-w-2xl mx-auto">
-    <h2 class="text-3xl font-extrabold text-white mb-6 border-b border-gray-700 pb-4">
-        Profile Settings
-    </h2>
+<div class="settings-page">
+    <div class="settings-header">
+        <div class="settings-kicker">Settings</div>
+        <h1 class="settings-title font-display">Profile</h1>
+        <p class="settings-subtitle">Edit how you appear to other users.</p>
+    </div>
 
-    <form method="POST" enctype="multipart/form-data">
-        {% csrf_token %}
-        <div class="space-y-6">
+    <div class="settings-tabs">
+        <a href="{% url 'users:profile_settings' %}" class="settings-tab active">Profile</a>
+        <a href="{% url 'users:account_settings' %}" class="settings-tab">Account</a>
+    </div>
 
-            {# --- Updated Profile Picture Section --- #}
-            <div>
-                <label class="block font-semibold text-lg mb-2">{{ form.image.label }}</label>
-                <div class="flex items-start space-x-4"> {# Changed items-center to items-start #}
-                    {# Current Image Preview #}
-                    <img src="{{ user.profile.image.url }}" class="w-20 h-20 rounded-full object-cover border-2 border-gray-600 flex-shrink-0" alt="Current profile picture">
+    <div class="settings-grid">
+        <aside class="settings-preview">
+            <div class="preview-cover"></div>
+            <div class="preview-body">
+                <img src="{{ user.profile.image.url }}" class="preview-avatar" alt="Profile picture">
 
-                    {# Manually Rendered File Input Control #}
-                    <div class="flex-grow">
-                        <p class="text-sm text-gray-400 mb-1">Change picture:</p>
-                        {# Use the field attributes but render the input tag directly #}
-                        <input type="file" name="{{ form.image.name }}" id="{{ form.image.id_for_label }}"
-                               class="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-700 cursor-pointer">
+                <h2 class="preview-name">@{{ user.username }}</h2>
+                <a href="{% url 'roulette:user_profile' username=user.username %}" class="preview-link">
+                    View public profile
+                </a>
 
-                        {# Add link to current file if it's not the default #}
-                        {% if user.profile.image and user.profile.image.url != '/media/default.jpg' %}
-                        <p class="text-xs text-gray-500 mt-1">Currently: <a href="{{ user.profile.image.url }}" target="_blank" class="text-indigo-400 hover:underline">{{ user.profile.image.name }}</a></p>
-                            {# Optional: Add the 'clear' checkbox if needed #}
-                            {% comment %}
-                            {% if form.image.field.widget.is_initial %}
-                            <div class="mt-1">
-                                {{ form.image.field.widget.clear_checkbox_label }} {{ form.image.field.widget.clear_checkbox_input }}
-                            </div>
-                            {% endif %}
-                            {% endcomment %}
-                        {% endif %}
+                <p class="preview-bio">
+                    {% if user.profile.bio %}
+                        {{ user.profile.bio|truncatechars:130 }}
+                    {% else %}
+                        Your bio will appear here once you add one.
+                    {% endif %}
+                </p>
+            </div>
+        </aside>
+
+        <form method="POST" enctype="multipart/form-data" class="settings-card">
+            {% csrf_token %}
+
+            <div class="settings-section">
+                <div class="section-top">
+                    <div>
+                        <p class="section-label">{{ form.image.label }}</p>
+                        <p class="section-help">Upload a profile picture. Square images work best.</p>
                     </div>
                 </div>
-                 {% for error in form.image.errors %}
-                    <p class="mt-2 text-xs text-red-400">{{ error }}</p>
-                {% endfor %}
-            </div>
-            {# --- End Updated Profile Picture Section --- #}
 
-            <div>
-                <label for="{{ form.bio.id_for_label }}" class="block font-semibold text-lg mb-2">{{ form.bio.label }}</label>
+                <div class="avatar-edit">
+                    <img src="{{ user.profile.image.url }}" alt="Current profile picture">
+
+                    <div>
+                        <input type="file"
+                               name="{{ form.image.name }}"
+                               id="{{ form.image.id_for_label }}"
+                               class="file-input">
+
+                        {% for error in form.image.errors %}
+                            <p class="mt-2 text-xs text-red-400">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-section bio-field">
+                <div class="section-top">
+                    <div>
+                        <label for="{{ form.bio.id_for_label }}" class="section-label block">{{ form.bio.label }}</label>
+                        <p class="section-help">Write a short intro for your public profile.</p>
+                    </div>
+                </div>
+
                 {{ form.bio }}
-                <p class="text-sm text-gray-400 mt-1">Write a short bio (up to 500 characters).</p>
+
                 {% for error in form.bio.errors %}
                     <p class="mt-2 text-xs text-red-400">{{ error }}</p>
                 {% endfor %}
             </div>
 
-            <div class="flex items-center p-4 bg-gray-700 rounded-lg">
-                <div class="flex-grow">
-                    <label for="{{ form.is_favorites_private.id_for_label }}" class="font-semibold text-lg">{{ form.is_favorites_private.label }}</label>
-                    <p class="text-sm text-gray-400">If checked, only you will be able to see your favorites list on your profile.</p>
-                </div>
-                <label class="relative inline-flex items-center cursor-pointer">
+            <div class="settings-section">
+                <div class="privacy-box">
+                    <div>
+                        <label for="{{ form.is_favorites_private.id_for_label }}" class="section-label block">
+                            {{ form.is_favorites_private.label }}
+                        </label>
+                        <p class="section-help">Only you will be able to see your favorites list.</p>
+                    </div>
+
                     {{ form.is_favorites_private }}
-                </label>
+                </div>
+
+                {% for error in form.is_favorites_private.errors %}
+                    <p class="mt-2 text-xs text-red-400">{{ error }}</p>
+                {% endfor %}
             </div>
-        </div>
-        <div class="mt-8"> <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg">
-                Save Settings
-            </button>
-        </div>
-    </form>
+
+            <div class="form-footer">
+                <a href="{% url 'roulette:user_profile' username=user.username %}" class="cancel-link">Cancel</a>
+                <button type="submit" class="save-btn">Save changes</button>
+            </div>
+        </form>
+    </div>
 </div>
 {% endblock %}

@@ -2,54 +2,337 @@
 
 {% block title %}Account Settings{% endblock %}
 
+{% block style %}
+.settings-page {
+    max-width: 1080px;
+    margin: 0 auto;
+}
+
+.settings-header {
+    margin-bottom: 26px;
+}
+
+.settings-kicker {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #818cf8;
+    margin-bottom: 8px;
+}
+
+.settings-title {
+    font-size: 30px;
+    font-weight: 750;
+    letter-spacing: -0.04em;
+    color: #fff;
+}
+
+.settings-subtitle {
+    margin-top: 6px;
+    color: #6b7280;
+    font-size: 14px;
+}
+
+.settings-tabs {
+    display: flex;
+    gap: 6px;
+    padding: 4px;
+    width: fit-content;
+    border: 1px solid rgba(255,255,255,0.07);
+    background: rgba(255,255,255,0.025);
+    border-radius: 999px;
+    margin-bottom: 22px;
+}
+
+.settings-tab {
+    padding: 8px 15px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 650;
+    color: #6b7280;
+    transition: 0.15s ease;
+}
+
+.settings-tab:hover {
+    color: #d1d5db;
+}
+
+.settings-tab.active {
+    color: #fff;
+    background: rgba(255,255,255,0.075);
+}
+
+.settings-grid {
+    display: grid;
+    grid-template-columns: 310px minmax(0, 1fr);
+    gap: 22px;
+}
+
+.account-card,
+.settings-card,
+.danger-card {
+    border: 1px solid rgba(255,255,255,0.075);
+    background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.018));
+    border-radius: 22px;
+}
+
+.account-card {
+    height: fit-content;
+    overflow: hidden;
+}
+
+.account-cover {
+    height: 88px;
+    background:
+        radial-gradient(circle at 20% 10%, rgba(99,102,241,0.35), transparent 35%),
+        radial-gradient(circle at 85% 30%, rgba(34,197,94,0.18), transparent 35%),
+        rgba(255,255,255,0.025);
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+
+.account-body {
+    padding: 0 22px 22px;
+}
+
+.account-avatar {
+    width: 86px;
+    height: 86px;
+    margin-top: -43px;
+    border-radius: 999px;
+    object-fit: cover;
+    border: 4px solid #08090f;
+    background: #08090f;
+}
+
+.account-name {
+    margin-top: 12px;
+    font-size: 19px;
+    font-weight: 750;
+    color: #fff;
+    letter-spacing: -0.02em;
+}
+
+.account-email {
+    margin-top: 3px;
+    font-size: 13px;
+    color: #6b7280;
+    word-break: break-word;
+}
+
+.account-meta {
+    margin-top: 18px;
+    display: grid;
+    gap: 10px;
+}
+
+.meta-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 11px 12px;
+    border-radius: 13px;
+    border: 1px solid rgba(255,255,255,0.055);
+    background: rgba(0,0,0,0.16);
+    font-size: 12px;
+}
+
+.meta-row span:first-child {
+    color: #6b7280;
+}
+
+.meta-row span:last-child {
+    color: #d1d5db;
+    font-weight: 650;
+}
+
+.settings-card {
+    overflow: hidden;
+}
+
+.settings-section {
+    padding: 24px;
+    border-bottom: 1px solid rgba(255,255,255,0.065);
+}
+
+.settings-section:last-child {
+    border-bottom: 0;
+}
+
+.section-label {
+    color: #fff;
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.section-help {
+    margin-top: 4px;
+    color: #6b7280;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.account-value {
+    color: #d1d5db;
+    font-size: 14px;
+    font-weight: 650;
+    word-break: break-word;
+}
+
+.action-btn {
+    border-radius: 11px;
+    background: rgba(255,255,255,0.06);
+    color: #f3f4f6;
+    padding: 9px 13px;
+    font-size: 13px;
+    font-weight: 700;
+    transition: 0.15s ease;
+    white-space: nowrap;
+}
+
+.action-btn:hover {
+    background: rgba(255,255,255,0.1);
+    color: #fff;
+}
+
+.primary-action {
+    background: #4f46e5;
+    color: #fff;
+}
+
+.primary-action:hover {
+    background: #6366f1;
+}
+
+.danger-card {
+    margin-top: 18px;
+    border-color: rgba(239,68,68,0.18);
+    background: rgba(239,68,68,0.035);
+    overflow: hidden;
+}
+
+.danger-btn {
+    border-radius: 11px;
+    background: rgba(239,68,68,0.13);
+    color: rgba(254,202,202,0.45);
+    padding: 9px 13px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: not-allowed;
+}
+
+@media (max-width: 900px) {
+    .settings-grid {
+        grid-template-columns: 1fr;
+    }
+}
+{% endblock %}
+
 {% block content %}
-<div class="bg-gray-800 p-8 rounded-lg shadow-2xl max-w-2xl mx-auto">
-    <h2 class="text-3xl font-extrabold text-white mb-6 border-b border-gray-700 pb-4">
-        Account Settings
-    </h2>
+<div class="settings-page">
+    <div class="settings-header">
+        <div class="settings-kicker">Settings</div>
+        <h1 class="settings-title font-display">Account</h1>
+        <p class="settings-subtitle">Manage your login details and account security.</p>
+    </div>
 
-    <div class="space-y-6">
-        {# --- Username (Display Only) --- #}
-        <div>
-            <h3 class="font-semibold text-lg mb-1 text-gray-300">Username</h3>
-            <p class="p-3 bg-gray-700 rounded-md text-gray-400">@{{ user.username }}</p>
-            <p class="text-xs text-gray-500 mt-1">Username cannot be changed.</p>
-        </div>
+    <div class="settings-tabs">
+        <a href="{% url 'users:profile_settings' %}" class="settings-tab">Profile</a>
+        <a href="{% url 'users:account_settings' %}" class="settings-tab active">Account</a>
+    </div>
 
-        {# --- Email (Display Only - Can add change later if needed) --- #}
-        <div>
-            <h3 class="font-semibold text-lg mb-1 text-gray-300">Email</h3>
-            <p class="p-3 bg-gray-700 rounded-md text-gray-400">{{ user.email }}</p>
-            {# Add link/form for email change here if you implement it #}
-        </div>
+    <div class="settings-grid">
+        <aside class="account-card">
+            <div class="account-cover"></div>
 
-         {# --- Password Change --- #}
-        <div>
-             <h3 class="font-semibold text-lg mb-1 text-gray-300">Password</h3>
-             <a href="{% url 'users:password_change' %}" class="inline-block bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg text-sm">
-                 Change Password
-             </a>
-        </div>
+            <div class="account-body">
+                <img src="{{ user.profile.image.url }}" class="account-avatar" alt="Profile picture">
 
-        {# --- Link to Profile Settings --- #}
-         <div>
-             <h3 class="font-semibold text-lg mb-1 text-gray-300">Profile</h3>
-             <a href="{% url 'users:profile_settings' %}" class="inline-block bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg text-sm">
-                 Edit Profile Settings (Picture, Bio, Privacy)
-             </a>
-        </div>
+                <h2 class="account-name">@{{ user.username }}</h2>
+                <p class="account-email">{{ user.email|default:"No email added" }}</p>
 
-        {# --- Delete Account (Optional - Add later if needed) --- #}
-        
-        <div class="pt-4 border-t border-gray-700">
-            <h3 class="font-semibold text-lg mb-1 text-red-400">Delete Account</h3>
-            <p class="text-sm text-gray-400 mb-2">Permanently delete your account and all associated data. This action cannot be undone.</p>
-            <button type="button" class="bg-red-700 hover:bg-red-800 text-white font-bold py-2 px-4 rounded-lg text-sm">
-                Delete Account
-            </button>
-        </div>
-        
+               <div class="account-meta">
+                <a href="{% url 'roulette:user_profile' username=user.username %}" class="meta-row hover:bg-white/[0.04] transition-colors">
+                    <span>Public profile</span>
+                    <span>View</span>
+                </a>
 
+                <a href="{% url 'users:profile_settings' %}" class="meta-row hover:bg-white/[0.04] transition-colors">
+                    <span>Profile settings</span>
+                    <span>Edit</span>
+                </a>
+            </div>
+            </div>
+        </aside>
+
+        <section>
+            <div class="settings-card">
+                <div class="settings-section">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <div>
+                            <p class="section-label">Username</p>
+                            <p class="section-help">Your public username across the app.</p>
+                        </div>
+
+                        <p class="account-value">@{{ user.username }}</p>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <div>
+                            <p class="section-label">Email</p>
+                            <p class="section-help">The email address connected to your account.</p>
+                        </div>
+
+                        <p class="account-value">{{ user.email|default:"No email added" }}</p>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <div>
+                            <p class="section-label">Password</p>
+                            <p class="section-help">Change your password to keep your account secure.</p>
+                        </div>
+
+                        <a href="{% url 'users:password_change' %}" class="action-btn primary-action">
+                            Change password
+                        </a>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <div>
+                            <p class="section-label">Public profile</p>
+                            <p class="section-help">Edit your profile picture, bio, and privacy settings.</p>
+                        </div>
+
+                        <a href="{% url 'users:profile_settings' %}" class="action-btn">
+                            Edit profile
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="danger-card">
+                <div class="settings-section">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <div>
+                            <p class="section-label text-red-300">Delete account</p>
+                            <p class="section-help text-red-200/45">
+                                This is currently disabled until you add a real delete-account view.
+                            </p>
+                        </div>
+
+                        <button type="button" disabled class="danger-btn">
+                            Delete account
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
     </div>
 </div>
 {% endblock %}
