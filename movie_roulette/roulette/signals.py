@@ -311,6 +311,7 @@ def send_new_comment(sender, instance, created, **kwargs):
             {
                 "comment": instance,
                 "request": None,
+                "is_reply": bool(instance.parent_id),
             }
         )
     except Exception as e:
@@ -326,6 +327,7 @@ def send_new_comment(sender, instance, created, **kwargs):
             "data": {
                 "ctype_id": instance.content_type_id,
                 "obj_id": instance.object_id,
+                "parent_id": instance.parent_id,
                 "comment_html": comment_html,
                 "commenter_id": instance.user.id,
             },

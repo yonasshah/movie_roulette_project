@@ -698,19 +698,55 @@
             // Handle new comments via WebSocket
             if (msg.type === 'new_comment' && msg.data) {
                 var cd = msg.data;
-                // Skip if this is our own comment (we already added it optimistically)
+
+                // Skip if this is our own comment/reply because AJAX already added it
                 if (String(cd.commenter_id) === String(userId)) return;
 
-                var tgt = fc.querySelector('.feed-item[data-ctype-id="' + cd.ctype_id + '"][data-item-id="' + cd.obj_id + '"]');
-                if (tgt) {
-                    var cl = tgt.querySelector('.comments-list');
-                    if (cl && cd.comment_html) {
-                        var wrapper = document.createElement('div');
-                        wrapper.className = 'comment-thread';
-                        wrapper.innerHTML = cd.comment_html;
-                        cl.appendChild(wrapper);
+                var tgt = fc.querySelector(
+                    '.feed-item[data-ctype-id="' + cd.ctype_id + '"][data-item-id="' + cd.obj_id + '"]'
+                );
+
+                if (!tgt || !cd.comment_html) return;
+
+                // If this is a reply, place it under the parent comment
+                if (cd.parent_id) {
+                    var parentCI = tgt.querySelector(
+                        '.comment-item[data-comment-id="' + cd.parent_id + '"]'
+                    );
+
+                    iif (parentCI) {
+                        var parentThread = parentCI.closest('.comment-thread');
+                        if (parentThread) parentThread.classList.remove('hidden');
+
+                        var parentFlex = parentCI.querySelector(':scope > .flex > .flex-1');
+                        var rg = parentFlex.querySelector(':scope > .replies-group');
+
+                        if (!rg) {
+                            rg = document.createElement('div');
+                            rg.className = 'replies-group mt-2';
+                            rg.dataset.parentId = cd.parent_id;
+                            parentFlex.appendChild(rg);
+                        }
+
+                        var replyWrap = document.createElement('div');
+                        replyWrap.className = 'reply-wrapper';
+                        replyWrap.innerHTML = cd.comment_html;
+
+                        rg.appendChild(replyWrap);
                         updCount(tgt);
+                        return;
                     }
+                }
+
+                // Otherwise, it is a top-level comment
+                var cl = tgt.querySelector('.comments-list');
+
+                if (cl) {
+                    var wrapper = document.createElement('div');
+                    wrapper.className = 'comment-thread';
+                    wrapper.innerHTML = cd.comment_html;
+                    cl.appendChild(wrapper);
+                    updCount(tgt);
                 }
             }
 
