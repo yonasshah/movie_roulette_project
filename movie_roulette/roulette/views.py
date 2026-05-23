@@ -1153,24 +1153,6 @@ def add_comment_view(request):
  
             comment.save()
  
-            # --- Create Notification ---
-            recipient = None
-            if parent_id and comment.parent:
-                # Notify the person being replied to
-                recipient = comment.parent.user
-            elif hasattr(target_object, 'user'):
-                recipient = target_object.user
- 
-            if recipient and recipient != request.user:
-                verb = 'replied to your comment' if comment.parent else 'commented on'
-                Notification.objects.create(
-                    recipient=recipient,
-                    actor=request.user,
-                    verb=verb,
-                    target_content_type=content_type,
-                    target_object_id=object_id
-                )
- 
             if is_ajax:
                 # Determine depth for template rendering
                 comment_html = render_to_string(
