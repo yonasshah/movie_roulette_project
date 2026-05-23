@@ -17,6 +17,16 @@ def _get_notification_owner(obj):
         return obj.user
     return None
 
+def _notification_display_text(notification):
+    verb_map = {
+        "commented_on_post": "commented on your post",
+        "replied_to_comment": "replied to your comment",
+        "upvoted_post": "upvoted your post",
+        "upvoted_comment": "upvoted your comment",
+        "followed": "followed you",
+    }
+    return verb_map.get(notification.verb, notification.verb)
+
 
 def _get_target_title(obj):
     """
@@ -240,7 +250,7 @@ def send_notification_update(sender, instance, created, **kwargs):
         unread_count = Notification.objects.filter(recipient=instance.recipient, read=False).count()
 
         actor_name = instance.actor.username if instance.actor else 'System'
-        message_text = f"@{actor_name} {instance.verb}"
+        message_text = f"@{actor_name} {_notification_display_text(instance)}"
 
         async_to_sync(channel_layer.group_send)(
             user_specific_group,
