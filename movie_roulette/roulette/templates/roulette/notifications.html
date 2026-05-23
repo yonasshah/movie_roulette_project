@@ -84,7 +84,31 @@
                         <a href="{% url 'roulette:user_profile' username=notification.actor.username %}">@{{ notification.actor.username }}</a>
                     {% endif %}
 
-                    {{ notification.verb }}
+                    {% if notification.verb == "commented_on_post" %}
+                        commented on your post
+                    {% elif notification.verb == "replied_to_comment" %}
+                        replied to your comment
+                    {% elif notification.verb == "upvoted_post" %}
+                        upvoted your post
+                    {% elif notification.verb == "upvoted_comment" %}
+                        upvoted your comment
+                    {% elif notification.verb == "followed" %}
+                        followed you
+                    {% else %}
+                        {% if notification.verb == "commented_on_post" %}
+                            commented on your post
+                        {% elif notification.verb == "replied_to_comment" %}
+                            replied to your comment
+                        {% elif notification.verb == "upvoted_post" %}
+                            upvoted your post
+                        {% elif notification.verb == "upvoted_comment" %}
+                            upvoted your comment
+                        {% elif notification.verb == "followed" %}
+                            followed you
+                        {% else %}
+                            {{ notification.verb }}
+                        {% endif %}
+                    {% endif %}
 
                     {% if notification.target %}
                         {% with target=notification.target %}
@@ -105,11 +129,11 @@
             </div>
 
             {# Icon based on verb #}
-            {% if 'followed' in notification.verb %}
+            {% if notification.verb == "followed" %}
                 <div class="notif-icon ni-follow"><i class="fas fa-user-plus"></i></div>
-            {% elif 'liked' in notification.verb %}
-                <div class="notif-icon ni-like"><i class="fas fa-heart"></i></div>
-            {% elif 'commented' in notification.verb %}
+            {% elif notification.verb == "upvoted_post" or notification.verb == "upvoted_comment" %}
+                <div class="notif-icon ni-like"><i class="fas fa-thumbs-up"></i></div>
+            {% elif notification.verb == "commented_on_post" or notification.verb == "replied_to_comment" %}
                 <div class="notif-icon ni-comment"><i class="fas fa-comment"></i></div>
             {% elif 'shared' in notification.verb %}
                 <div class="notif-icon ni-share"><i class="fas fa-share"></i></div>
