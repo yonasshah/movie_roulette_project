@@ -265,6 +265,9 @@ def send_vote_update(instance):
     channel_layer = get_channel_layer()
     group_name = 'feed_updates'
 
+    comment_ct = ContentType.objects.get_for_model(Comment)
+    is_comment_vote = instance.content_type_id == comment_ct.id
+
     up_count = Vote.objects.filter(
         content_type_id=instance.content_type_id,
         object_id=instance.object_id,
@@ -286,6 +289,7 @@ def send_vote_update(instance):
                 'obj_id': instance.object_id,
                 'up_count': up_count,
                 'down_count': down_count,
+                'is_comment_vote': is_comment_vote,
             }
         }
     )

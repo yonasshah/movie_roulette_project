@@ -5,7 +5,6 @@ from asgiref.sync import sync_to_async # Import sync_to_async
 from .models import Notification # Import Notification model
 
 # --- FeedConsumer ---
-# --- FeedConsumer ---
 class FeedConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.group_name = 'feed_updates'
@@ -41,8 +40,6 @@ class FeedConsumer(AsyncWebsocketConsumer):
         }))
 
         print(f"FeedConsumer: Sent new_item message (type: {item_type}) to client.")
-        
-    
 
     async def feed_removed_item(self, event):
         message_data = event['data']
@@ -55,7 +52,7 @@ class FeedConsumer(AsyncWebsocketConsumer):
         }))
 
         print("FeedConsumer: Sent removed_item message to client.")
-        
+
     async def feed_vote_update(self, event):
         message_data = event['data']
 
@@ -67,7 +64,6 @@ class FeedConsumer(AsyncWebsocketConsumer):
         }))
 
         print("FeedConsumer: Sent vote_update message to client.")
-
 
     async def feed_deleted_comment(self, event):
         message_data = event['data']
@@ -104,65 +100,6 @@ class FeedConsumer(AsyncWebsocketConsumer):
         }))
 
         print("FeedConsumer: Sent like_update message to client.")
-
-    async def disconnect(self, close_code):
-        print(f"FeedConsumer: WebSocket disconnecting from group {self.group_name}...") # Logging
-        # Leave room group
-        if hasattr(self, 'group_name'): # Check if group_name was set
-            await self.channel_layer.group_discard(
-                self.group_name,
-                self.channel_name
-            )
-        print("FeedConsumer: WebSocket disconnected.") # Logging
-
-    # --- UPDATED: Handler for new feed items (SharedListPost OR UserContent) ---
-    async def feed_new_item(self, event):
-        message_data = event['data'] # Get the JSON data sent by the signal
-        # The 'type' inside message_data differentiates the item type
-        item_type = message_data.get('type')
-        print(f"FeedConsumer: Received feed_new_item of type '{item_type}': {message_data}") # Logging
-
-        # Send JSON data to WebSocket client (browser)
-        # The JS will need to know how to handle both 'share' and 'list_item' types
-        await self.send(text_data=json.dumps({
-            'type': 'new_item', # Keep outer type consistent
-            'data': message_data, # Send the raw data, including the inner type
-        }))
-        print(f"FeedConsumer: Sent new_item message (type: {item_type}) to client.") # Logging
-    # --- END UPDATE ---
-
-
-    # --- Handler for new comments ---
-    async def feed_new_comment(self, event):
-        message_data = event['data']
-        print(f"FeedConsumer: Received feed_new_comment: {message_data}") # Logging
-
-        # Send comment data (including HTML) to WebSocket client
-        await self.send(text_data=json.dumps({
-            'type': 'new_comment', # Tell JS this is a new comment
-            'data': message_data,
-        }))
-        print("FeedConsumer: Sent new_comment message to client.") # Logging
-
-    # --- Handler for like updates ---
-    async def feed_like_update(self, event):
-        message_data = event['data']
-        print(f"FeedConsumer: Received feed_like_update: {message_data}") # Logging
-
-        # Send like update data to WebSocket client
-        await self.send(text_data=json.dumps({
-            'type': 'like_update', # Tell JS this is a like update
-            'data': message_data,
-        }))
-        print("FeedConsumer: Sent like_update message to client.") # Logging
-
-    # Optional: Keep feed_update if used elsewhere, or remove if feed_new_item replaces it
-    # async def feed_update(self, event):
-    #     item_html = event.get('html', None)
-    #     await self.send(text_data=json.dumps({
-    #         'type': 'new_item_html', # Use a different type if keeping both methods
-    #         'html': item_html
-    #     }))
 
 
 # --- NotificationConsumer ---

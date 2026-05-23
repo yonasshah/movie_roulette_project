@@ -635,6 +635,29 @@
             if (msg.type === 'vote_update' && msg.data) {
                 var vd = msg.data;
 
+                if (vd.is_comment_vote) {
+                    var commentTarget = fc.querySelector(
+                        '.comment-item[data-comment-id="' + vd.obj_id + '"]'
+                    );
+
+                    if (commentTarget) {
+                        var commentUpBtn = commentTarget.querySelector('.cvote-up');
+                        var commentDownBtn = commentTarget.querySelector('.cvote-down');
+
+                        if (commentUpBtn) {
+                            var cupCount = commentUpBtn.querySelector('.cup-count');
+                            if (cupCount) cupCount.textContent = vd.up_count;
+                        }
+
+                        if (commentDownBtn) {
+                            var cdownCount = commentDownBtn.querySelector('.cdown-count');
+                            if (cdownCount) cdownCount.textContent = vd.down_count;
+                        }
+                    }
+
+                    return;
+                }
+
                 var voteTarget = fc.querySelector(
                     '.feed-item[data-ctype-id="' + vd.ctype_id + '"][data-item-id="' + vd.obj_id + '"]'
                 );
