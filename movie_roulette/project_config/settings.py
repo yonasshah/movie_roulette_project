@@ -7,8 +7,9 @@ load_dotenv()  # Load environment variables from .env file
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'django-insecure-^!&9ghoo6lnps&!uootmq#5adx9^lbn6%#xtxy%vk_^=bq_=_9'
-DEBUG = True
+SECRET_KEY = os.environ.get("SECRET_KEY")
+DEBUG = os.environ.get("DEBUG", "False") == "True"
+TMDB_API_KEY = os.environ.get("TMDB_API_KEY", "")
 ALLOWED_HOSTS = ['movie-roulette-project.onrender.com', '127.0.0.1']
 
 INSTALLED_APPS = [
@@ -26,6 +27,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -110,8 +112,7 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# Your TMDb Key
-TMDB_API_KEY = "4547cf64feadcde0dac8544e88aec9ee"
+
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 AI_FEATURES_ENABLED = os.environ.get("AI_FEATURES_ENABLED", "False") == "True"
