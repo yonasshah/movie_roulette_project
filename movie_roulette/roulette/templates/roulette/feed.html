@@ -714,7 +714,7 @@
                         '.comment-item[data-comment-id="' + cd.parent_id + '"]'
                     );
 
-                    iif (parentCI) {
+                    if (parentCI) {
                         var parentThread = parentCI.closest('.comment-thread');
                         if (parentThread) parentThread.classList.remove('hidden');
 
