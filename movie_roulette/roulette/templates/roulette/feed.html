@@ -113,7 +113,8 @@
     <div id="feed-container">
         {% for item in feed_items %}
             <div class="feed-card feed-item"
-                 {% if item.type != 'follow' %}data-item-id="{{ item.obj_id }}" data-ctype-id="{{ item.ctype_id }}"{% endif %}>
+                data-user-id="{{ item.user.id }}"
+                {% if item.type != 'follow' %}data-item-id="{{ item.obj_id }}" data-ctype-id="{{ item.ctype_id }}"{% endif %}>
                 {% if item.type == 'share' %}
                     {% include 'roulette/_feed_item_shared_list.html' with item=item request=request %}
                 {% elif item.type == 'follow' %}
@@ -605,9 +606,7 @@
                 initCollapseState();
                 initReviewClamping();
 
-                if (window.showToast) {
-                    window.showToast('New feed activity added.', 'info');
-                }
+                
             }
 
             if (msg.type === 'removed_item' && msg.data) {

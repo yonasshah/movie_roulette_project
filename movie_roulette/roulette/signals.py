@@ -8,6 +8,66 @@ from django.contrib.contenttypes.models import ContentType
 from django.template.loader import render_to_string
 
 
+
+def _get_notification_owner(obj):
+    """
+    Returns the user who owns a feed/comment target, if available.
+    """
+    if hasattr(obj, "user"):
+        return obj.user
+    return None
+
+
+def _get_target_title(obj):
+    """
+    Gets a human-friendly title/name for notification text.
+    """
+    if hasattr(obj, "title") and obj.title:
+        return obj.title
+
+    if hasattr(obj, "name") and obj.name:
+        return obj.name
+
+    if hasattr(obj, "list") and obj.list:
+        return obj.list.name
+
+    return "your post"
+
+
+def _get_list_context(obj):
+    """
+    Adds list context like 'in Spring List' when available.
+    """
+    if hasattr(obj, "custom_list") and obj.custom_list:
+        return f" in {obj.custom_list.name}"
+
+    if hasattr(obj, "list") and obj.list:
+        return f" in {obj.list.name}"
+
+    return ""
+
+
+def _create_notification_once(recipient, actor, verb, target):
+    """
+    Prevents duplicate notifications for repeatable actions like upvotes/follows.
+    Comments are naturally unique, but this is useful for votes.
+    """
+    if not recipient or not actor or recipient == actor or not target:
+        return None
+
+    target_ct = ContentType.objects.get_for_model(target.__class__)
+
+    notification, created = Notification.objects.get_or_create(
+        recipient=recipient,
+        actor=actor,
+        verb=verb,
+        target_content_type=target_ct,
+        target_object_id=target.id,
+    )
+
+    return notification
+
+
 # --- Receiver for SharedListPost ---
 @receiver(post_save, sender=SharedListPost)
 def broadcast_new_feed_item(sender, instance, created, **kwargs):
@@ -180,7 +240,7 @@ def send_notification_update(sender, instance, created, **kwargs):
         unread_count = Notification.objects.filter(recipient=instance.recipient, read=False).count()
 
         actor_name = instance.actor.username if instance.actor else 'System'
-        message_text = f"New notification: {actor_name} {instance.verb}."
+        message_text = f"@{actor_name} {instance.verb}"
 
         async_to_sync(channel_layer.group_send)(
             user_specific_group,
@@ -198,31 +258,67 @@ def send_notification_update(sender, instance, created, **kwargs):
 # --- Receiver for Comment ---
 @receiver(post_save, sender=Comment)
 def send_new_comment(sender, instance, created, **kwargs):
-    if created:
-        channel_layer = get_channel_layer()
-        group_name = 'feed_updates'
+    if not created:
+        return
 
-        try:
-            comment_html = render_to_string('roulette/_comment.html', {'comment': instance})
-        except Exception as e:
-            print(f"Error rendering comment HTML in signal: {e}")
-            comment_html = "<p>Error loading comment.</p>"
+    # 1. Try notification, but do not let notification errors break live comments.
+    try:
+        if instance.parent:
+            recipient = instance.parent.user
+            title = _get_target_title(instance.content_object)
+            list_context = _get_list_context(instance.content_object)
+            verb = f"replied to your comment on {title}{list_context}"
+        else:
+            recipient = _get_notification_owner(instance.content_object)
+            title = _get_target_title(instance.content_object)
+            list_context = _get_list_context(instance.content_object)
+            verb = f"commented on {title}{list_context}"
 
-        print(f"Signal: Sending new comment for {instance.content_type_id}:{instance.object_id} to group {group_name}")
+        if recipient and recipient != instance.user:
+            Notification.objects.create(
+                recipient=recipient,
+                actor=instance.user,
+                verb=verb,
+                target_content_type=instance.content_type,
+                target_object_id=instance.object_id,
+                action_object_content_type=ContentType.objects.get_for_model(Comment),
+                action_object_object_id=instance.id,
+            )
+    except Exception as e:
+        print(f"Error creating comment notification: {e}")
 
-        async_to_sync(channel_layer.group_send)(
-            group_name,
+    # 2. Always broadcast the live comment.
+    channel_layer = get_channel_layer()
+    group_name = "feed_updates"
+
+    try:
+        comment_html = render_to_string(
+            "roulette/_comment.html",
             {
-                'type': 'feed.new_comment', # Method name in FeedConsumer
-                'data': {
-                    'ctype_id': instance.content_type_id,
-                    'obj_id': instance.object_id,
-                    'comment_html': comment_html,
-                    'commenter_id': instance.user.id
-                }
+                "comment": instance,
+                "request": None,
             }
         )
-        print(f"Signal: Sent new comment update to group {group_name}")
+    except Exception as e:
+        print(f"Error rendering comment HTML in signal: {e}")
+        comment_html = "<p>Error loading comment.</p>"
+
+    print(f"Signal: Sending new comment for {instance.content_type_id}:{instance.object_id} to group {group_name}")
+
+    async_to_sync(channel_layer.group_send)(
+        group_name,
+        {
+            "type": "feed.new_comment",
+            "data": {
+                "ctype_id": instance.content_type_id,
+                "obj_id": instance.object_id,
+                "comment_html": comment_html,
+                "commenter_id": instance.user.id,
+            },
+        }
+    )
+
+    print(f"Signal: Sent new comment update to group {group_name}")
 
 
 # --- Function to send like update (used by post_save and post_delete) ---
@@ -296,13 +392,65 @@ def send_vote_update(instance):
 
 
 @receiver(post_save, sender=Vote)
-def send_vote_update_on_save(sender, instance, **kwargs):
+def send_vote_update_on_save(sender, instance, created, **kwargs):
     send_vote_update(instance)
+
+    # Only notify for new upvotes, not downvotes.
+    if not created or instance.vote_type != 1:
+        return
+
+    target = instance.content_object
+    recipient = _get_notification_owner(target)
+
+    if not recipient or recipient == instance.user:
+        return
+
+    title = _get_target_title(target)
+    list_context = _get_list_context(target)
+
+    if isinstance(target, Comment):
+        verb = f"upvoted your comment on {title}{list_context}"
+    else:
+        verb = f"upvoted {title}{list_context}"
+
+    _create_notification_once(
+        recipient=recipient,
+        actor=instance.user,
+        verb=verb,
+        target=target,
+    )
 
 
 @receiver(post_delete, sender=Vote)
 def send_vote_update_on_delete(sender, instance, **kwargs):
     send_vote_update(instance)
+
+    # If an upvote is removed, remove the matching notification.
+    if instance.vote_type != 1:
+        return
+
+    target = instance.content_object
+    recipient = _get_notification_owner(target)
+
+    if not recipient or recipient == instance.user:
+        return
+
+    target_ct = ContentType.objects.get_for_model(target.__class__)
+    title = _get_target_title(target)
+    list_context = _get_list_context(target)
+
+    if isinstance(target, Comment):
+        verb = f"upvoted your comment on {title}{list_context}"
+    else:
+        verb = f"upvoted {title}{list_context}"
+
+    Notification.objects.filter(
+        recipient=recipient,
+        actor=instance.user,
+        verb=verb,
+        target_content_type=target_ct,
+        target_object_id=target.id,
+    ).delete()
     
 @receiver(post_delete, sender=Comment)
 def send_deleted_comment(sender, instance, **kwargs):

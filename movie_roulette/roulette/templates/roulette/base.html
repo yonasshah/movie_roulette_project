@@ -217,7 +217,10 @@
                         <a href="{% url 'roulette:notifications' %}" id="navbar-notifications-link"
                            class="relative w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 hover:text-gray-300 hover:bg-white/[0.05] transition-all">
                             <i class="fas fa-bell text-sm"></i>
-                            <span id="navbar-unread-count" class="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500 {% if unread_notifications_count == 0 %}hidden{% endif %}"></span>
+                            <span id="navbar-unread-count"
+                                class="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold leading-[18px] text-center {% if unread_notifications_count == 0 %}hidden{% endif %}">
+                                {% if unread_notifications_count > 99 %}100+{% else %}{{ unread_notifications_count }}{% endif %}
+                            </span>
                         </a>
                         <div class="relative dropdown">
                             <button id="user-menu-button" type="button"
@@ -347,7 +350,10 @@
 
                 {% if user.is_authenticated %}
                     <div class="h-px bg-white/[0.04] my-2"></div>
-                    <a href="{% url 'roulette:notifications' %}" class="relative block px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-white/[0.04]">Notifications <span id="mobile-unread-count" class="absolute top-2.5 right-3 w-2 h-2 rounded-full bg-red-500 {% if unread_notifications_count == 0 %}hidden{% endif %}"></span></a>
+                    <a href="{% url 'roulette:notifications' %}" class="relative block px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-white/[0.04]">Notifications <span id="mobile-unread-count"
+                        class="absolute top-2 right-3 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold leading-[18px] text-center {% if unread_notifications_count == 0 %}hidden{% endif %}">
+                        {% if unread_notifications_count > 99 %}100+{% else %}{{ unread_notifications_count }}{% endif %}
+                    </span></a>
                     <a href="{% url 'roulette:user_profile' username=user.username %}" class="block px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-white/[0.04]">My profile</a>
                     <a href="{% url 'roulette:list_all' %}" class="block px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-white/[0.04]">My lists</a>
                     <a href="{% url 'users:account_settings' %}" class="block px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-white/[0.04]">Settings</a>
@@ -424,8 +430,24 @@
         var mEl = document.getElementById('django-messages-data');
         if (mEl) { try { JSON.parse(mEl.textContent).forEach(function(m){ var tp='info'; if(m.tags.indexOf('success')!==-1)tp='success'; else if(m.tags.indexOf('error')!==-1)tp='error'; showToast(m.message,tp); }); } catch(e){} }
         var navB=document.getElementById('navbar-unread-count'), mobB=document.getElementById('mobile-unread-count');
-        function updateNotif(c){ var n=parseInt(c)||0; [navB,mobB].forEach(function(el){if(el)el.classList.toggle('hidden',n===0);}); }
-        {% if user.is_authenticated %}
+        function formatNotifCount(c) {
+            var n = parseInt(c) || 0;
+            if (n <= 0) return '';
+            if (n > 99) return '100+';
+            return String(n);
+        }
+
+        function updateNotif(c) {
+            var n = parseInt(c) || 0;
+            var label = formatNotifCount(n);
+
+            [navB, mobB].forEach(function(el) {
+                if (!el) return;
+                el.classList.toggle('hidden', n === 0);
+                el.textContent = label;
+            });
+        }
+                {% if user.is_authenticated %}
         (function cWS(){ var p=location.protocol==='https:'?'wss:':'ws:', ws=new WebSocket(p+'//'+location.host+'/ws/notifications/');
             ws.onmessage=function(e){ var m=JSON.parse(e.data); if(m.type==='notification_count_update'){updateNotif(m.unread_count);if(m.new_message)showToast(m.new_message,'info');} };
             ws.onclose=function(e){ if(e.code!==1000&&e.code!==1008)setTimeout(cWS,5e3+Math.random()*1e3); };
