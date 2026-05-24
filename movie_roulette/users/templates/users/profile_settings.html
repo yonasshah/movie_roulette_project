@@ -83,10 +83,9 @@
 
 .preview-cover {
     height: 88px;
-    background:
-        radial-gradient(circle at 20% 10%, rgba(99,102,241,0.35), transparent 35%),
-        radial-gradient(circle at 85% 30%, rgba(129,140,248,0.20), transparent 35%),
-        rgba(255,255,255,0.025);
+    background-size: cover;
+    background-position: center;
+    background-color: rgba(255,255,255,0.025);
     border-bottom: 1px solid rgba(255,255,255,0.07);
 }
 
@@ -112,8 +111,14 @@
     letter-spacing: -0.02em;
 }
 
-.preview-link {
+.preview-handle {
     margin-top: 2px;
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.preview-link {
+    margin-top: 8px;
     display: inline-block;
     font-size: 12px;
     color: #818cf8;
@@ -124,6 +129,50 @@
     color: #8b93a1;
     font-size: 13px;
     line-height: 1.6;
+}
+
+.preview-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 14px;
+}
+
+.preview-tag {
+    border-radius: 999px;
+    padding: 4px 9px;
+    background: rgba(255,255,255,0.055);
+    border: 1px solid rgba(255,255,255,0.07);
+    color: #d1d5db;
+    font-size: 11px;
+    font-weight: 650;
+}
+
+.preview-fav-box {
+    margin-top: 14px;
+    border: 1px solid rgba(255,255,255,0.06);
+    background: rgba(0,0,0,0.16);
+    border-radius: 14px;
+    padding: 12px;
+}
+
+.preview-fav-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: #4b5563;
+    font-weight: 800;
+}
+
+.preview-fav-value {
+    margin-top: 4px;
+    font-size: 13px;
+    color: #e5e7eb;
+    font-weight: 650;
+}
+
+.settings-card {
+    overflow: hidden;
 }
 
 .settings-section {
@@ -169,6 +218,15 @@
     border: 1px solid rgba(255,255,255,0.1);
 }
 
+.banner-preview {
+    width: 100%;
+    height: 130px;
+    object-fit: cover;
+    border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.08);
+    margin-bottom: 14px;
+}
+
 .file-input {
     color: #6b7280;
     font-size: 13px;
@@ -190,6 +248,23 @@
     background: #6366f1;
 }
 
+.settings-text-input {
+    width: 100%;
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.085);
+    background: rgba(0,0,0,0.24);
+    color: #e5e7eb;
+    padding: 12px 14px;
+    font-size: 14px;
+}
+
+.settings-text-input:focus {
+    outline: none;
+    border-color: rgba(99,102,241,0.55);
+    box-shadow: 0 0 0 3px rgba(99,102,241,0.12);
+}
+
+.settings-textarea,
 .bio-field textarea {
     width: 100%;
     min-height: 118px;
@@ -202,10 +277,41 @@
     resize: vertical;
 }
 
+.settings-textarea:focus,
 .bio-field textarea:focus {
     outline: none !important;
     border-color: rgba(99,102,241,0.55) !important;
     box-shadow: 0 0 0 3px rgba(99,102,241,0.12);
+}
+
+.genre-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 9px;
+}
+
+.genre-option {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    border: 1px solid rgba(255,255,255,0.07);
+    background: rgba(255,255,255,0.025);
+    border-radius: 12px;
+    padding: 10px 12px;
+    color: #d1d5db;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.15s ease;
+}
+
+.genre-option:hover {
+    background: rgba(255,255,255,0.045);
+    border-color: rgba(255,255,255,0.11);
+}
+
+.genre-option input {
+    accent-color: #6366f1;
 }
 
 .privacy-box {
@@ -217,6 +323,11 @@
     background: rgba(255,255,255,0.025);
     border-radius: 16px;
     padding: 16px;
+}
+
+.privacy-list {
+    display: grid;
+    gap: 12px;
 }
 
 .form-footer {
@@ -257,6 +368,17 @@
         grid-template-columns: 1fr;
     }
 }
+
+@media (max-width: 640px) {
+    .genre-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .avatar-edit {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}
 {% endblock %}
 
 {% block content %}
@@ -274,11 +396,21 @@
 
     <div class="settings-grid">
         <aside class="settings-preview">
-            <div class="preview-cover"></div>
+            <div class="preview-cover" style="background-image: url('{{ user.profile.banner_image.url }}');"></div>
+
             <div class="preview-body">
                 <img src="{{ user.profile.image.url }}" class="preview-avatar" alt="Profile picture">
 
-                <h2 class="preview-name">@{{ user.username }}</h2>
+                <h2 class="preview-name">
+                    {% if user.profile.display_name %}
+                        {{ user.profile.display_name }}
+                    {% else %}
+                        {{ user.username }}
+                    {% endif %}
+                </h2>
+
+                <p class="preview-handle">@{{ user.username }}</p>
+
                 <a href="{% url 'roulette:user_profile' username=user.username %}" class="preview-link">
                     View public profile
                 </a>
@@ -290,11 +422,50 @@
                         Your bio will appear here once you add one.
                     {% endif %}
                 </p>
+
+                {% if user.profile.favorite_genres %}
+                    <div class="preview-tags">
+                        {% for genre in user.profile.favorite_genres.split %}
+                            <span class="preview-tag">{{ genre }}</span>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                {% if user.profile.favorite_movie_title %}
+                    <div class="preview-fav-box">
+                        <p class="preview-fav-label">Favorite movie</p>
+                        <p class="preview-fav-value">{{ user.profile.favorite_movie_title }}</p>
+                    </div>
+                {% endif %}
+
+                {% if user.profile.favorite_show_title %}
+                    <div class="preview-fav-box">
+                        <p class="preview-fav-label">Favorite show</p>
+                        <p class="preview-fav-value">{{ user.profile.favorite_show_title }}</p>
+                    </div>
+                {% endif %}
             </div>
         </aside>
 
         <form method="POST" enctype="multipart/form-data" class="settings-card">
             {% csrf_token %}
+
+            <div class="settings-section">
+                <div class="section-top">
+                    <div>
+                        <label for="{{ form.display_name.id_for_label }}" class="section-label block">
+                            {{ form.display_name.label }}
+                        </label>
+                        <p class="section-help">This appears above your @username on your public profile.</p>
+                    </div>
+                </div>
+
+                {{ form.display_name }}
+
+                {% for error in form.display_name.errors %}
+                    <p class="mt-2 text-xs text-red-400">{{ error }}</p>
+                {% endfor %}
+            </div>
 
             <div class="settings-section">
                 <div class="section-top">
@@ -320,10 +491,32 @@
                 </div>
             </div>
 
+            <div class="settings-section">
+                <div class="section-top">
+                    <div>
+                        <p class="section-label">{{ form.banner_image.label }}</p>
+                        <p class="section-help">This appears as the wide banner behind your profile picture.</p>
+                    </div>
+                </div>
+
+                <img src="{{ user.profile.banner_image.url }}" class="banner-preview" alt="Current profile banner">
+
+                <input type="file"
+                       name="{{ form.banner_image.name }}"
+                       id="{{ form.banner_image.id_for_label }}"
+                       class="file-input">
+
+                {% for error in form.banner_image.errors %}
+                    <p class="mt-2 text-xs text-red-400">{{ error }}</p>
+                {% endfor %}
+            </div>
+
             <div class="settings-section bio-field">
                 <div class="section-top">
                     <div>
-                        <label for="{{ form.bio.id_for_label }}" class="section-label block">{{ form.bio.label }}</label>
+                        <label for="{{ form.bio.id_for_label }}" class="section-label block">
+                            {{ form.bio.label }}
+                        </label>
                         <p class="section-help">Write a short intro for your public profile.</p>
                     </div>
                 </div>
@@ -336,25 +529,127 @@
             </div>
 
             <div class="settings-section">
-                <div class="privacy-box">
+                <div class="section-top">
                     <div>
-                        <label for="{{ form.is_favorites_private.id_for_label }}" class="section-label block">
-                            {{ form.is_favorites_private.label }}
-                        </label>
-                        <p class="section-help">Only you will be able to see your favorites list.</p>
+                        <p class="section-label">{{ form.favorite_genres.label }}</p>
+                        <p class="section-help">Choose 3 to 5 genres that describe your taste.</p>
                     </div>
-
-                    {{ form.is_favorites_private }}
                 </div>
 
-                {% for error in form.is_favorites_private.errors %}
+                <div class="genre-grid">
+                    {% for checkbox in form.favorite_genres %}
+                        <label class="genre-option">
+                            {{ checkbox.tag }}
+                            <span>{{ checkbox.choice_label }}</span>
+                        </label>
+                    {% endfor %}
+                </div>
+
+                {% for error in form.favorite_genres.errors %}
                     <p class="mt-2 text-xs text-red-400">{{ error }}</p>
                 {% endfor %}
             </div>
 
+            <div class="settings-section">
+                <div class="section-top">
+                    <div>
+                        <p class="section-label">Favorite movie and show</p>
+                        <p class="section-help">Show one movie and one show that define your taste.</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label for="{{ form.favorite_movie_title.id_for_label }}"
+                               class="block text-sm font-semibold text-gray-300 mb-2">
+                            {{ form.favorite_movie_title.label }}
+                        </label>
+
+                        {{ form.favorite_movie_title }}
+                        {{ form.favorite_movie_tmdb_id }}
+
+                        {% for error in form.favorite_movie_title.errors %}
+                            <p class="mt-2 text-xs text-red-400">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+
+                    <div>
+                        <label for="{{ form.favorite_show_title.id_for_label }}"
+                               class="block text-sm font-semibold text-gray-300 mb-2">
+                            {{ form.favorite_show_title.label }}
+                        </label>
+
+                        {{ form.favorite_show_title }}
+                        {{ form.favorite_show_tmdb_id }}
+
+                        {% for error in form.favorite_show_title.errors %}
+                            <p class="mt-2 text-xs text-red-400">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <div class="section-top">
+                    <div>
+                        <p class="section-label">Privacy</p>
+                        <p class="section-help">Choose what other people can see on your profile.</p>
+                    </div>
+                </div>
+
+                <div class="privacy-list">
+                    <label class="privacy-box">
+                        <div>
+                            <p class="section-label">{{ form.is_favorites_private.label }}</p>
+                            <p class="section-help">Hide your favorites list.</p>
+                        </div>
+                        {{ form.is_favorites_private }}
+                    </label>
+
+                    <label class="privacy-box">
+                        <div>
+                            <p class="section-label">{{ form.is_watchlist_private.label }}</p>
+                            <p class="section-help">Hide your watchlist.</p>
+                        </div>
+                        {{ form.is_watchlist_private }}
+                    </label>
+
+                    <label class="privacy-box">
+                        <div>
+                            <p class="section-label">{{ form.is_reviews_private.label }}</p>
+                            <p class="section-help">Hide your reviews.</p>
+                        </div>
+                        {{ form.is_reviews_private }}
+                    </label>
+
+                    <label class="privacy-box">
+                        <div>
+                            <p class="section-label">{{ form.is_activity_private.label }}</p>
+                            <p class="section-help">Hide your activity from your profile.</p>
+                        </div>
+                        {{ form.is_activity_private }}
+                    </label>
+
+                    <label class="privacy-box border-red-500/20 bg-red-500/[0.035]">
+                        <div>
+                            <p class="section-label text-red-300">{{ form.is_profile_private.label }}</p>
+                            <p class="section-help text-red-200/45">
+                                Hide most of your public profile from other users.
+                            </p>
+                        </div>
+                        {{ form.is_profile_private }}
+                    </label>
+                </div>
+            </div>
+
             <div class="form-footer">
-                <a href="{% url 'roulette:user_profile' username=user.username %}" class="cancel-link">Cancel</a>
-                <button type="submit" class="save-btn">Save changes</button>
+                <a href="{% url 'roulette:user_profile' username=user.username %}" class="cancel-link">
+                    Cancel
+                </a>
+
+                <button type="submit" class="save-btn">
+                    Save changes
+                </button>
             </div>
         </form>
     </div>
