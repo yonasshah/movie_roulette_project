@@ -24,6 +24,8 @@ from django.db import IntegrityError # To handle duplicate list names
 from django.urls import reverse # For redirects
 from itertools import chain
 from operator import attrgetter
+from django.views.decorators.cache import cache_page
+from django_ratelimit.decorators import ratelimit
 
 
 
@@ -392,7 +394,7 @@ def fetch_tmdb_data(endpoint):
         return []
 
 # --- NEW DISCOVER VIEW ---
-
+@cache_page(60 * 30)  # Cache for 30 minutes
 def discover_view(request):
     context = {
         'popular_movies': fetch_tmdb_data('movie/popular'),
@@ -668,6 +670,7 @@ def toggle_follow(request):
         'following_count': following_count
     })
 
+@ratelimit(key='user_or_ip', rate='30/m', method = 'ALL', block=True)
 def get_random_content(request):
     BASE_URL = "https://api.themoviedb.org/3"
 
@@ -819,7 +822,7 @@ def get_random_content(request):
     except requests.exceptions.RequestException as e:
         return JsonResponse({'error': f"API request failed: {e}"}, status=500)
 
-
+@ratelimit(key='user_or_ip', rate='30/m', method='ALL', block=True)
 def get_genres_view(request):
     """Proxy TMDB genre list so the API key stays server-side."""
     content_type = request.GET.get('content_type', 'movie')
@@ -966,7 +969,7 @@ from django.db.models import Q, Count, Exists, OuterRef
 from django.contrib.auth import get_user_model
 from .models import UserFollow  # Ensure this import matches your project structure
 
-
+@ratelimit(key='user_or_ip', rate='30/m', method='ALL', block=True)
 def search_view(request):
     query = request.GET.get('q', '')
     active_tab = request.GET.get('type', 'all')  # Default to 'all'
@@ -1531,6 +1534,7 @@ def edit_comment_view(request, comment_id):
     messages.success(request, 'Comment updated.')
     return redirect(request.POST.get('next', 'roulette:feed'))
 
+@ratelimit(key='user_or_ip', rate='10/m', method='ALL', block=True)
 @require_POST
 def generate_mood_filters_view(request):
     if not settings.AI_FEATURES_ENABLED:
@@ -1590,6 +1594,7 @@ def generate_mood_filters_view(request):
         "explanation": filters.explanation,
     })
     
+@ratelimit(key='user_or_ip', rate='30/m', method='ALL', block=True)  
 @require_POST
 def explain_recommendation_view(request):
     if not settings.AI_FEATURES_ENABLED:

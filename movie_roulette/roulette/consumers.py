@@ -24,15 +24,13 @@ class FeedConsumer(AsyncWebsocketConsumer):
         print(f"FeedConsumer: WebSocket connected and added to group {self.group_name}")
 
     async def disconnect(self, close_code):
-        print(f"FeedConsumer: WebSocket disconnecting from group {self.group_name}...")
-
         if hasattr(self, 'group_name'):
+            print(f"FeedConsumer: WebSocket disconnecting from group {self.group_name}...")
             await self.channel_layer.group_discard(
                 self.group_name,
                 self.channel_name
             )
-
-        print("FeedConsumer: WebSocket disconnected.")
+            print("FeedConsumer: WebSocket disconnected.")
 
     async def feed_new_item(self, event):
         message_data = event['data']
