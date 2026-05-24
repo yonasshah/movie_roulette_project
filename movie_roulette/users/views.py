@@ -3,8 +3,9 @@ from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from .forms import SignUpForm, ProfileUpdateForm
 from django.contrib import messages
+from django_ratelimit.decorators import ratelimit
 
-
+@ratelimit(key='ip', rate='5/m', method='POST', block=True)
 def signup_view(request):
     if request.method == 'POST':
         form = SignUpForm(request.POST)

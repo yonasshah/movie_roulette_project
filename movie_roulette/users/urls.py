@@ -1,12 +1,15 @@
 from django.urls import path, reverse_lazy
 from django.contrib.auth import views as auth_views
 from . import views
+from django_ratelimit.decorators import ratelimit
 
 app_name = 'users'
 
 urlpatterns = [
     path('signup/', views.signup_view, name='signup'),
-    path('login/', auth_views.LoginView.as_view(template_name='users/login.html'), name='login'),
+    path('login/', ratelimit(key='ip', rate='5/m', method='POST', block=True)(
+        auth_views.LoginView.as_view(template_name='users/login.html')
+    ), name='login'),
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
     # --- Updated Path ---
     path('settings/profile/', views.profile_settings_view, name='profile_settings'),
@@ -23,8 +26,9 @@ urlpatterns = [
          ),
          name='password_change_done'),
     # --- Keep password reset URLs ---
-    path('password_reset/', auth_views.PasswordResetView.as_view(template_name='users/password_reset.html'),
-         name='password_reset'),
+    path('password_reset/', ratelimit(key='ip', rate='3/m', method='POST', block=True)(
+     auth_views.PasswordResetView.as_view(template_name='users/password_reset.html')
+     ), name='password_reset')
     path('password_reset/done/', auth_views.PasswordResetDoneView.as_view(template_name='users/password_reset_done.html'),
          name='password_reset_done'),
     path('reset/<uidb64>/<token>/',
