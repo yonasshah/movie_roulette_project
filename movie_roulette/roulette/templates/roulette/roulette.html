@@ -467,7 +467,6 @@
     'use strict';
 
     var csrfToken = '{{ csrf_token }}';
-    var tmdbApiKey = '{{ settings.TMDB_API_KEY }}';
     var isAuthenticated = {{ user.is_authenticated|yesno:"true,false" }};
     var URLS = {
         login:"{% url 'users:login' %}",
@@ -531,7 +530,7 @@
 
     // Genres
     function fetchGenres(selectedGenreId, selectedAvoidGenreId) {
-        fetch('https://api.themoviedb.org/3/genre/'+contentType+'/list?api_key='+tmdbApiKey+'&language=en-US')
+        fetch('/api/genres/?content_type=' + contentType)
         .then(function(r){return r.json()}).then(function(d){
             genreSelect.innerHTML='<option value="">Any genre</option>';
 

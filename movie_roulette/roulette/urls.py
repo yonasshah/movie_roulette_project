@@ -15,6 +15,7 @@ urlpatterns = [
     path('content/<str:content_type>/<int:tmdb_id>/', views.content_detail_view, name='content_detail'),
     path('content/<str:content_type>/<int:tmdb_id>/review/', views.add_review, name='add_review'),
     path('review/<int:review_id>/delete/', views.delete_review, name='delete_review'),
+    path('api/genres/', views.get_genres_view, name='get_genres'),
 
     # User Profile & Following
     path('user/<str:username>/', views.user_profile_view, name='user_profile'),

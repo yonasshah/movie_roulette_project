@@ -9,9 +9,15 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
 SECRET_KEY = os.environ.get("SECRET_KEY")
+if not SECRET_KEY:
+    raise ValueError("SECRET_KEY environment variable is not set. Please set it in your .env file.")
 DEBUG = os.environ.get("DEBUG", "False") == "True"
 TMDB_API_KEY = os.environ.get("TMDB_API_KEY", "")
-ALLOWED_HOSTS = ['movie-roulette-project.onrender.com', '127.0.0.1']
+
+ALLOWED_HOSTS = os.environ.get(
+    "ALLOWED_HOSTS",
+    "movie-roulette-project.onrender.com,127.0.0.1,localhost"
+).split(",")
 
 INSTALLED_APPS = [
     'daphne',
@@ -38,7 +44,6 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-# This is a critical change
 ROOT_URLCONF = 'project_config.urls'
 
 TEMPLATES = [
@@ -128,3 +133,13 @@ EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 MEDIA_URL = '/media/'
+
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True
+    SECURE_HSTS_SECONDS = 31536000  # 1 year
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+ 

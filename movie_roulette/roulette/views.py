@@ -25,6 +25,10 @@ from django.urls import reverse # For redirects
 from itertools import chain
 from operator import attrgetter
 
+
+
+TMDB_TIMEOUT = 10 # seconds for TMDB API calls
+
 def build_comment_tree(comments):
     """
     Builds a 2-level nested tree. Direct replies go on parent.replies_list.
@@ -380,7 +384,7 @@ def fetch_tmdb_data(endpoint):
     base_url = "https://api.themoviedb.org/3"
     params = {"api_key": settings.TMDB_API_KEY, "language": "en-US", "page": 1}
     try:
-        response = requests.get(f"{base_url}/{endpoint}", params=params)
+        response = requests.get(f"{base_url}/{endpoint}", params=params, timeout=TMDB_TIMEOUT)
         response.raise_for_status()
         return response.json().get('results', [])
     except requests.exceptions.RequestException as e:
@@ -411,7 +415,7 @@ def content_detail_view(request, content_type, tmdb_id):
             "api_key": settings.TMDB_API_KEY,
             "append_to_response": "videos,watch/providers"
         }
-        detail_res = requests.get(f"{BASE_URL}/{endpoint_type}/{tmdb_id}", params=detail_params)
+        detail_res = requests.get(f"{BASE_URL}/{endpoint_type}/{tmdb_id}", params=detail_params, timeout=TMDB_TIMEOUT)
         detail_res.raise_for_status()
         content_details = detail_res.json()
  
@@ -757,7 +761,7 @@ def get_random_content(request):
         
         
 
-        discover_res = requests.get(f"{BASE_URL}/discover/{endpoint_type}", params=discover_params)
+        discover_res = requests.get(f"{BASE_URL}/discover/{endpoint_type}", params=discover_params, timeout=TMDB_TIMEOUT)
         discover_res.raise_for_status()
         total_pages = discover_res.json().get('total_pages', 1)
 
@@ -767,7 +771,7 @@ def get_random_content(request):
         random_page = random.randint(1, min(total_pages, 500))
 
         discover_params['page'] = random_page
-        movies_res = requests.get(f"{BASE_URL}/discover/{endpoint_type}", params=discover_params)
+        movies_res = requests.get(f"{BASE_URL}/discover/{endpoint_type}", params=discover_params, timeout=TMDB_TIMEOUT)
         movies_res.raise_for_status()
         results = movies_res.json().get('results', [])
         
@@ -787,7 +791,7 @@ def get_random_content(request):
             "api_key": settings.TMDB_API_KEY,
             "append_to_response": "videos,watch/providers"
         }
-        detail_res = requests.get(f"{BASE_URL}/{endpoint_type}/{content_id}", params=detail_params)
+        detail_res = requests.get(f"{BASE_URL}/{endpoint_type}/{content_id}", params=detail_params, timeout=TMDB_TIMEOUT)
         detail_res.raise_for_status()
         content_details = detail_res.json()
 
@@ -816,7 +820,23 @@ def get_random_content(request):
         return JsonResponse({'error': f"API request failed: {e}"}, status=500)
 
 
-# --- FIXED get_user_lists VIEW ---
+def get_genres_view(request):
+    """Proxy TMDB genre list so the API key stays server-side."""
+    content_type = request.GET.get('content_type', 'movie')
+    if content_type not in ('movie', 'tv'):
+        content_type = 'movie'
+ 
+    try:
+        response = requests.get(
+            f"https://api.themoviedb.org/3/genre/{content_type}/list",
+            params={"api_key": settings.TMDB_API_KEY, "language": "en-US"},
+            timeout=TMDB_TIMEOUT,
+        )
+        response.raise_for_status()
+        return JsonResponse(response.json())
+    except requests.exceptions.RequestException as e:
+        return JsonResponse({'genres': [], 'error': str(e)}, status=502)
+
 @login_required
 def get_user_lists(request):
     favorites = UserContent.objects.filter(user=request.user, list_type=UserContent.ListType.FAVORITE)
@@ -972,7 +992,7 @@ def search_view(request):
         try:
             search_url = "https://api.themoviedb.org/3/search/multi"
             params = {"api_key": settings.TMDB_API_KEY, "query": query, "language": "en-US"}
-            res = requests.get(search_url, params=params)
+            res = requests.get(search_url, params=params, timeout=TMDB_TIMEOUT)
             res.raise_for_status()
             api_data = res.json().get('results', [])
 
