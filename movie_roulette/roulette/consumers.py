@@ -7,6 +7,12 @@ from .models import Notification # Import Notification model
 # --- FeedConsumer ---
 class FeedConsumer(AsyncWebsocketConsumer):
     async def connect(self):
+        self.user = self.scope["user"]
+
+        if not self.user.is_authenticated:
+            await self.close()
+            return
+
         self.group_name = 'feed_updates'
 
         await self.channel_layer.group_add(

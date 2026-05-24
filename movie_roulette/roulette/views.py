@@ -125,7 +125,7 @@ def feed_view(request):
     # queryset was never fetching UserFollow objects.
     # =====================================================
     follows = UserFollow.objects.filter(
-        Q(follower_id__in=user_ids_to_include) | Q(followed_id__in=user_ids_to_include)
+        follower_id__in=user_ids_to_include
     ).select_related(
         'follower', 'follower__profile',
         'followed', 'followed__profile'
@@ -1548,6 +1548,12 @@ def generate_mood_filters_view(request):
         }, status=400)
 
     mood = payload.get("mood", "").strip()
+    
+    if len(mood) > 500:
+        return JsonResponse({
+            "success": False,
+            "error": "Mood description is too long (max 500 characters)."
+        }, status=400)
 
     if not mood:
         return JsonResponse({
