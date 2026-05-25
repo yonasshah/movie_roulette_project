@@ -42,10 +42,14 @@ class FeedConsumer(AsyncWebsocketConsumer):
 
         logger.debug("Feed websocket new item event received. item_type=%s", item_type)
 
-        await self.send(text_data=json.dumps({
-            'type': 'new_item',
-            'data': message_data,
-        }))
+        try:
+            await self.send(text_data=json.dumps({
+                'type': 'new_item',
+                'data': message_data,
+            }))
+        except Exception:
+            logger.exception("Failed to send feed new item websocket event. item_type=%s", item_type)
+            return
 
         logger.debug("Feed websocket new item event sent. item_type=%s", item_type)
 
@@ -151,7 +155,7 @@ class NotificationConsumer(AsyncWebsocketConsumer):
             )
             logger.debug("Notification websocket disconnected for authenticated user.")
         else:
-            logger.debug("Notification websocket disconnecting unauthenticated or incomplete connection.")
+            logger.warning("Notification websocket disconnected before full authentication/setup.")
 
 
     # Receive message from user-specific group (triggered by signal)
