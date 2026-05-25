@@ -33,7 +33,7 @@ class UserListForm(forms.ModelForm):
 
     class Meta:
         model = UserList
-        fields = ['name']
+        fields = ['name', 'description', 'is_public']
 
 
 class ShareListForm(forms.Form):

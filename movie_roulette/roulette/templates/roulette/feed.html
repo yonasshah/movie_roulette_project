@@ -102,6 +102,9 @@
     height: 0 !important;
     margin: 0 !important;
 }
+.comment-text-content {
+    white-space: pre-line;
+}
 {% endblock %}
 
 {% block content %}
@@ -516,7 +519,8 @@
         fetch(url, { method: 'POST', headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' }, body: fd })
         .then(r => r.json()).then(d => {
             if (d.success) {
-                ci.querySelector('.comment-text-content').innerHTML = d.text.replace(/\n/g, '<br>');
+                const textEl = ci.querySelector('.comment-text-content');
+                textEl.textContent = d.text;
                 ci.querySelector('.comment-edit-form').classList.add('hidden');
                 ci.querySelector('.comment-display').classList.remove('hidden');
             }

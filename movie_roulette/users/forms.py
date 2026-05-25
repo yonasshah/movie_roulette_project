@@ -2,6 +2,7 @@ from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 from .models import Profile
+from PIL import Image
 
 class SignUpForm(UserCreationForm):
     class Meta(UserCreationForm.Meta):
@@ -97,6 +98,40 @@ class ProfileUpdateForm(forms.ModelForm):
                 for genre in self.instance.favorite_genres.split(",")
                 if genre.strip()
             ]
+            
+    def clean_image(self):
+        image = self.cleaned_data.get("image")
+        return self.validate_uploaded_image(image, "Profile picture")
+
+
+    def clean_banner_image(self):
+        image = self.cleaned_data.get("banner_image")
+        return self.validate_uploaded_image(image, "Banner image")
+
+
+    def validate_uploaded_image(self, image, field_name):
+        if not image:
+            return image
+
+        max_size_mb = 3
+        if image.size > max_size_mb * 1024 * 1024:
+            raise forms.ValidationError(f"{field_name} must be under {max_size_mb}MB.")
+
+        allowed_content_types = ["image/jpeg", "image/png", "image/webp"]
+        content_type = getattr(image, "content_type", "")
+
+        if content_type not in allowed_content_types:
+            raise forms.ValidationError(
+                f"{field_name} must be a JPG, PNG, or WebP image."
+            )
+
+        try:
+            img = Image.open(image)
+            img.verify()
+        except Exception:
+            raise forms.ValidationError(f"{field_name} is not a valid image.")
+
+        return image
 
     def clean_favorite_genres(self):
         genres = self.cleaned_data.get("favorite_genres", [])

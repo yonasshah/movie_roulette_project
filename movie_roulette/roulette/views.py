@@ -11,11 +11,10 @@ from django.urls import reverse
 from django.contrib.auth.decorators import login_required
 from django.conf import settings
 import requests
-from django.utils.safestring import mark_safe # Import mark_safe
-from django.utils.html import escape # Import escape
+
 from django.contrib.contenttypes.models import ContentType
 from .forms import ShareListForm, UserListForm, ReviewForm, CommentForm # Add CommentForm
-from .models import Notification, SharedListPost, UserContent, UserFollow, UserList, UserReview, Comment, Like, SharedListPost, Vote # Add Comment, Like
+from .models import Notification, SharedListPost, UserContent, UserFollow, UserList, UserReview, Comment, Like, Vote # Add Comment, Like
 import random
 from .services.ai import generate_mood_filters, generate_recommendation_explanation
 from django.contrib.auth import get_user_model
@@ -30,6 +29,36 @@ from django_ratelimit.decorators import ratelimit
 
 
 TMDB_TIMEOUT = 10 # seconds for TMDB API calls
+
+ALLOWED_INTERACTION_MODELS = {
+    UserReview,
+    UserContent,
+    SharedListPost,
+    Comment,
+}
+
+
+def get_allowed_interaction_target(content_type_id, object_id):
+    """
+    Only allow comments, likes, and votes on models that are meant
+    to be publicly interactive in the app.
+    """
+    try:
+        content_type = ContentType.objects.get_for_id(content_type_id)
+    except (ContentType.DoesNotExist, ValueError):
+        return None, None
+
+    model_class = content_type.model_class()
+
+    if model_class not in ALLOWED_INTERACTION_MODELS:
+        return None, None
+
+    try:
+        target_object = content_type.get_object_for_this_type(pk=object_id)
+    except (model_class.DoesNotExist, ValueError):
+        return None, None
+
+    return content_type, target_object
 
 def build_comment_tree(comments):
     """
@@ -52,6 +81,15 @@ def build_comment_tree(comments):
             top_level.append(comment)
 
     return top_level
+
+def get_model_content_type(content_type_str):
+    if content_type_str == 'movie':
+        return UserContent.ContentType.MOVIE
+
+    if content_type_str == 'tv':
+        return UserContent.ContentType.TV
+
+    return None
 
 def attach_comment_vote_data(comment_list, up_lookup, down_lookup, user_vote_lookup):
     """
@@ -91,6 +129,17 @@ def feed_view(request):
         user_id__in=user_ids_to_include
     ).exclude(
         list_type=UserContent.ListType.HISTORY
+    ).filter(
+        Q(
+            list_type__in=[
+                UserContent.ListType.FAVORITE,
+                UserContent.ListType.WATCHLIST,
+            ]
+        )
+        | Q(
+            list_type=UserContent.ListType.CUSTOM,
+            custom_list__is_public=True
+        )
     ).select_related('user', 'user__profile', 'custom_list')
 
     shared_posts = SharedListPost.objects.filter(
@@ -408,28 +457,47 @@ def discover_view(request):
 # --- UPDATED CONTENT DETAIL VIEW ---
 
 def content_detail_view(request, content_type, tmdb_id):
+    if content_type not in ('movie', 'tv'):
+        raise Http404("Invalid content type.")
+
     BASE_URL = "https://api.themoviedb.org/3"
-    endpoint_type = 'movie' if content_type == 'movie' else 'tv'
-    model_content_type = UserContent.ContentType.MOVIE if content_type == 'movie' else UserContent.ContentType.TV
- 
+
+    endpoint_type = content_type
+    model_content_type = get_model_content_type(content_type)
+
+    if not model_content_type:
+        raise Http404("Invalid content type.")
+
     try:
         detail_params = {
             "api_key": settings.TMDB_API_KEY,
             "append_to_response": "videos,watch/providers"
         }
-        detail_res = requests.get(f"{BASE_URL}/{endpoint_type}/{tmdb_id}", params=detail_params, timeout=TMDB_TIMEOUT)
+
+        detail_res = requests.get(
+            f"{BASE_URL}/{endpoint_type}/{tmdb_id}",
+            params=detail_params,
+            timeout=TMDB_TIMEOUT
+        )
         detail_res.raise_for_status()
         content_details = detail_res.json()
- 
-        streaming_providers = content_details.get('watch/providers', {}).get('results', {}).get('US', {}).get('flatrate', [])
- 
+
+        streaming_providers = (
+            content_details
+            .get('watch/providers', {})
+            .get('results', {})
+            .get('US', {})
+            .get('flatrate', [])
+        )
+
         trailer_key = None
         videos = content_details.get('videos', {}).get('results', [])
+
         for video in videos:
             if video.get('site') == 'YouTube' and video.get('type') == 'Trailer':
                 trailer_key = video.get('key')
                 break
- 
+
         is_favorite = False
         is_watchlist = False
 
@@ -447,69 +515,136 @@ def content_detail_view(request, content_type, tmdb_id):
                 list_type=UserContent.ListType.WATCHLIST,
                 content_type=model_content_type
             ).exists()
- 
-        # --- REVIEWS LOGIC ---
+
         all_reviews = UserReview.objects.filter(
-            tmdb_id=tmdb_id, content_type=model_content_type
-        ).select_related('user', 'user__profile').order_by('-timestamp')
- 
+            tmdb_id=tmdb_id,
+            content_type=model_content_type
+        ).select_related(
+            'user',
+            'user__profile'
+        ).order_by('-timestamp')
+
         review_ctype = ContentType.objects.get_for_model(UserReview)
         comment_ctype = ContentType.objects.get_for_model(Comment)
- 
-        # Collect all review IDs for batch queries
-        review_ids = [r.id for r in all_reviews]
- 
-        # --- Batch fetch votes on reviews ---
+
+        review_ids = [review.id for review in all_reviews]
+
         if review_ids:
-            review_votes_qs = Vote.objects.filter(content_type=review_ctype, object_id__in=review_ids)
- 
-            rv_up = review_votes_qs.filter(vote_type=1).values('object_id').annotate(count=Count('id'))
-            rv_up_lookup = {d['object_id']: d['count'] for d in rv_up}
- 
-            rv_down = review_votes_qs.filter(vote_type=-1).values('object_id').annotate(count=Count('id'))
-            rv_down_lookup = {d['object_id']: d['count'] for d in rv_down}
- 
+            review_votes_qs = Vote.objects.filter(
+                content_type=review_ctype,
+                object_id__in=review_ids
+            )
+
+            rv_up = review_votes_qs.filter(
+                vote_type=1
+            ).values(
+                'object_id'
+            ).annotate(
+                count=Count('id')
+            )
+
+            rv_up_lookup = {
+                item['object_id']: item['count']
+                for item in rv_up
+            }
+
+            rv_down = review_votes_qs.filter(
+                vote_type=-1
+            ).values(
+                'object_id'
+            ).annotate(
+                count=Count('id')
+            )
+
+            rv_down_lookup = {
+                item['object_id']: item['count']
+                for item in rv_down
+            }
+
             if request.user.is_authenticated:
-                rv_user = review_votes_qs.filter(user=request.user).values_list('object_id', 'vote_type')
-                rv_user_lookup = {oid: vt for oid, vt in rv_user}
+                rv_user = review_votes_qs.filter(
+                    user=request.user
+                ).values_list(
+                    'object_id',
+                    'vote_type'
+                )
+
+                rv_user_lookup = {
+                    object_id: vote_type
+                    for object_id, vote_type in rv_user
+                }
             else:
                 rv_user_lookup = {}
         else:
             rv_up_lookup = {}
             rv_down_lookup = {}
             rv_user_lookup = {}
- 
-        # --- Batch fetch comments on reviews ---
+
         if review_ids:
             comments_qs = Comment.objects.filter(
-                content_type=review_ctype, object_id__in=review_ids
-            ).select_related('user', 'user__profile', 'parent__user').order_by('timestamp')
- 
+                content_type=review_ctype,
+                object_id__in=review_ids
+            ).select_related(
+                'user',
+                'user__profile',
+                'parent__user'
+            ).order_by('timestamp')
+
             comments_by_review = {}
             all_comment_ids = []
+
             for comment in comments_qs:
-                if comment.object_id not in comments_by_review:
-                    comments_by_review[comment.object_id] = []
+                comments_by_review.setdefault(comment.object_id, [])
                 comments_by_review[comment.object_id].append(comment)
                 all_comment_ids.append(comment.id)
- 
-            # --- Batch fetch votes on comments ---
+
             if all_comment_ids:
-                cv_qs = Vote.objects.filter(content_type=comment_ctype, object_id__in=all_comment_ids)
- 
-                cv_up = cv_qs.filter(vote_type=1).values('object_id').annotate(count=Count('id'))
-                cv_up_lookup = {d['object_id']: d['count'] for d in cv_up}
- 
-                cv_down = cv_qs.filter(vote_type=-1).values('object_id').annotate(count=Count('id'))
-                cv_down_lookup = {d['object_id']: d['count'] for d in cv_down}
- 
+                comment_votes_qs = Vote.objects.filter(
+                    content_type=comment_ctype,
+                    object_id__in=all_comment_ids
+                )
+
+                cv_up = comment_votes_qs.filter(
+                    vote_type=1
+                ).values(
+                    'object_id'
+                ).annotate(
+                    count=Count('id')
+                )
+
+                cv_up_lookup = {
+                    item['object_id']: item['count']
+                    for item in cv_up
+                }
+
+                cv_down = comment_votes_qs.filter(
+                    vote_type=-1
+                ).values(
+                    'object_id'
+                ).annotate(
+                    count=Count('id')
+                )
+
+                cv_down_lookup = {
+                    item['object_id']: item['count']
+                    for item in cv_down
+                }
+
                 if request.user.is_authenticated:
-                    cv_user = cv_qs.filter(user=request.user).values_list('object_id', 'vote_type')
-                    cv_user_lookup = {oid: vt for oid, vt in cv_user}
+                    cv_user = comment_votes_qs.filter(
+                        user=request.user
+                    ).values_list(
+                        'object_id',
+                        'vote_type'
+                    )
+
+                    cv_user_lookup = {
+                        object_id: vote_type
+                        for object_id, vote_type in cv_user
+                    }
                 else:
                     cv_user_lookup = {}
-                
-                # Attach vote data to each comment
+
                 for comment_list in comments_by_review.values():
                     attach_comment_vote_data(
                         comment_list,
@@ -519,20 +654,22 @@ def content_detail_view(request, content_type, tmdb_id):
                     )
             else:
                 for comment_list in comments_by_review.values():
-                    for c in comment_list:
-                        c.fetched_up_count = 0
-                        c.fetched_down_count = 0
-                        c.fetched_user_vote = 0
+                    for comment in comment_list:
+                        comment.fetched_up_count = 0
+                        comment.fetched_down_count = 0
+                        comment.fetched_user_vote = 0
         else:
             comments_by_review = {}
- 
-        # --- Attach all fetched data to each review ---
-        # Build trees for each review's comments
-        comment_counts = {rid: len(clist) for rid, clist in comments_by_review.items()}
 
-        # Build trees for each review's comments (ONCE)
-        for rid in comments_by_review:
-            comments_by_review[rid] = build_comment_tree(comments_by_review[rid])
+        comment_counts = {
+            review_id: len(comment_list)
+            for review_id, comment_list in comments_by_review.items()
+        }
+
+        for review_id in comments_by_review:
+            comments_by_review[review_id] = build_comment_tree(
+                comments_by_review[review_id]
+            )
 
         for review in all_reviews:
             review.fetched_up_count = rv_up_lookup.get(review.id, 0)
@@ -540,20 +677,20 @@ def content_detail_view(request, content_type, tmdb_id):
             review.fetched_user_vote = rv_user_lookup.get(review.id, 0)
             review.fetched_comments = comments_by_review.get(review.id, [])
             review.fetched_comment_count = comment_counts.get(review.id, 0)
- 
+
         user_review = None
-        
+
         if request.user.is_authenticated:
             user_review = all_reviews.filter(user=request.user).first()
- 
+
         avg_rating_data = all_reviews.aggregate(Avg('rating'))
         avg_rating = avg_rating_data['rating__avg']
- 
+
         if user_review:
             review_form = ReviewForm(instance=user_review)
         else:
             review_form = ReviewForm()
- 
+
         context = {
             'content': content_details,
             'content_type': content_type,
@@ -569,10 +706,17 @@ def content_detail_view(request, content_type, tmdb_id):
             'review_content_type_id': review_ctype.id,
             'comment_ctype_id': comment_ctype.id,
         }
+
         return render(request, 'roulette/content_detail.html', context)
- 
-    except requests.exceptions.RequestException as e:
-        return JsonResponse({'error': f"API request failed: {e}"}, status=500)
+
+    except requests.exceptions.HTTPError:
+        raise Http404("Content not found.")
+
+    except requests.exceptions.RequestException:
+        return JsonResponse(
+            {'error': "Could not load content details right now."},
+            status=502
+        )
 
 # --- NEW VIEW TO HANDLE REVIEW FORM ---
 @login_required
@@ -857,7 +1001,9 @@ def get_user_lists(request):
     if tmdb_id and content_type_str:
         try:
             tmdb_id_int = int(tmdb_id)
-            model_content_type = UserContent.ContentType.MOVIE if content_type_str == 'movie' else UserContent.ContentType.TV
+            model_content_type = get_model_content_type(content_type_str)
+            if not model_content_type:
+                return JsonResponse({'error': 'Invalid content type.'}, status=400)
             is_favorite = favorites.filter(tmdb_id=tmdb_id_int, content_type=model_content_type).exists()
             is_watchlist = watchlist.filter(tmdb_id=tmdb_id_int, content_type=model_content_type).exists()
         except ValueError:
@@ -885,7 +1031,10 @@ def toggle_favorite(request):
     if not tmdb_id or not content_type_str:
          return JsonResponse({'success': False, 'error': 'Missing content ID or type.'}, status=400)
 
-    model_content_type = UserContent.ContentType.MOVIE if content_type_str == 'movie' else UserContent.ContentType.TV
+    model_content_type = get_model_content_type(content_type_str)
+
+    if not model_content_type:
+        return JsonResponse({'success': False, 'error': 'Invalid content type.'}, status=400)
 
     try:
         favorite_instance = UserContent.objects.get(
@@ -930,7 +1079,10 @@ def toggle_watchlist(request):
     if not tmdb_id or not content_type_str:
          return JsonResponse({'success': False, 'error': 'Missing content ID or type.'}, status=400)
 
-    model_content_type = UserContent.ContentType.MOVIE if content_type_str == 'movie' else UserContent.ContentType.TV
+    model_content_type = get_model_content_type(content_type_str)
+
+    if not model_content_type:
+        return JsonResponse({'success': False, 'error': 'Invalid content type.'}, status=400)
 
     try:
         watchlist_instance = UserContent.objects.get(
@@ -1145,7 +1297,10 @@ def add_to_custom_list_view(request):
          return JsonResponse({'success': False, 'error': 'Missing required data.'}, status=400)
 
     user_list = get_object_or_404(UserList, id=list_id, user=request.user)
-    model_content_type = UserContent.ContentType.MOVIE if content_type_str == 'movie' else UserContent.ContentType.TV
+    model_content_type = get_model_content_type(content_type_str)
+
+    if not model_content_type:
+        return JsonResponse({'success': False, 'error': 'Invalid content type.'}, status=400)
 
     # Check if item already exists in this specific list
     item_exists = UserContent.objects.filter(
@@ -1203,23 +1358,37 @@ def add_comment_view(request):
  
     if form.is_valid() and content_type_id and object_id:
         try:
-            content_type = ContentType.objects.get_for_id(content_type_id)
-            target_object = content_type.get_object_for_this_type(pk=object_id)
- 
+            content_type, target_object = get_allowed_interaction_target(content_type_id, object_id)
+
+            if not content_type or not target_object:
+                error_msg = "Invalid comment target."
+                if is_ajax:
+                    return JsonResponse({'success': False, 'error': error_msg}, status=400)
+                messages.error(request, error_msg)
+                return redirect(request.POST.get('next', 'roulette:feed'))
+
             comment = form.save(commit=False)
             comment.user = request.user
             comment.content_type = content_type
             comment.object_id = object_id
- 
-            # NEW: Set parent if replying to a comment
+
             if parent_id:
                 try:
-                    parent_comment = Comment.objects.get(id=parent_id)
-                    # Enforce max 2 levels: if parent already has a parent,
-                    # attach reply to the parent's parent (flatten to level 2)
+                    parent_comment = Comment.objects.get(
+                        id=parent_id,
+                        content_type=content_type,
+                        object_id=object_id
+                    )
+
+                    # Optional: enforce max 2 levels.
+                    # If replying to a reply, attach it to the top-level parent.
+                    if parent_comment.parent_id:
+                        parent_comment = parent_comment.parent
+
                     comment.parent = parent_comment
+
                 except Comment.DoesNotExist:
-                    pass  # Invalid parent, save as top-level
+                    pass
  
             comment.save()
  
@@ -1275,8 +1444,10 @@ def toggle_like_view(request):
         return JsonResponse({'success': False, 'error': 'Missing data'}, status=400)
 
     try:
-        content_type = ContentType.objects.get_for_id(content_type_id)
-        target_object = content_type.get_object_for_this_type(pk=object_id) # Get the actual object
+        content_type, target_object = get_allowed_interaction_target(content_type_id, object_id)
+
+        if not content_type or not target_object:
+            return JsonResponse({'success': False, 'error': 'Invalid target.'}, status=400)
 
         like_obj, created = Like.objects.get_or_create(
             user=request.user,
@@ -1321,10 +1492,8 @@ def toggle_like_view(request):
 
         return JsonResponse({'success': True, 'user_liked': user_liked, 'like_count': like_count})
 
-    except ContentType.DoesNotExist:
-        return JsonResponse({'success': False, 'error': 'Invalid content type'}, status=400)
-    except Exception as e: # Catch potential errors getting target_object
-         return JsonResponse({'success': False, 'error': f'An error occurred: {e}'}, status=500)
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Something went wrong.'}, status=500)
      
 @login_required
 @require_POST # Ensure only POST requests can delete
@@ -1454,7 +1623,11 @@ def toggle_vote_view(request):
     vote_type = int(vote_type_str)
  
     try:
-        content_type = ContentType.objects.get_for_id(content_type_id)
+        content_type, target_object = get_allowed_interaction_target(content_type_id, object_id)
+
+        if not content_type or not target_object:
+            return JsonResponse({'success': False, 'error': 'Invalid target.'}, status=400)
+
         existing_vote = Vote.objects.filter(
             user=request.user,
             content_type=content_type,
@@ -1496,10 +1669,8 @@ def toggle_vote_view(request):
             'down_count': down_count,
         })
  
-    except ContentType.DoesNotExist:
-        return JsonResponse({'success': False, 'error': 'Invalid content type.'}, status=400)
-    except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Something went wrong.'}, status=500)
     
 @login_required
 @require_POST
