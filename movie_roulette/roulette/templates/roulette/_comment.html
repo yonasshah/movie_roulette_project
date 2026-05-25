@@ -40,7 +40,7 @@
                     </div>
                 </div>
 
-                {% if comment.user == request.user %}
+                {% if request and comment.user == request.user %}
                 <div class="comment-owner-actions flex items-center gap-2">
                     <button type="button" class="edit-comment-btn text-gray-700 hover:text-indigo-400 text-[10px]" title="Edit">
                         <i class="fas fa-pen"></i>

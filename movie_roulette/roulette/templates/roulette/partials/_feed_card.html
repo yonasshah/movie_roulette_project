@@ -23,7 +23,7 @@
         <div class="comments-section" data-total-comments="{{ item.fetched_comment_count|default:0 }}">
             <div class="comments-list"></div>
 
-            {% if user.is_authenticated %}
+            {% if request and user.is_authenticated %}
             <form class="add-comment-form flex items-center gap-3 mt-2 border-t border-white/[0.04] pt-3" method="POST" action="{% url 'roulette:add_comment' %}">
                 {% csrf_token %}
                 <input type="hidden" name="content_type_id" value="{{ item.ctype_id }}">
