@@ -1,6 +1,10 @@
 # project_config/asgi.py
 import os
 from django.core.asgi import get_asgi_application
+from channels.routing import ProtocolTypeRouter, URLRouter
+from channels.auth import AuthMiddlewareStack
+from channels.security.websocket import AllowedHostsOriginValidator
+import roulette.routing
 
 # Set DJANGO_SETTINGS_MODULE first (important!)
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'project_config.settings')
@@ -15,10 +19,12 @@ from channels.auth import AuthMiddlewareStack # If you need user auth in websock
 import roulette.routing # Import your app's routing
 
 application = ProtocolTypeRouter({
-    "http": django_asgi_app, # Use the initialized app for HTTP
-    "websocket": AuthMiddlewareStack( # Handles WebSockets, wraps auth
-        URLRouter(
-            roulette.routing.websocket_urlpatterns # Point to your app's WebSocket URLs
+    "http": django_asgi_app,
+    "websocket": AllowedHostsOriginValidator(
+        AuthMiddlewareStack(
+            URLRouter(
+                roulette.routing.websocket_urlpatterns
+            )
         )
     ),
 })

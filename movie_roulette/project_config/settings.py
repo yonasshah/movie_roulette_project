@@ -16,7 +16,7 @@ TMDB_API_KEY = os.environ.get("TMDB_API_KEY", "")
 
 ALLOWED_HOSTS = os.environ.get(
     "ALLOWED_HOSTS",
-    "movie-roulette-project.onrender.com,127.0.0.1,localhost"
+    "127.0.0.1,localhost"
 ).split(",")
 
 INSTALLED_APPS = [
@@ -74,12 +74,14 @@ ASGI_APPLICATION = 'project_config.asgi.application'
 #     )
 # }
 
+DATABASE_URL = os.environ.get("DATABASE_URL")
+
+if not DEBUG and not DATABASE_URL:
+    raise ValueError("DATABASE_URL must be set when DEBUG=False.")
+
 DATABASES = {
     'default': dj_database_url.config(
-        # If DATABASE_URL environment variable is set (like on Render), use it.
-        # Otherwise, default to a local SQLite database named db.sqlite3
-        # located in your project's base directory (BASE_DIR).
-        default=f'sqlite:///{BASE_DIR / "db.sqlite3"}',
+        default=DATABASE_URL or f'sqlite:///{BASE_DIR / "db.sqlite3"}',
         conn_max_age=600
     )
 }
@@ -129,7 +131,17 @@ AI_FEATURES_ENABLED = os.environ.get("AI_FEATURES_ENABLED", "False") == "True"
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'
 
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+EMAIL_BACKEND = os.environ.get(
+    "EMAIL_BACKEND",
+    "django.core.mail.backends.console.EmailBackend"
+)
+
+EMAIL_HOST = os.environ.get("EMAIL_HOST", "")
+EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
+EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "True") == "True"
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", EMAIL_HOST_USER)
 
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 MEDIA_URL = '/media/'
@@ -141,5 +153,8 @@ if not DEBUG:
     SECURE_HSTS_PRELOAD = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = "Lax"
+    CSRF_COOKIE_SAMESITE = "Lax"
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
  

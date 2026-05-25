@@ -3,6 +3,10 @@ import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 from asgiref.sync import sync_to_async # Import sync_to_async
 from .models import Notification # Import Notification model
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 # --- FeedConsumer ---
 class FeedConsumer(AsyncWebsocketConsumer):
@@ -21,89 +25,89 @@ class FeedConsumer(AsyncWebsocketConsumer):
         )
 
         await self.accept()
-        print(f"FeedConsumer: WebSocket connected and added to group {self.group_name}")
+        logger.debug("Feed websocket connected.")
 
     async def disconnect(self, close_code):
         if hasattr(self, 'group_name'):
-            print(f"FeedConsumer: WebSocket disconnecting from group {self.group_name}...")
+            logger.debug("Feed websocket disconnecting.")
             await self.channel_layer.group_discard(
                 self.group_name,
                 self.channel_name
             )
-            print("FeedConsumer: WebSocket disconnected.")
+            logger.debug("Feed websocket disconnected.")
 
     async def feed_new_item(self, event):
         message_data = event['data']
         item_type = message_data.get('type')
 
-        print(f"FeedConsumer: Received feed_new_item of type '{item_type}': {message_data}")
+        logger.debug("Feed websocket new item event received. item_type=%s", item_type)
 
         await self.send(text_data=json.dumps({
             'type': 'new_item',
             'data': message_data,
         }))
 
-        print(f"FeedConsumer: Sent new_item message (type: {item_type}) to client.")
+        logger.debug("Feed websocket new item event sent. item_type=%s", item_type)
 
     async def feed_removed_item(self, event):
         message_data = event['data']
 
-        print(f"FeedConsumer: Received feed_removed_item: {message_data}")
+        logger.debug("Feed websocket removed item event received.")
 
         await self.send(text_data=json.dumps({
             'type': 'removed_item',
             'data': message_data,
         }))
 
-        print("FeedConsumer: Sent removed_item message to client.")
+        logger.debug("Feed websocket removed item event sent.")
 
     async def feed_vote_update(self, event):
         message_data = event['data']
 
-        print(f"FeedConsumer: Received feed_vote_update: {message_data}")
+        logger.debug("Feed websocket vote update event received. data=%s", message_data)
 
         await self.send(text_data=json.dumps({
             'type': 'vote_update',
             'data': message_data,
         }))
 
-        print("FeedConsumer: Sent vote_update message to client.")
+        logger.debug("Feed websocket vote update event sent.")
 
     async def feed_deleted_comment(self, event):
         message_data = event['data']
 
-        print(f"FeedConsumer: Received feed_deleted_comment: {message_data}")
+        logger.debug("Feed websocket deleted comment event received. data=%s", message_data)
 
         await self.send(text_data=json.dumps({
             'type': 'deleted_comment',
             'data': message_data,
         }))
 
-        print("FeedConsumer: Sent deleted_comment message to client.")
+        logger.debug("Feed websocket deleted comment event sent.")
 
     async def feed_new_comment(self, event):
         message_data = event['data']
 
-        print(f"FeedConsumer: Received feed_new_comment: {message_data}")
+        logger.debug("Feed websocket new comment event received. data=%s", message_data)
 
         await self.send(text_data=json.dumps({
             'type': 'new_comment',
             'data': message_data,
         }))
 
-        print("FeedConsumer: Sent new_comment message to client.")
+        logger.debug("Feed websocket new comment event sent.")
 
     async def feed_like_update(self, event):
         message_data = event['data']
 
-        print(f"FeedConsumer: Received feed_like_update: {message_data}")
+        logger.debug("Feed websocket like update event received. data=%s", message_data)
 
         await self.send(text_data=json.dumps({
             'type': 'like_update',
             'data': message_data,
         }))
 
-        print("FeedConsumer: Sent like_update message to client.")
+        logger.debug("Feed websocket like update event sent.")
 
 
 # --- NotificationConsumer ---
@@ -113,7 +117,7 @@ class NotificationConsumer(AsyncWebsocketConsumer):
 
         if not self.user.is_authenticated:
             await self.close() # Reject unauthenticated users
-            print("NotificationConsumer: Unauthenticated user rejected.")
+            logger.debug("Notification websocket rejected unauthenticated connection.")
             return
 
         # Each user joins a group named after their user ID
@@ -126,7 +130,7 @@ class NotificationConsumer(AsyncWebsocketConsumer):
         )
 
         await self.accept()
-        print(f"NotificationConsumer: User {self.user.id} connected to group {self.group_name}")
+        logger.debug("Notification websocket connected for authenticated user.")
 
         # Optionally send current count upon connection
         current_count = await self.get_unread_count()
@@ -139,23 +143,21 @@ class NotificationConsumer(AsyncWebsocketConsumer):
     async def disconnect(self, close_code):
         # Ensure user is authenticated before trying to access self.user.id
         if hasattr(self, 'user') and self.user.is_authenticated and hasattr(self, 'group_name'):
-            print(f"NotificationConsumer: User {self.user.id} disconnecting from {self.group_name}...")
+            logger.debug("Notification websocket disconnecting for authenticated user.")
             # Leave user-specific group
             await self.channel_layer.group_discard(
                 self.group_name,
                 self.channel_name
             )
-            print(f"NotificationConsumer: User {self.user.id} disconnected.")
+            logger.debug("Notification websocket disconnected for authenticated user.")
         else:
-             print("NotificationConsumer: Disconnecting an unauthenticated or improperly connected user.")
+            logger.debug("Notification websocket disconnecting unauthenticated or incomplete connection.")
 
 
     # Receive message from user-specific group (triggered by signal)
     async def user_notification(self, event):
         message_data = event['data']
-        # Ensure user attribute exists before logging
-        user_id = self.user.id if hasattr(self, 'user') else 'Unknown'
-        print(f"NotificationConsumer: Received user_notification for {user_id}: {message_data}") # Logging
+        logger.debug("Notification websocket event received.")
 
         # Send message data (e.g., new count) to WebSocket client (browser)
         await self.send(text_data=json.dumps({
@@ -163,7 +165,7 @@ class NotificationConsumer(AsyncWebsocketConsumer):
             'unread_count': message_data.get('unread_count', 0),
             'new_message': message_data.get('message', None) # Optionally send message text for popups
         }))
-        print(f"NotificationConsumer: Sent count update to user {user_id}") # Logging
+        logger.debug("Notification websocket count update sent.")
 
     # Helper to get count asynchronously
     @sync_to_async
