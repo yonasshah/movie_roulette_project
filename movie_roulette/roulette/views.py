@@ -727,7 +727,10 @@ def content_detail_view(request, content_type, tmdb_id):
         user_review = None
 
         if request.user.is_authenticated:
-            user_review = all_reviews.filter(user=request.user).first()
+            for review in all_reviews:
+                if review.user_id == request.user.id:
+                    user_review = review
+                    break
 
         avg_rating_data = all_reviews.aggregate(Avg('rating'))
         avg_rating = avg_rating_data['rating__avg']
