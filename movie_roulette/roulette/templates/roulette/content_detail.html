@@ -936,6 +936,9 @@
             body: new FormData(form)
         })
         .then(function(response) {
+            if (!response.ok) {
+                console.error('Comment request failed:', response.status);
+            }
             return response.json();
         })
         .then(function(data) {
@@ -974,6 +977,7 @@
                     window.showToast('Comment posted.', 'success');
                 }
             } else {
+                console.error('Comment error:', data);
                 window.showToast(data.error || 'Could not post.', 'error');
             }
         })
@@ -1138,6 +1142,7 @@
                 handleCommentVote(cvb);
                 return;
             }
+
             var ecb = e.target.closest('.edit-comment-btn'); if (ecb) { handleEditComment(ecb); return; }
             var seb = e.target.closest('.save-edit-btn'); if (seb) { handleSaveEdit(seb); return; }
             var ceb = e.target.closest('.cancel-edit-btn'); if (ceb) { handleCancelEdit(ceb); return; }
@@ -1146,9 +1151,6 @@
             var srb = e.target.closest('.cd-submit-reply-btn'); if (srb) { handleSubmitReply(srb); return; }
             var crb = e.target.closest('.cd-cancel-reply-btn'); if (crb) { handleCancelReply(crb); return; }
             var trb = e.target.closest('.toggle-replies-btn'); if (trb) { handleToggleReplies(trb); return; }
-        });
-        reviewsContainer.querySelectorAll('.cd-add-comment-form').forEach(function(f) {
-            f.addEventListener('submit', function(e) { e.preventDefault(); handleComment(this); });
         });
     }
 
