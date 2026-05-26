@@ -813,6 +813,7 @@
     var csrfToken = '{{ csrf_token }}';
     var isAuthenticated = {{ user.is_authenticated|yesno:"true,false" }};
     var reviewCtypeId = '{{ review_content_type_id }}';
+    var currentUserId = '{{ user.id|default:""|escapejs }}';
     var commentCtypeId = '{{ comment_ctype_id }}';
     var INITIAL_REPLIES = 2;
     var URLS = {
@@ -1276,7 +1277,7 @@
         fetch("{% url 'roulette:list_create' %}", { method: 'POST', headers: { 'X-CSRFToken': csrfToken }, body: fd })
         .then(r => r.json()).then(d => { if (d.success) addToList(d.list.id); });
     });
-    
+
     function connectContentDetailSocket() {
         var wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
         var wsUrl = wsProtocol + '//' + location.host + '/ws/feed/';
@@ -1288,6 +1289,18 @@
 
             if (msg.type === 'vote_update' && msg.data) {
                 handleLiveVoteUpdate(msg.data);
+            }
+
+            if (msg.type === 'new_comment' && msg.data) {
+                handleLiveNewComment(msg.data);
+            }
+
+            if (msg.type === 'deleted_comment' && msg.data) {
+                handleLiveDeletedComment(msg.data);
+            }
+
+            if (msg.type === 'new_review_available' && msg.data) {
+                handleLiveNewReviewAvailable(msg.data);
             }
         };
 
@@ -1348,6 +1361,120 @@
             var reviewDownCount = reviewDownBtn.querySelector('.down-count');
             if (reviewDownCount) {
                 reviewDownCount.textContent = data.down_count;
+            }
+        }
+    }
+    function handleLiveNewComment(data) {
+        // Your own AJAX submit already adds your comment, so skip websocket duplicate.
+        if (String(data.commenter_id) === String(currentUserId)) {
+            return;
+        }
+
+        // Avoid duplicates if the same comment is already on the page.
+        if (data.comment_id) {
+            var existing = document.querySelector(
+                '.comment-item[data-comment-id="' + data.comment_id + '"]'
+            );
+
+            if (existing) {
+                return;
+            }
+        }
+
+        var card = document.querySelector(
+            '.review-card-v2[data-review-id="' + data.obj_id + '"][data-ctype-id="' + data.ctype_id + '"]'
+        );
+
+        if (!card || !data.comment_html) {
+            return;
+        }
+
+        // Reply to an existing comment.
+        if (data.parent_id) {
+            var parentComment = card.querySelector(
+                '.comment-item[data-comment-id="' + data.parent_id + '"]'
+            );
+
+            if (!parentComment) {
+                showNewReviewBanner('New comment available. Refresh to view it.');
+                return;
+            }
+
+            var parentFlex = parentComment.querySelector(':scope > .flex > .flex-1');
+            var repliesGroup = parentFlex.querySelector(':scope > .replies-group');
+
+            if (!repliesGroup) {
+                repliesGroup = document.createElement('div');
+                repliesGroup.className = 'replies-group mt-2';
+                repliesGroup.dataset.parentId = data.parent_id;
+                parentFlex.appendChild(repliesGroup);
+            }
+
+            var replyWrapper = document.createElement('div');
+            replyWrapper.className = 'reply-wrapper';
+            replyWrapper.innerHTML = data.comment_html;
+
+            var toggleBtn = repliesGroup.querySelector(':scope > .toggle-replies-btn');
+
+            if (toggleBtn) {
+                repliesGroup.insertBefore(replyWrapper, toggleBtn);
+            } else {
+                repliesGroup.appendChild(replyWrapper);
+            }
+
+            updCount(card);
+            return;
+        }
+
+        // Top-level comment.
+        var commentsList = card.querySelector('.cd-comments-list');
+
+        if (!commentsList) {
+            return;
+        }
+
+        commentsList.querySelectorAll('.empty-comments-message').forEach(function(emptyMessage) {
+            emptyMessage.remove();
+        });
+
+        var wrapper = document.createElement('div');
+        wrapper.className = 'comment-thread';
+        wrapper.innerHTML = data.comment_html;
+
+        commentsList.appendChild(wrapper);
+        updCount(card);
+    }
+
+
+    function handleLiveDeletedComment(data) {
+        var commentEl = document.querySelector(
+            '.comment-item[data-comment-id="' + data.comment_id + '"]'
+        );
+
+        if (!commentEl) {
+            return;
+        }
+
+        var card = commentEl.closest('.review-card-v2');
+        var replyWrapper = commentEl.closest('.reply-wrapper');
+        var commentThread = commentEl.closest('.comment-thread');
+
+        if (replyWrapper) {
+            replyWrapper.remove();
+        } else if (commentThread) {
+            commentThread.remove();
+        } else {
+            commentEl.remove();
+        }
+
+        if (card) {
+            updCount(card);
+
+            var commentsList = card.querySelector('.cd-comments-list');
+
+            if (commentsList && commentsList.querySelectorAll('.comment-item').length === 0) {
+                commentsList.innerHTML =
+                    '<p class="empty-comments-message text-xs text-gray-700 italic py-2">No comments yet.</p>';
             }
         }
     }

@@ -312,6 +312,7 @@ def send_new_comment(sender, instance, created, **kwargs):
                 "comment": instance,
                 "request": None,
                 "is_reply": bool(instance.parent_id),
+                "websocket_authenticated": True,
             }
         )
     except Exception as e:
@@ -330,6 +331,7 @@ def send_new_comment(sender, instance, created, **kwargs):
                 "parent_id": instance.parent_id,
                 "comment_html": comment_html,
                 "commenter_id": instance.user.id,
+                "comment_id": instance.id,
             },
         }
     )
