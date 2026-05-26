@@ -378,7 +378,15 @@
                                     <img src="{{ request.user.profile.image.url }}" class="w-12 h-12 rounded-xl object-cover" alt="">
                                     <div>
                                         <p class="text-sm font-bold text-white">@{{ request.user.username }}</p>
-                                        <span class="text-[10px] text-indigo-400 font-black uppercase tracking-widest">Your Review</span>
+                                        <div class="flex items-center gap-2 mt-1">
+                                            <span class="text-[10px] text-indigo-400 font-black uppercase tracking-widest">
+                                                Your Review
+                                            </span>
+
+                                            <span class="text-[10px] px-2 py-0.5 rounded-lg bg-white/[0.05] border border-white/[0.06] text-gray-400">
+                                                {{ user_review.get_visibility_display }}
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
                                 <span class="inline-flex items-center gap-1.5 text-amber-400 font-bold text-sm bg-amber-400/10 border border-amber-400/20 px-3 py-1.5 rounded-xl">
@@ -657,7 +665,18 @@
                                     </a>
                                     <div class="flex-1">
                                         <div class="flex justify-between items-center mb-2">
-                                            <a href="{% url 'roulette:user_profile' username=review.user.username %}" class="text-sm font-bold text-white hover:underline">@{{ review.user.username }}</a>
+                                            <div class="flex items-center gap-2">
+                                                <a href="{% url 'roulette:user_profile' username=review.user.username %}"
+                                                class="text-sm font-bold text-white hover:underline">
+                                                    @{{ review.user.username }}
+                                                </a>
+
+                                                {% if review.visibility == 'FOLLOWERS' %}
+                                                    <span class="text-[10px] px-2 py-0.5 rounded-lg bg-indigo-500/10 border border-indigo-400/20 text-indigo-300">
+                                                        Followers only
+                                                    </span>
+                                                {% endif %}
+                                            </div>
                                             <span class="text-amber-400 font-bold text-sm">★ {{ review.rating }}/10</span>
                                         </div>
                                         <p class="text-[10px] text-gray-600 uppercase mb-3">{{ review.timestamp|timesince }} ago</p>
