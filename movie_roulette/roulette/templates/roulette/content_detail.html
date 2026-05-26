@@ -1121,39 +1121,75 @@
     }
 
     // === EVENT DELEGATION ===
-    if (reviewsContainer) {
-        reviewsContainer.addEventListener('click', function(e) {
-            var vb = e.target.closest('.review-vote-btn');
-            if (vb) {
-                if (!isAuthenticated) {
-                    showSignupPrompt('Create an account to vote on reviews.');
-                    return;
-                }
-                handleReviewVote(vb);
+    document.addEventListener('click', function(e) {
+        var vb = e.target.closest('.review-vote-btn');
+        if (vb) {
+            if (!isAuthenticated) {
+                showSignupPrompt('Create an account to vote on reviews.');
                 return;
             }
+            handleReviewVote(vb);
+            return;
+        }
 
-            var cvb = e.target.closest('.comment-vote-btn');
-            if (cvb) {
-                if (!isAuthenticated) {
-                    showSignupPrompt('Create an account to vote on comments.');
-                    return;
-                }
-                handleCommentVote(cvb);
+        var cvb = e.target.closest('.comment-vote-btn');
+        if (cvb) {
+            if (!isAuthenticated) {
+                showSignupPrompt('Create an account to vote on comments.');
                 return;
             }
+            handleCommentVote(cvb);
+            return;
+        }
 
-            var ecb = e.target.closest('.edit-comment-btn'); if (ecb) { handleEditComment(ecb); return; }
-            var seb = e.target.closest('.save-edit-btn'); if (seb) { handleSaveEdit(seb); return; }
-            var ceb = e.target.closest('.cancel-edit-btn'); if (ceb) { handleCancelEdit(ceb); return; }
-            var dc = e.target.closest('.delete-comment-btn'); if (dc) { handleDeleteComment(dc); return; }
-            var rtb = e.target.closest('.reply-toggle-btn'); if (rtb) { handleReplyToggle(rtb); return; }
-            var srb = e.target.closest('.cd-submit-reply-btn'); if (srb) { handleSubmitReply(srb); return; }
-            var crb = e.target.closest('.cd-cancel-reply-btn'); if (crb) { handleCancelReply(crb); return; }
-            var trb = e.target.closest('.toggle-replies-btn'); if (trb) { handleToggleReplies(trb); return; }
-        });
-    }
+        var ecb = e.target.closest('.edit-comment-btn');
+        if (ecb) {
+            handleEditComment(ecb);
+            return;
+        }
 
+        var seb = e.target.closest('.save-edit-btn');
+        if (seb) {
+            handleSaveEdit(seb);
+            return;
+        }
+
+        var ceb = e.target.closest('.cancel-edit-btn');
+        if (ceb) {
+            handleCancelEdit(ceb);
+            return;
+        }
+
+        var dc = e.target.closest('.delete-comment-btn');
+        if (dc) {
+            handleDeleteComment(dc);
+            return;
+        }
+
+        var rtb = e.target.closest('.reply-toggle-btn');
+        if (rtb) {
+            handleReplyToggle(rtb);
+            return;
+        }
+
+        var srb = e.target.closest('.cd-submit-reply-btn');
+        if (srb) {
+            handleSubmitReply(srb);
+            return;
+        }
+
+        var crb = e.target.closest('.cd-cancel-reply-btn');
+        if (crb) {
+            handleCancelReply(crb);
+            return;
+        }
+
+        var trb = e.target.closest('.toggle-replies-btn');
+        if (trb) {
+            handleToggleReplies(trb);
+            return;
+        }
+    });
     document.querySelectorAll('.cd-add-comment-form').forEach(function(form) {
         form.addEventListener('submit', function(event) {
             event.preventDefault();
@@ -1240,6 +1276,83 @@
         fetch("{% url 'roulette:list_create' %}", { method: 'POST', headers: { 'X-CSRFToken': csrfToken }, body: fd })
         .then(r => r.json()).then(d => { if (d.success) addToList(d.list.id); });
     });
+    
+    function connectContentDetailSocket() {
+        var wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+        var wsUrl = wsProtocol + '//' + location.host + '/ws/feed/';
+
+        var socket = new WebSocket(wsUrl);
+
+        socket.onmessage = function(event) {
+            var msg = JSON.parse(event.data);
+
+            if (msg.type === 'vote_update' && msg.data) {
+                handleLiveVoteUpdate(msg.data);
+            }
+        };
+
+        socket.onclose = function() {
+            setTimeout(connectContentDetailSocket, 5000);
+        };
+    }
+
+    function handleLiveVoteUpdate(data) {
+        if (data.is_comment_vote) {
+            var commentEl = document.querySelector(
+                '.comment-item[data-comment-id="' + data.obj_id + '"]'
+            );
+
+            if (!commentEl) {
+                return;
+            }
+
+            var upBtn = commentEl.querySelector('.cvote-up');
+            var downBtn = commentEl.querySelector('.cvote-down');
+
+            if (upBtn) {
+                var upCount = upBtn.querySelector('.cup-count');
+                if (upCount) {
+                    upCount.textContent = data.up_count;
+                }
+            }
+
+            if (downBtn) {
+                var downCount = downBtn.querySelector('.cdown-count');
+                if (downCount) {
+                    downCount.textContent = data.down_count;
+                }
+            }
+
+            return;
+        }
+
+        var reviewCard = document.querySelector(
+            '.review-card-v2[data-review-id="' + data.obj_id + '"][data-ctype-id="' + data.ctype_id + '"]'
+        );
+
+        if (!reviewCard) {
+            return;
+        }
+
+        var reviewUpBtn = reviewCard.querySelector('.vote-up');
+        var reviewDownBtn = reviewCard.querySelector('.vote-down');
+
+        if (reviewUpBtn) {
+            var reviewUpCount = reviewUpBtn.querySelector('.up-count');
+            if (reviewUpCount) {
+                reviewUpCount.textContent = data.up_count;
+            }
+        }
+
+        if (reviewDownBtn) {
+            var reviewDownCount = reviewDownBtn.querySelector('.down-count');
+            if (reviewDownCount) {
+                reviewDownCount.textContent = data.down_count;
+            }
+        }
+    }
+
+    connectContentDetailSocket();
 })();
 </script>
 {% endblock %}
