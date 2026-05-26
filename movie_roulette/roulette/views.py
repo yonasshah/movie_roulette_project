@@ -38,7 +38,7 @@ ALLOWED_INTERACTION_MODELS = {
 }
 
 
-def get_allowed_interaction_target(content_type_id, object_id):
+def get_allowed_interaction_target(content_type_id, object_id, request_user=None):
     """
     Only allow comments, likes, and votes on models that are meant
     to be publicly interactive in the app.
@@ -50,13 +50,17 @@ def get_allowed_interaction_target(content_type_id, object_id):
 
     model_class = content_type.model_class()
 
-    if model_class not in ALLOWED_INTERACTION_MODELS:
+    if model_class is None or model_class not in ALLOWED_INTERACTION_MODELS:
         return None, None
 
     try:
         target_object = content_type.get_object_for_this_type(pk=object_id)
     except (model_class.DoesNotExist, ValueError):
         return None, None
+
+    if isinstance(target_object, UserReview):
+        if request_user is not None and not can_view_review(request_user, target_object):
+            return None, None
 
     return content_type, target_object
 
@@ -91,6 +95,41 @@ def get_model_content_type(content_type_str):
 
     return None
 
+def can_view_review(request_user, review):
+    if review.visibility == UserReview.Visibility.PUBLIC:
+        return True
+
+    if not request_user.is_authenticated:
+        return False
+
+    if review.user_id == request_user.id:
+        return True
+
+    if review.visibility == UserReview.Visibility.PRIVATE:
+        return False
+
+    if review.visibility == UserReview.Visibility.FOLLOWERS:
+        return UserFollow.objects.filter(
+            follower=request_user,
+            followed=review.user
+        ).exists()
+
+    return False
+
+
+def visible_reviews_for_user(request_user, queryset):
+    if request_user.is_authenticated:
+        return queryset.filter(
+            Q(visibility=UserReview.Visibility.PUBLIC)
+            | Q(user=request_user)
+            | Q(
+                visibility=UserReview.Visibility.FOLLOWERS,
+                user__followers__follower=request_user
+            )
+        ).distinct()
+
+    return queryset.filter(visibility=UserReview.Visibility.PUBLIC)
+
 def attach_comment_vote_data(comment_list, up_lookup, down_lookup, user_vote_lookup):
     """
     Recursively attaches vote counts and current user's vote state
@@ -123,6 +162,10 @@ def feed_view(request):
 
     reviews = UserReview.objects.filter(
         user_id__in=user_ids_to_include
+    ).filter(
+        Q(visibility=UserReview.Visibility.PUBLIC)
+        | Q(visibility=UserReview.Visibility.FOLLOWERS)
+        | Q(user=request.user)
     ).select_related('user', 'user__profile')
 
     list_items = UserContent.objects.filter(
@@ -390,6 +433,7 @@ def user_profile_view(request, username):
         user_reviews = UserReview.objects.none()
     else:
         user_reviews = UserReview.objects.filter(user=profile_user).order_by('-timestamp')
+        user_reviews = visible_reviews_for_user(request.user, user_reviews)
 
     # Favorite genres stored as comma-separated text
     genre_list = [
@@ -523,6 +567,8 @@ def content_detail_view(request, content_type, tmdb_id):
             'user',
             'user__profile'
         ).order_by('-timestamp')
+        
+        all_reviews = visible_reviews_for_user(request.user, all_reviews)
 
         review_ctype = ContentType.objects.get_for_model(UserReview)
         comment_ctype = ContentType.objects.get_for_model(Comment)
@@ -740,6 +786,7 @@ def add_review(request, content_type, tmdb_id):
         # Get title/poster from hidden form fields (or request.POST)
         review.title = request.POST.get('title', 'N/A')
         review.poster_path = request.POST.get('poster_path', '')
+        review.release_year = request.POST.get('release_year', '')
         review.overview = request.POST.get('overview', '')
 
         review.save()
@@ -1358,7 +1405,11 @@ def add_comment_view(request):
  
     if form.is_valid() and content_type_id and object_id:
         try:
-            content_type, target_object = get_allowed_interaction_target(content_type_id, object_id)
+            content_type, target_object = get_allowed_interaction_target(
+                content_type_id,
+                object_id,
+                request.user
+            )
 
             if not content_type or not target_object:
                 error_msg = "Invalid comment target."
@@ -1444,7 +1495,11 @@ def toggle_like_view(request):
         return JsonResponse({'success': False, 'error': 'Missing data'}, status=400)
 
     try:
-        content_type, target_object = get_allowed_interaction_target(content_type_id, object_id)
+        content_type, target_object = get_allowed_interaction_target(
+            content_type_id,
+            object_id,
+            request.user
+        )
 
         if not content_type or not target_object:
             return JsonResponse({'success': False, 'error': 'Invalid target.'}, status=400)
@@ -1623,7 +1678,11 @@ def toggle_vote_view(request):
     vote_type = int(vote_type_str)
  
     try:
-        content_type, target_object = get_allowed_interaction_target(content_type_id, object_id)
+        content_type, target_object = get_allowed_interaction_target(
+            content_type_id,
+            object_id,
+            request.user
+        )
 
         if not content_type or not target_object:
             return JsonResponse({'success': False, 'error': 'Invalid target.'}, status=400)

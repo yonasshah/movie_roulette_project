@@ -109,20 +109,30 @@ class UserContent(models.Model):
 
 # --- NEW MODEL FOR REVIEWS ---
 class UserReview(models.Model):
+    class Visibility(models.TextChoices):
+        PUBLIC = 'PUBLIC', 'Public'
+        FOLLOWERS = 'FOLLOWERS', 'Followers only'
+        PRIVATE = 'PRIVATE', 'Only me'
+
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='reviews')
     tmdb_id = models.IntegerField()
     content_type = models.CharField(max_length=10, choices=UserContent.ContentType.choices)
-    
-    # Rating from 1 (0.5 stars) to 10 (5 stars)
+
     rating = models.PositiveSmallIntegerField(
         validators=[MinValueValidator(1), MaxValueValidator(10)]
     )
     review_text = models.TextField(blank=True)
     timestamp = models.DateTimeField(auto_now_add=True)
 
-    # Store basic info for display in feeds, so we don't have to hit the API
+    visibility = models.CharField(
+        max_length=10,
+        choices=Visibility.choices,
+        default=Visibility.PUBLIC
+    )
+
     title = models.CharField(max_length=255, default='')
     poster_path = models.CharField(max_length=255, blank=True, null=True, default='')
+    release_year = models.CharField(max_length=4, blank=True, null=True)
     overview = models.TextField(blank=True, default='')
 
     class Meta:

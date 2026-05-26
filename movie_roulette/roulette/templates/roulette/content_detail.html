@@ -454,6 +454,7 @@
                                 <input type="hidden" name="title" value="{% if content_type == 'movie' %}{{ content.title|escapejs }}{% else %}{{ content.name|escapejs }}{% endif %}">
                                 <input type="hidden" name="poster_path" value="{{ content.poster_path }}">
                                 <input type="hidden" name="overview" value="{{ content.overview }}">
+                                <input type="hidden" name="release_year" value="{% if content_type == 'movie' %}{{ content.release_date|slice:':4' }}{% else %}{{ content.first_air_date|slice:':4' }}{% endif %}">
                                 <div class="space-y-6">
                                     <div class="flex justify-between items-center">
                                         <h3 class="font-bold text-white">Modify Review</h3>
@@ -495,6 +496,26 @@
                                             class="review-textarea"
                                         >{{ user_review.review_text }}</textarea>
                                     </div>
+                                    <div>
+                                        <label class="block text-[11px] text-gray-600 uppercase tracking-wider font-bold mb-3">
+                                            Who can see this review?
+                                        </label>
+
+                                        <select name="visibility"
+                                                class="w-full bg-white/[0.035] border border-white/[0.075] rounded-2xl px-4 py-3 text-sm text-white outline-none focus:border-indigo-400/60">
+                                            {% for value, label in review_form.visibility.field.choices %}
+                                                <option value="{{ value }}"
+                                                        class="bg-[#11121c] text-white"
+                                                        {% if user_review and user_review.visibility == value %}selected{% endif %}>
+                                                    {{ label }}
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+
+                                        <p class="text-xs text-gray-600 mt-2">
+                                            Public reviews can be seen by everyone. Followers-only reviews only appear to people who follow you.
+                                        </p>
+                                    </div>
 
                                     <div class="review-submit-row">
                                         <p class="review-helper-text">
@@ -523,6 +544,7 @@
                                 <input type="hidden" name="title" value="{% if content_type == 'movie' %}{{ content.title|escapejs }}{% else %}{{ content.name|escapejs }}{% endif %}">
                                 <input type="hidden" name="poster_path" value="{{ content.poster_path }}">
                                 <input type="hidden" name="overview" value="{{ content.overview }}">
+                                <input type="hidden" name="release_year" value="{% if content_type == 'movie' %}{{ content.release_date|slice:':4' }}{% else %}{{ content.first_air_date|slice:':4' }}{% endif %}">
 
                                 <div class="space-y-5">
                                     <div>
@@ -562,10 +584,28 @@
                                             class="review-textarea"
                                         ></textarea>
                                     </div>
+                                    <div>
+                                        <label class="block text-[11px] text-gray-600 uppercase tracking-wider font-bold mb-3">
+                                            Who can see this review?
+                                        </label>
+
+                                        <select name="visibility"
+                                                class="w-full bg-white/[0.035] border border-white/[0.075] rounded-2xl px-4 py-3 text-sm text-white outline-none focus:border-indigo-400/60">
+                                            {% for value, label in review_form.visibility.field.choices %}
+                                                <option value="{{ value }}" class="bg-[#11121c] text-white">
+                                                    {{ label }}
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+
+                                        <p class="text-xs text-gray-600 mt-2">
+                                            Public reviews can be seen by everyone. Followers-only reviews only appear to people who follow you.
+                                        </p>
+                                    </div>
 
                                     <div class="review-submit-row">
                                         <p class="review-helper-text">
-                                            Reviews are public and can be commented on by other users.
+                                            Choose who can see this review before posting.
                                         </p>
 
                                         <button type="submit" class="review-submit-btn">

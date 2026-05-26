@@ -4,6 +4,8 @@ from django import forms
 # --- Make sure you import UserList, UserReview, and Comment from models ---
 from .models import UserList, UserReview, Comment # Added Comment
 
+
+
 class UserListForm(forms.ModelForm):
     name = forms.CharField(
         max_length=100,
@@ -50,14 +52,14 @@ class ShareListForm(forms.Form):
     
 # --- FORM FOR REVIEWS ---
 class ReviewForm(forms.ModelForm):
-    # Use a ChoiceField for ratings to create a <select> dropdown
     rating = forms.ChoiceField(
-        choices=[(i, f"{i/2.0} Stars") for i in range(1, 11)], # 1-10
+        choices=[(i, f"{i/2.0} Stars") for i in range(1, 11)],
         required=True,
         widget=forms.Select(attrs={
             'class': 'w-full px-3 py-2 border border-gray-600 bg-gray-900 rounded-md text-white focus:outline-none focus:ring-1 focus:ring-indigo-500'
         })
     )
+
     review_text = forms.CharField(
         required=False,
         widget=forms.Textarea(attrs={
@@ -67,9 +69,17 @@ class ReviewForm(forms.ModelForm):
         })
     )
 
+    visibility = forms.ChoiceField(
+        choices=UserReview.Visibility.choices,
+        required=True,
+        widget=forms.Select(attrs={
+            'class': 'w-full px-3 py-2 border border-gray-600 bg-gray-900 rounded-md text-white focus:outline-none focus:ring-1 focus:ring-indigo-500'
+        })
+    )
+
     class Meta:
         model = UserReview
-        fields = ['rating', 'review_text']
+        fields = ['rating', 'review_text', 'visibility']
 
 # --- NEW COMMENT FORM ---
 class CommentForm(forms.ModelForm):
