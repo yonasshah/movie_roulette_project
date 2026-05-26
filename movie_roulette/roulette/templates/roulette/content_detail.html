@@ -6,35 +6,224 @@
 
 {% block style %}
 .detail-hero-v2 {
-    position: relative; width: 100vw; margin-left: calc(-50vw + 50%);
-    height: 520px; background-size: cover; background-position: center 20%; margin-top: -20px;
+    position: relative;
+    width: 100vw;
+    margin-left: calc(-50vw + 50%);
+    height: 440px;
+    background-size: cover;
+    background-position: center 22%;
+    margin-top: -20px;
 }
 .hero-overlay-v2 {
     position: absolute; inset: 0;
     background: linear-gradient(to top, #050507 8%, rgba(5,5,7,0.5) 50%, rgba(5,5,7,0.85) 100%);
 }
 .detail-grid-v2 {
-    display: grid; grid-template-columns: 320px 1fr; gap: 48px;
-    position: relative; z-index: 10; margin-top: -240px;
+    display: grid;
+    grid-template-columns: 280px minmax(0, 1fr);
+    gap: 40px;
+    position: relative;
+    z-index: 10;
+    margin-top: -205px;
 }
 @media (max-width: 1024px) {
     .detail-grid-v2 { grid-template-columns: 1fr; margin-top: -120px; text-align: center; }
     .poster-v2 { max-width: 260px; margin: 0 auto; }
     .meta-row-v2 { justify-content: center; }
 }
-.poster-v2 { width: 100%; border-radius: 24px; box-shadow: 0 30px 60px rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.1); }
+.poster-v2 {
+    width: 100%;
+    border-radius: 22px;
+    box-shadow: 0 24px 55px rgba(0,0,0,0.55);
+    border: 1px solid rgba(255,255,255,0.1);
+}
 .action-pill-v2 {
-    display: inline-flex; align-items: center; gap: 8px; padding: 12px 24px; border-radius: 14px;
-    font-size: 14px; font-weight: 700; border: 1px solid rgba(255,255,255,0.08);
-    background: rgba(255,255,255,0.04); backdrop-filter: blur(10px); color: #94a3b8; transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 16px;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 700;
+    border: 1px solid rgba(255,255,255,0.075);
+    background: rgba(255,255,255,0.04);
+    backdrop-filter: blur(10px);
+    color: #94a3b8;
+    transition: all 0.2s;
 }
 .action-pill-v2:hover { border-color: #6366f1; color: #fff; transform: translateY(-2px); }
 .action-pill-v2.fav-active { color: #ef4444; border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.1); }
 .action-pill-v2.watch-active { color: #818cf8; border-color: rgba(99,102,241,0.3); background: rgba(99,102,241,0.1); }
 .meta-chip { padding: 6px 14px; background: rgba(255,255,255,0.06); border-radius: 8px; font-size: 13px; font-weight: 600; color: #cbd5e1; }
 .provider-logo-v2 { width: 44px; height: 44px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); }
-.review-card-v2 { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 20px; padding: 24px; }
-.your-review-post { background: rgba(99,102,241,0.04); border: 1px solid rgba(99,102,241,0.15); border-radius: 20px; padding: 28px; }
+.review-card-v2 {
+    background: rgba(255,255,255,0.028);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 20px;
+    padding: 24px;
+}
+
+.your-review-post {
+    background: rgba(99,102,241,0.055);
+    border: 1px solid rgba(99,102,241,0.18);
+    border-radius: 20px;
+    padding: 28px;
+}
+.reviews-shell {
+    max-width: 780px;
+}
+
+.review-section-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 22px;
+}
+
+.review-eyebrow {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #818cf8;
+    margin-bottom: 6px;
+}
+
+.review-form-card {
+    background: rgba(255,255,255,0.032);
+    border: 1px solid rgba(255,255,255,0.075);
+    border-radius: 24px;
+    padding: 26px;
+    margin-bottom: 42px;
+    box-shadow: 0 18px 55px rgba(0,0,0,0.18);
+}
+
+.review-form-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 4px;
+}
+
+.review-form-subtitle {
+    font-size: 13px;
+    color: #6b7280;
+    margin-bottom: 22px;
+}
+
+.rating-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.rating-input {
+    display: none;
+}
+
+.rating-option {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 42px;
+    border-radius: 13px;
+    background: rgba(255,255,255,0.035);
+    border: 1px solid rgba(255,255,255,0.07);
+    color: #9ca3af;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.16s ease;
+    user-select: none;
+}
+
+.rating-option:hover {
+    color: #fff;
+    background: rgba(255,255,255,0.06);
+    border-color: rgba(129,140,248,0.28);
+    transform: translateY(-1px);
+}
+
+.rating-input:checked + .rating-option {
+    color: #fff;
+    background: rgba(99,102,241,0.22);
+    border-color: rgba(129,140,248,0.55);
+    box-shadow: 0 0 0 3px rgba(99,102,241,0.12);
+}
+
+.review-textarea {
+    width: 100%;
+    min-height: 120px;
+    background: rgba(255,255,255,0.035);
+    border: 1px solid rgba(255,255,255,0.075);
+    border-radius: 18px;
+    padding: 15px 16px;
+    color: #e5e7eb;
+    font-size: 14px;
+    line-height: 1.6;
+    outline: none;
+    resize: vertical;
+    transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+
+.review-textarea::placeholder {
+    color: #4b5563;
+}
+
+.review-textarea:focus {
+    background: rgba(255,255,255,0.05);
+    border-color: rgba(129,140,248,0.5);
+    box-shadow: 0 0 0 4px rgba(99,102,241,0.12);
+}
+
+.review-submit-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    margin-top: 18px;
+}
+
+.review-submit-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: #6366f1;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 800;
+    padding: 12px 20px;
+    border-radius: 14px;
+    transition: all 0.16s ease;
+}
+
+.review-submit-btn:hover {
+    background: #5558e6;
+    transform: translateY(-1px);
+}
+
+.review-helper-text {
+    font-size: 12px;
+    color: #4b5563;
+}
+
+@media (max-width: 640px) {
+    .rating-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .review-submit-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .review-submit-btn {
+        width: 100%;
+    }
+}
 .hidden { display: none; }
 .modal-list-btn { width: 100%; text-align: left; padding: 12px; border-radius: 10px; color: #94a3b8; transition: 0.2s; }
 .modal-list-btn:hover { background: rgba(255,255,255,0.05); color: #fff; }
@@ -51,6 +240,9 @@
 .cd-comments-section { margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.05); }
 .cd-comment-count { font-size: 11px; color: #4b5563; display: flex; align-items: center; gap: 4px; }
 .comment-item { margin-top: 10px; }
+.comment-text-content {
+    white-space: pre-line;
+}
 .comment-reply { margin-left: 0; padding-left: 16px; border-left: 2px solid rgba(255,255,255,0.04); margin-top: 6px; }
 .replies-group { margin-top: 4px; }
 .comment-vote-btn { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; color: #374151; cursor: pointer; background: none; border: none; padding: 1px 4px; transition: color 0.15s; }
@@ -116,7 +308,12 @@
                             <img src="https://image.tmdb.org/t/p/w92{{ provider.logo_path }}" title="{{ provider.provider_name }}" class="provider-logo-v2">
                         {% endfor %}
                     {% else %}
-                        <span class="text-xs text-gray-600 italic">Not available to stream</span>
+                        <div class="text-sm text-gray-600 leading-relaxed">
+                            <p class="font-semibold text-gray-500 mb-1">No streaming providers found</p>
+                            <p class="text-xs text-gray-700">
+                                TMDb does not list a current US streaming option for this title.
+                            </p>
+                        </div>
                     {% endif %}
                 </div>
             </div>
@@ -133,25 +330,49 @@
                 {% endif %}
             </div>
 
-            <h1 class="text-5xl md:text-6xl font-black text-white mb-8 tracking-tighter italic uppercase">
+            <h1 class="font-display text-4xl md:text-6xl font-bold text-white mb-5 tracking-tight leading-[0.95]">
                 {% if content_type == 'movie' %}{{ content.title }}{% else %}{{ content.name }}{% endif %}
             </h1>
-            <p class="text-lg text-gray-400 leading-relaxed max-w-3xl mb-12">{{ content.overview }}</p>
+            <p class="text-base md:text-lg text-gray-400 leading-relaxed max-w-3xl mb-8">
+                {{ content.overview|default:"No overview available yet." }}
+            </p>
 
-            <div class="flex items-center gap-4 mb-20">
-                <a href="{% if trailer_key %}https://www.youtube.com/watch?v={{ trailer_key }}{% else %}#{% endif %}" target="_blank"
-                   class="inline-flex items-center gap-3 px-8 py-4 rounded-2xl text-base font-bold transition-all hover:scale-105 {% if trailer_key %}bg-red-600 hover:bg-red-500 text-white shadow-xl shadow-red-600/20{% else %}bg-white/5 text-gray-600 cursor-not-allowed{% endif %}">
-                    <i class="fab fa-youtube text-xl"></i> Watch Trailer
-                </a>
+            <div class="flex items-center gap-4 mb-14">
+                <a href="{% if trailer_key %}https://www.youtube.com/watch?v={{ trailer_key }}{% else %}#{% endif %}"
+                    {% if trailer_key %}target="_blank" rel="noopener noreferrer"{% endif %}
+                    class="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold transition-all {% if trailer_key %}bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-600/15{% else %}bg-white/[0.035] text-gray-600 cursor-not-allowed pointer-events-none{% endif %}">
+                        <i class="fab fa-youtube text-base"></i>
+                        Watch trailer
+                    </a>
             </div>
 
             {# ===== REVIEWS ===== #}
             
-            <section class="max-w-3xl">
-                <h2 class="text-2xl font-bold text-white mb-8">Community Reviews</h2>
+            <section class="reviews-shell">
+                <div class="review-section-header">
+                    <div>
+                        <p class="review-eyebrow">Discussion</p>
+                        <h2 class="font-display text-3xl font-bold text-white">
+                            Community Reviews
+                        </h2>
+                        <p class="text-sm text-gray-600 mt-1">
+                            Rate this title, share your thoughts, and see what others think.
+                        </p>
+                    </div>
+
+                    {% if review_count %}
+                        <div class="hidden sm:block text-right">
+                            <p class="font-display text-2xl font-bold text-white">{{ review_count }}</p>
+                            <p class="text-xs text-gray-600">review{{ review_count|pluralize }}</p>
+                        </div>
+                    {% endif %}
+                </div>
                 {% if user.is_authenticated %}
                     {% if user_review %}
-                        <div class="your-review-post mb-12" id="your-review-display">
+                        <div class="your-review-post review-card-v2 mb-12"
+                            id="your-review-display"
+                            data-review-id="{{ user_review.id }}"
+                            data-ctype-id="{{ review_content_type_id }}">
                             <div class="flex items-center justify-between mb-4">
                                 <div class="flex items-center gap-4">
                                     <img src="{{ request.user.profile.image.url }}" class="w-12 h-12 rounded-xl object-cover" alt="">
@@ -160,12 +381,71 @@
                                         <span class="text-[10px] text-indigo-400 font-black uppercase tracking-widest">Your Review</span>
                                     </div>
                                 </div>
-                                <span class="text-amber-400 font-black text-xl">★ {{ user_review.rating }}/10</span>
+                                <span class="inline-flex items-center gap-1.5 text-amber-400 font-bold text-sm bg-amber-400/10 border border-amber-400/20 px-3 py-1.5 rounded-xl">
+                                    <i class="fas fa-star text-xs"></i>
+                                    {{ user_review.rating }}/10
+                                </span>
                             </div>
                             <p class="text-gray-300 leading-relaxed mb-6">{{ user_review.review_text|linebreaksbr|default:"Rating left without review." }}</p>
                             <div class="flex gap-4">
-                                <button class="text-xs font-bold text-gray-500 hover:text-white" id="edit-review-toggle"><i class="fas fa-pen mr-2"></i>Edit</button>
-                                <button class="text-xs font-bold text-gray-500 hover:text-red-400" onclick="if(confirm('Delete?'))document.getElementById('delete-review-form').submit();"><i class="fas fa-trash mr-2"></i>Delete</button>
+                                <button class="text-xs font-bold text-gray-500 hover:text-white" id="edit-review-toggle">
+                                    <i class="fas fa-pen mr-2"></i>Edit
+                                </button>
+
+                                <button class="text-xs font-bold text-gray-500 hover:text-red-400"
+                                        onclick="if(confirm('Delete?'))document.getElementById('delete-review-form').submit();">
+                                    <i class="fas fa-trash mr-2"></i>Delete
+                                </button>
+                            </div>
+
+                            <div class="flex items-center gap-4 pt-4 mt-5 border-t border-white/5">
+                                <span class="cd-comment-count ml-auto">
+                                    <i class="fas fa-comment text-[10px]"></i>
+                                    <span class="cd-count-number">{{ user_review.fetched_comment_count|default:0 }}</span> comments
+                                </span>
+                            </div>
+
+                            <div class="cd-comments-section">
+                                <div class="cd-comments-list">
+                                    {% for comment in user_review.fetched_comments %}
+                                        {% include 'roulette/_comment.html' with comment=comment is_reply=False %}
+                                    {% empty %}
+                                        <p class="empty-comments-message text-xs text-gray-700 italic py-2">
+                                            No comments yet.
+                                        </p>
+                                    {% endfor %}
+                                </div>
+
+                                <div class="cd-floating-reply-form inline-reply-form hidden" style="margin-left:16px">
+                                    <div class="flex items-center gap-2">
+                                        <img src="{{ user.profile.image.url }}" class="w-4 h-4 rounded-full object-cover flex-shrink-0" alt="">
+                                        <textarea class="reply-text-input flex-1" rows="1" placeholder="Reply..." maxlength="500"></textarea>
+                                        <button type="button" class="cd-submit-reply-btn reply-btn flex-shrink-0">Reply</button>
+                                        <button type="button" class="cd-cancel-reply-btn text-[10px] text-gray-600 hover:text-gray-400 cursor-pointer">Cancel</button>
+                                    </div>
+                                </div>
+
+                                <form class="cd-add-comment-form flex items-center gap-2 mt-3"
+                                    method="POST"
+                                    action="{% url 'roulette:add_comment' %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="content_type_id" value="{{ review_content_type_id }}">
+                                    <input type="hidden" name="object_id" value="{{ user_review.id }}">
+                                    <input type="hidden" name="next" value="{{ request.path }}">
+
+                                    <img src="{{ user.profile.image.url }}" class="w-5 h-5 rounded-full object-cover flex-shrink-0" alt="">
+
+                                    <textarea name="text"
+                                            rows="1"
+                                            placeholder="Add a comment..."
+                                            class="cd-reply-input flex-1"
+                                            maxlength="500"
+                                            required></textarea>
+
+                                    <button type="submit" class="cd-reply-btn flex-shrink-0">
+                                        Post
+                                    </button>
+                                </form>
                             </div>
                         </div>
                         <div class="your-review-post mb-12 hidden" id="your-review-edit">
@@ -179,31 +459,120 @@
                                         <h3 class="font-bold text-white">Modify Review</h3>
                                         <button type="button" id="cancel-edit-review" class="text-xs text-gray-500 hover:text-white">Cancel</button>
                                     </div>
-                                    <select name="rating" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white">
-                                        {% for value, label in review_form.rating.field.choices %}
-                                            <option value="{{ value }}" {% if user_review.rating|stringformat:"d" == value|stringformat:"d" %}selected{% endif %}>{{ label }}</option>
-                                        {% endfor %}
-                                    </select>
-                                    <textarea name="review_text" rows="4" class="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white outline-none focus:border-indigo-500 transition-colors">{{ user_review.review_text }}</textarea>
-                                    <button type="submit" class="bg-indigo-600 text-white font-bold py-3 px-8 rounded-xl hover:bg-indigo-500">Update Review</button>
+                                    <div>
+                                        <label class="block text-[11px] text-gray-600 uppercase tracking-wider font-bold mb-3">
+                                            Your rating
+                                        </label>
+
+                                        <div class="rating-grid">
+                                            {% for value, label in review_form.rating.field.choices %}
+                                                <div>
+                                                    <input
+                                                        type="radio"
+                                                        name="rating"
+                                                        id="edit-rating-{{ value }}"
+                                                        value="{{ value }}"
+                                                        class="rating-input"
+                                                        {% if user_review.rating|stringformat:"d" == value|stringformat:"d" %}checked{% endif %}
+                                                        {% if forloop.first %}required{% endif %}
+                                                    >
+                                                    <label for="edit-rating-{{ value }}" class="rating-option">
+                                                        {{ label }}
+                                                    </label>
+                                                </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-[11px] text-gray-600 uppercase tracking-wider font-bold mb-3">
+                                            Review
+                                        </label>
+
+                                        <textarea
+                                            name="review_text"
+                                            rows="4"
+                                            class="review-textarea"
+                                        >{{ user_review.review_text }}</textarea>
+                                    </div>
+
+                                    <div class="review-submit-row">
+                                        <p class="review-helper-text">
+                                            Update your rating or edit what you wrote.
+                                        </p>
+
+                                        <button type="submit" class="review-submit-btn">
+                                            <i class="fas fa-save text-xs"></i>
+                                            Update review
+                                        </button>
+                                    </div>
                                 </div>
                             </form>
                         </div>
                         <form id="delete-review-form" action="{% url 'roulette:delete_review' review_id=user_review.id %}" method="POST" class="hidden">{% csrf_token %}</form>
                     {% else %}
-                        <div class="bg-white/[0.03] border border-white/10 rounded-2xl p-8 mb-12">
-                            <h3 class="font-bold text-white mb-6">Leave your thoughts</h3>
+                        <div class="review-form-card">
+                            <h3 class="review-form-title">Leave your thoughts</h3>
+                            <p class="review-form-subtitle">
+                                Pick a rating, then add a quick review if you want.
+                            </p>
+
                             <form action="{% url 'roulette:add_review' content_type=content_type tmdb_id=content.id %}" method="POST">
                                 {% csrf_token %}
+
                                 <input type="hidden" name="title" value="{% if content_type == 'movie' %}{{ content.title|escapejs }}{% else %}{{ content.name|escapejs }}{% endif %}">
                                 <input type="hidden" name="poster_path" value="{{ content.poster_path }}">
                                 <input type="hidden" name="overview" value="{{ content.overview }}">
-                                <div class="space-y-6">
-                                    <select name="rating" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white">
-                                        {% for value, label in review_form.rating.field.choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
-                                    </select>
-                                    <textarea name="review_text" rows="3" placeholder="Write a review..." class="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white outline-none focus:border-indigo-500 transition-colors"></textarea>
-                                    <button type="submit" class="bg-indigo-600 text-white font-bold py-3 px-8 rounded-xl hover:bg-indigo-500">Post Review</button>
+
+                                <div class="space-y-5">
+                                    <div>
+                                        <label class="block text-[11px] text-gray-600 uppercase tracking-wider font-bold mb-3">
+                                            Your rating
+                                        </label>
+
+                                        <div class="rating-grid">
+                                            {% for value, label in review_form.rating.field.choices %}
+                                                <div>
+                                                    <input
+                                                        type="radio"
+                                                        name="rating"
+                                                        id="rating-{{ value }}"
+                                                        value="{{ value }}"
+                                                        class="rating-input"
+                                                        {% if forloop.first %}required{% endif %}
+                                                    >
+                                                    <label for="rating-{{ value }}" class="rating-option">
+                                                        {{ label }}
+                                                    </label>
+                                                </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label for="review-text" class="block text-[11px] text-gray-600 uppercase tracking-wider font-bold mb-3">
+                                            Review
+                                        </label>
+
+                                        <textarea
+                                            id="review-text"
+                                            name="review_text"
+                                            rows="4"
+                                            placeholder="What stood out? Was it worth watching?"
+                                            class="review-textarea"
+                                        ></textarea>
+                                    </div>
+
+                                    <div class="review-submit-row">
+                                        <p class="review-helper-text">
+                                            Reviews are public and can be commented on by other users.
+                                        </p>
+
+                                        <button type="submit" class="review-submit-btn">
+                                            <i class="fas fa-paper-plane text-xs"></i>
+                                            Post review
+                                        </button>
+                                    </div>
                                 </div>
                             </form>
                         </div>
@@ -240,12 +609,26 @@
                                         <p class="text-sm text-gray-400 leading-relaxed italic mb-4">{{ review.review_text|linebreaksbr|default:"Rating only." }}</p>
 
                                         <div class="flex items-center gap-4 pt-4 border-t border-white/5">
-                                            <button class="review-vote-btn vote-up {% if review.fetched_user_vote == 1 %}active{% endif %}" data-obj-id="{{ review.id }}" data-vote="1">
-                                                <i class="fas fa-thumbs-up"></i> <span class="up-count">{{ review.fetched_up_count|default:0 }}</span>
-                                            </button>
-                                            <button class="review-vote-btn vote-down {% if review.fetched_user_vote == -1 %}active{% endif %}" data-obj-id="{{ review.id }}" data-vote="-1">
-                                                <i class="fas fa-thumbs-down"></i> <span class="down-count">{{ review.fetched_down_count|default:0 }}</span>
-                                            </button>
+                                            {% if user.is_authenticated %}
+                                                <button class="review-vote-btn vote-up {% if review.fetched_user_vote == 1 %}active{% endif %}"
+                                                        data-obj-id="{{ review.id }}"
+                                                        data-vote="1">
+                                                    <i class="fas fa-thumbs-up"></i>
+                                                    <span class="up-count">{{ review.fetched_up_count|default:0 }}</span>
+                                                </button>
+
+                                                <button class="review-vote-btn vote-down {% if review.fetched_user_vote == -1 %}active{% endif %}"
+                                                        data-obj-id="{{ review.id }}"
+                                                        data-vote="-1">
+                                                    <i class="fas fa-thumbs-down"></i>
+                                                    <span class="down-count">{{ review.fetched_down_count|default:0 }}</span>
+                                                </button>
+                                            {% else %}
+                                                <span class="text-xs text-gray-700">
+                                                    Sign in to vote or reply
+                                                </span>
+                                            {% endif %}
+
                                             <span class="cd-comment-count ml-auto">
                                                 <i class="fas fa-comment text-[10px]"></i>
                                                 <span class="cd-count-number">{{ review.fetched_comment_count|default:0 }}</span> comments
@@ -261,16 +644,16 @@
                                             </div>
 
                                             {# Floating reply form for this review's comments #}
+                                            {% if user.is_authenticated %}
                                             <div class="cd-floating-reply-form inline-reply-form hidden" style="margin-left:16px">
                                                 <div class="flex items-center gap-2">
-                                                    {% if user.is_authenticated %}
                                                     <img src="{{ user.profile.image.url }}" class="w-4 h-4 rounded-full object-cover flex-shrink-0" alt="">
-                                                    {% endif %}
                                                     <textarea class="reply-text-input flex-1" rows="1" placeholder="Reply..." maxlength="500"></textarea>
                                                     <button type="button" class="cd-submit-reply-btn reply-btn flex-shrink-0">Reply</button>
                                                     <button type="button" class="cd-cancel-reply-btn text-[10px] text-gray-600 hover:text-gray-400 cursor-pointer">Cancel</button>
                                                 </div>
                                             </div>
+                                            {% endif %}
 
                                             {% if user.is_authenticated %}
                                             <form class="cd-add-comment-form flex items-center gap-2 mt-3" method="POST" action="{% url 'roulette:add_comment' %}">
@@ -495,23 +878,71 @@
         }).catch(() => window.showToast('Network error.', 'error'));
     }
 
+
+
     // === ADD TOP-LEVEL COMMENT ===
     function handleComment(form) {
-        var ta = form.querySelector('textarea[name="text"]'), btn = form.querySelector('button[type="submit"]');
+        var ta = form.querySelector('textarea[name="text"]');
+        var btn = form.querySelector('button[type="submit"]');
+
         if (btn) btn.disabled = true;
-        fetch(form.action, { method: 'POST', headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' }, body: new FormData(form) })
-        .then(r => r.json()).then(d => {
-            if (d.success) {
+
+        fetch(form.action, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: new FormData(form)
+        })
+        .then(function(response) {
+            return response.json();
+        })
+        .then(function(data) {
+            if (data.success) {
                 if (ta) ta.value = '';
+
                 var card = form.closest('.review-card-v2');
-                if (card && d.comment_html) {
-                    var cl = card.querySelector('.cd-comments-list');
-                    if (cl) cl.insertAdjacentHTML('beforeend', d.comment_html);
-                    updCount(card);
+
+                if (!card) {
+                    window.showToast('Comment posted, but could not update the page.', 'info');
+                    return;
                 }
-            } else window.showToast(d.error || 'Could not post.', 'error');
-        }).catch(() => window.showToast('Network error.', 'error'))
-        .finally(() => { if (btn) btn.disabled = false; });
+
+                var commentsList = card.querySelector('.cd-comments-list');
+
+                if (!commentsList) {
+                    window.showToast('Comment posted, but could not update comments.', 'info');
+                    return;
+                }
+
+                commentsList.querySelectorAll('.empty-comments-message').forEach(function(emptyMessage) {
+                    emptyMessage.remove();
+                });
+
+                if (data.comment_html) {
+                    var wrapper = document.createElement('div');
+                    wrapper.className = 'comment-thread';
+                    wrapper.innerHTML = data.comment_html;
+
+                    commentsList.appendChild(wrapper);
+                }
+
+                updCount(card);
+
+                if (window.showToast) {
+                    window.showToast('Comment posted.', 'success');
+                }
+            } else {
+                window.showToast(data.error || 'Could not post.', 'error');
+            }
+        })
+        .catch(function() {
+            window.showToast('Network error.', 'error');
+        })
+        .finally(function() {
+            if (btn) btn.disabled = false;
+        });
     }
 
     // === REPLY TOGGLE ===
@@ -604,8 +1035,16 @@
         btn.disabled = true; var fd = new FormData(); fd.append('text', newText);
         fetch(url, { method: 'POST', headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' }, body: fd })
         .then(r => r.json()).then(d => {
-            if (d.success) { var textEl = display.querySelector('.comment-text-content'); if (textEl) textEl.innerHTML = d.text.replace(/\n/g, '<br>');
-                editForm.classList.add('hidden'); display.classList.remove('hidden'); window.showToast('Comment updated.', 'success');
+            if (d.success) {
+                var textEl = display.querySelector('.comment-text-content');
+
+                if (textEl) {
+                    textEl.textContent = d.text;
+                }
+
+                editForm.classList.add('hidden');
+                display.classList.remove('hidden');
+                window.showToast('Comment updated.', 'success');
             } else window.showToast(d.error || 'Failed.', 'error');
         }).catch(() => window.showToast('Network error.', 'error')).finally(() => { btn.disabled = false; });
     }
@@ -672,6 +1111,13 @@
             f.addEventListener('submit', function(e) { e.preventDefault(); handleComment(this); });
         });
     }
+
+    document.querySelectorAll('.cd-add-comment-form').forEach(function(form) {
+        form.addEventListener('submit', function(event) {
+            event.preventDefault();
+            handleComment(form);
+        });
+    });
 
     // === REVIEW EDIT TOGGLES ===
     $('#edit-review-toggle')?.addEventListener('click', () => { $('#your-review-display').classList.add('hidden'); $('#your-review-edit').classList.remove('hidden'); });

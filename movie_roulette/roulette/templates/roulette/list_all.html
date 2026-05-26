@@ -275,9 +275,30 @@
                             No custom lists yet
                         </h3>
 
-                        <p class="text-sm text-gray-600 max-w-sm mx-auto">
-                            Create your first list to start organizing movies and shows.
+                        <p class="text-sm text-gray-600 max-w-md mx-auto leading-relaxed mb-5">
+                            Lists help you organize picks for different moods, nights, and people.
+                            Create one now, then add movies or shows from any page.
                         </p>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-lg mx-auto text-left">
+                            <div class="rounded-2xl bg-white/[0.025] border border-white/[0.055] p-4">
+                                <p class="text-xs font-semibold text-gray-300 mb-1">
+                                    Try “Weekend watch”
+                                </p>
+                                <p class="text-[11px] text-gray-600 leading-relaxed">
+                                    A simple list for anything you might want to watch soon.
+                                </p>
+                            </div>
+
+                            <div class="rounded-2xl bg-white/[0.025] border border-white/[0.055] p-4">
+                                <p class="text-xs font-semibold text-gray-300 mb-1">
+                                    Try “Date night”
+                                </p>
+                                <p class="text-[11px] text-gray-600 leading-relaxed">
+                                    Keep a shortlist of movies you would actually watch with someone else.
+                                </p>
+                            </div>
+                        </div>
                     </div>
                 {% endfor %}
             </div>
@@ -467,9 +488,30 @@ document.addEventListener('DOMContentLoaded', function() {
                                     No custom lists yet
                                 </h3>
 
-                                <p class="text-sm text-gray-600 max-w-sm mx-auto">
-                                    Create your first list to start organizing movies and shows.
+                                <p class="text-sm text-gray-600 max-w-md mx-auto leading-relaxed mb-5">
+                                    Lists help you organize picks for different moods, nights, and people.
+                                    Create one now, then add movies or shows from any page.
                                 </p>
+
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-lg mx-auto text-left">
+                                    <div class="rounded-2xl bg-white/[0.025] border border-white/[0.055] p-4">
+                                        <p class="text-xs font-semibold text-gray-300 mb-1">
+                                            Try “Weekend watch”
+                                        </p>
+                                        <p class="text-[11px] text-gray-600 leading-relaxed">
+                                            A simple list for anything you might want to watch soon.
+                                        </p>
+                                    </div>
+
+                                    <div class="rounded-2xl bg-white/[0.025] border border-white/[0.055] p-4">
+                                        <p class="text-xs font-semibold text-gray-300 mb-1">
+                                            Try “Date night”
+                                        </p>
+                                        <p class="text-[11px] text-gray-600 leading-relaxed">
+                                            Keep a shortlist of movies you would actually watch with someone else.
+                                        </p>
+                                    </div>
+                                </div>
                             `;
                             listsContainer.appendChild(empty);
                         }

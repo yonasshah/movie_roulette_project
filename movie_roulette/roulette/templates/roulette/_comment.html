@@ -30,13 +30,31 @@
                     </div>
 
                     <div class="flex items-center gap-3 mt-1.5">
-                        <button class="comment-vote-btn cvote-up {% if comment.fetched_user_vote == 1 %}active{% endif %} text-[10px] text-gray-600 hover:text-indigo-400" data-comment-id="{{ comment.id }}" data-vote="1">
-                            <i class="fas fa-thumbs-up"></i> <span class="cup-count">{{ comment.fetched_up_count|default:"0" }}</span>
-                        </button>
-                        <button class="comment-vote-btn cvote-down {% if comment.fetched_user_vote == -1 %}active{% endif %} text-[10px] text-gray-600 hover:text-red-400" data-comment-id="{{ comment.id }}" data-vote="-1">
-                            <i class="fas fa-thumbs-down"></i> <span class="cdown-count">{{ comment.fetched_down_count|default:"0" }}</span>
-                        </button>
-                        <button class="reply-toggle-btn text-[10px] text-gray-600 hover:text-white" data-comment-id="{{ comment.id }}" data-username="{{ comment.user.username }}">Reply</button>
+                        {% if request.user.is_authenticated %}
+                            <button class="comment-vote-btn cvote-up {% if comment.fetched_user_vote == 1 %}active{% endif %} text-[10px] text-gray-600 hover:text-indigo-400"
+                                    data-comment-id="{{ comment.id }}"
+                                    data-vote="1">
+                                <i class="fas fa-thumbs-up"></i>
+                                <span class="cup-count">{{ comment.fetched_up_count|default:"0" }}</span>
+                            </button>
+
+                            <button class="comment-vote-btn cvote-down {% if comment.fetched_user_vote == -1 %}active{% endif %} text-[10px] text-gray-600 hover:text-red-400"
+                                    data-comment-id="{{ comment.id }}"
+                                    data-vote="-1">
+                                <i class="fas fa-thumbs-down"></i>
+                                <span class="cdown-count">{{ comment.fetched_down_count|default:"0" }}</span>
+                            </button>
+
+                            <button class="reply-toggle-btn text-[10px] text-gray-600 hover:text-white"
+                                    data-comment-id="{{ comment.id }}"
+                                    data-username="{{ comment.user.username }}">
+                                Reply
+                            </button>
+                        {% else %}
+                            <span class="text-[10px] text-gray-700">
+                                {{ comment.fetched_up_count|default:"0" }} upvotes
+                            </span>
+                        {% endif %}
                     </div>
                 </div>
 

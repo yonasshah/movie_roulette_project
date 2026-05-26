@@ -876,3 +876,170 @@ class UserListFormSaveTests(TestCase):
 
         self.assertEqual(user_list.description, "Movies I want public.")
         self.assertTrue(user_list.is_public)
+        
+class PermissionSecurityTests(TestCase):
+    def setUp(self):
+        self.owner = get_user_model().objects.create_user(
+            username="owneruser",
+            email="owner@example.com",
+            password="testpass123"
+        )
+
+        self.other_user = get_user_model().objects.create_user(
+            username="otheruser",
+            email="other@example.com",
+            password="testpass123"
+        )
+
+        self.owner_review = UserReview.objects.create(
+            user=self.owner,
+            tmdb_id=123,
+            content_type=UserContent.ContentType.MOVIE,
+            rating=8,
+            review_text="Owner review",
+            title="Owner Movie"
+        )
+
+        self.review_ctype = ContentType.objects.get_for_model(UserReview)
+
+        self.owner_comment = Comment.objects.create(
+            user=self.owner,
+            content_type=self.review_ctype,
+            object_id=self.owner_review.id,
+            text="Owner comment"
+        )
+
+        self.owner_list = UserList.objects.create(
+            user=self.owner,
+            name="Owner List",
+            is_public=False
+        )
+
+        self.owner_list_item = UserContent.objects.create(
+            user=self.owner,
+            tmdb_id=456,
+            list_type=UserContent.ListType.CUSTOM,
+            custom_list=self.owner_list,
+            content_type=UserContent.ContentType.MOVIE,
+            title="Owner List Movie",
+            poster_path="",
+            release_year="2024",
+            overview="Owner list item"
+        )
+
+    def test_user_cannot_delete_another_users_review(self):
+        self.client.login(username="otheruser", password="testpass123")
+
+        response = self.client.post(
+            reverse("roulette:delete_review", kwargs={
+                "review_id": self.owner_review.id
+            })
+        )
+
+        self.assertEqual(response.status_code, 403)
+
+        self.assertTrue(
+            UserReview.objects.filter(id=self.owner_review.id).exists()
+        )
+
+    def test_user_cannot_delete_another_users_comment(self):
+        self.client.login(username="otheruser", password="testpass123")
+
+        response = self.client.post(
+            reverse("roulette:delete_comment", kwargs={
+                "comment_id": self.owner_comment.id
+            }),
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest"
+        )
+
+        self.assertEqual(response.status_code, 403)
+
+        self.assertTrue(
+            Comment.objects.filter(id=self.owner_comment.id).exists()
+        )
+
+    def test_user_cannot_delete_another_users_custom_list(self):
+        self.client.login(username="otheruser", password="testpass123")
+
+        response = self.client.post(
+            reverse("roulette:list_delete", kwargs={
+                "list_id": self.owner_list.id
+            }),
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest"
+        )
+
+        self.assertEqual(response.status_code, 404)
+
+        self.assertTrue(
+            UserList.objects.filter(id=self.owner_list.id).exists()
+        )
+
+    def test_user_cannot_add_item_to_another_users_custom_list(self):
+        self.client.login(username="otheruser", password="testpass123")
+
+        response = self.client.post(
+            reverse("roulette:list_add_item"),
+            {
+                "list_id": self.owner_list.id,
+                "tmdb_id": 789,
+                "content_type": "movie",
+                "title": "Unauthorized Movie",
+                "poster_path": "",
+                "release_year": "2024",
+                "overview": "Should not be added"
+            },
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest"
+        )
+
+        self.assertEqual(response.status_code, 404)
+
+        self.assertFalse(
+            UserContent.objects.filter(
+                user=self.other_user,
+                tmdb_id=789,
+                title="Unauthorized Movie"
+            ).exists()
+        )
+
+        self.assertFalse(
+            UserContent.objects.filter(
+                custom_list=self.owner_list,
+                tmdb_id=789,
+                title="Unauthorized Movie"
+            ).exists()
+        )
+
+    def test_user_cannot_remove_item_from_another_users_custom_list(self):
+        self.client.login(username="otheruser", password="testpass123")
+
+        response = self.client.post(
+            reverse("roulette:list_remove_item"),
+            {
+                "item_id": self.owner_list_item.id
+            },
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest"
+        )
+
+        self.assertEqual(response.status_code, 404)
+
+        self.assertTrue(
+            UserContent.objects.filter(id=self.owner_list_item.id).exists()
+        )
+
+    def test_user_cannot_toggle_another_users_list_public_status(self):
+        self.client.login(username="otheruser", password="testpass123")
+
+        original_public_status = self.owner_list.is_public
+
+        response = self.client.post(
+            reverse("roulette:list_toggle_public", kwargs={
+                "list_id": self.owner_list.id
+            }),
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest"
+        )
+
+        self.assertEqual(response.status_code, 404)
+
+        self.owner_list.refresh_from_db()
+
+        self.assertEqual(self.owner_list.is_public, original_public_status)

@@ -146,17 +146,41 @@
 
     {# ===== HERO ===== #}
     <section class="text-center mb-8">
-    <h1 class="font-display text-4xl md:text-6xl font-bold tracking-tight leading-tight mb-3">
-        What should you
-        <span class="bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
-            watch tonight?
-        </span>
-    </h1>
+        <h1 class="font-display text-4xl md:text-6xl font-bold tracking-tight leading-tight mb-3">
+            What should you
+            <span class="bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+                watch tonight?
+            </span>
+        </h1>
 
-    <p class="text-gray-500 text-[15px] md:text-base">
-        Pick a few filters, spin the reel, and find a movie or show to watch.
-    </p>
-</section>
+        <p class="text-gray-500 text-[15px] md:text-base max-w-2xl mx-auto leading-relaxed">
+            Pick a few filters, spin the reel, and find a movie or show to watch.
+            Save favorites, build watchlists, write reviews, and share what you find.
+        </p>
+    </section>
+    {% if not user.is_authenticated %}
+        <div class="mb-7 flex flex-col sm:flex-row sm:items-center sm:justify-center gap-3 text-center">
+            <p class="text-sm text-gray-600">
+                Spin for free. Create an account to save favorites, watchlists, and reviews.
+            </p>
+
+            <div class="flex items-center justify-center gap-2">
+                <a href="{% url 'users:signup' %}"
+                class="text-sm font-semibold text-indigo-400 hover:text-indigo-300 transition-colors">
+                    Sign up
+                </a>
+
+                <span class="text-gray-700">·</span>
+
+                <a href="{% url 'users:login' %}"
+                class="text-sm font-semibold text-gray-400 hover:text-gray-300 transition-colors">
+                    Log in
+                </a>
+            </div>
+        </div>
+        {% endif %}
+
+    
     {# ===== MOOD SPIN ===== #}
     <section class="cx-card p-4 md:p-5 mb-6">
         <div class="flex items-start gap-4 mb-4">
@@ -217,7 +241,7 @@
         </div>
 
         {# ===== FILTERS ===== #}
-        <details class="filter-wrap" open>
+        <details class="filter-wrap" close>
             <summary class="flex items-center justify-between cursor-pointer border-t border-white/[0.05] pt-4">
                 <span class="flex items-center gap-2 text-sm font-semibold text-gray-400">
                     <i class="fas fa-sliders-h text-indigo-400 text-xs"></i>
