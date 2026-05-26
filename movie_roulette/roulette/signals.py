@@ -3,7 +3,7 @@ from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
-from .models import SharedListPost, Notification, Comment, Like, UserContent, Vote
+from .models import SharedListPost, Notification, Comment, Like, UserContent, Vote, UserReview
 from django.contrib.contenttypes.models import ContentType
 from django.template.loader import render_to_string
 import html
@@ -436,6 +436,34 @@ def send_vote_update_on_save(sender, instance, created, **kwargs):
         actor=instance.user,
         verb=verb,
         target=target,
+    )
+    
+@receiver(post_save, sender=UserReview)
+def broadcast_new_review_available(sender, instance, created, **kwargs):
+    if not created:
+        return
+
+    # Safety: do not broadcast private/followers-only reviews through the global group.
+    if instance.visibility != UserReview.Visibility.PUBLIC:
+        return
+
+    channel_layer = get_channel_layer()
+    group_name = 'feed_updates'
+
+    async_to_sync(channel_layer.group_send)(
+        group_name,
+        {
+            'type': 'feed.new_item',
+            'data': {
+                'type': 'new_review_available',
+                'user_id': instance.user_id,
+                'username': instance.user.username,
+                'tmdb_id': instance.tmdb_id,
+                'content_type': instance.content_type.lower(),
+                'review_id': instance.id,
+                'title': instance.title,
+            }
+        }
     )
 
 

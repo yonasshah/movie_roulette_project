@@ -630,6 +630,21 @@
                         </a>
                     </div>
                 {% endif %}
+                <div id="new-review-banner"
+                    class="hidden mb-4 rounded-2xl border border-indigo-400/20 bg-indigo-500/10 px-4 py-3 text-sm text-indigo-200">
+                    <div class="flex items-center justify-between gap-3">
+                        <span id="new-review-banner-text">
+                            <i class="fas fa-bell mr-2"></i>
+                            New review posted.
+                        </span>
+
+                        <button type="button"
+                                onclick="window.location.reload()"
+                                class="text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 px-3 py-1.5 rounded-lg">
+                            Refresh
+                        </button>
+                    </div>
+                </div>
 
                 {# ===== COMMUNITY REVIEWS WITH THREADED COMMENTS ===== #}
                 <div class="space-y-4" id="reviews-container">
@@ -872,6 +887,7 @@
             if (e.target === promptModal) promptModal.remove();
         });
     }
+    
 
     // ===== Collapse replies on load =====
     function initCollapseState() {
@@ -1006,6 +1022,20 @@
         floatingForm.dataset.activeParent = commentId;
         var ta = floatingForm.querySelector('.reply-text-input');
         ta.placeholder = 'Reply to ' + username + '...'; ta.value = ''; ta.focus();
+    }
+    function showNewReviewBanner(message) {
+        var banner = document.getElementById('new-review-banner');
+        var text = document.getElementById('new-review-banner-text');
+
+        if (!banner) {
+            return;
+        }
+
+        if (text && message) {
+            text.innerHTML = '<i class="fas fa-bell mr-2"></i>' + message;
+        }
+
+        banner.classList.remove('hidden');
     }
 
     // === SUBMIT REPLY ===
@@ -1302,6 +1332,9 @@
             if (msg.type === 'new_review_available' && msg.data) {
                 handleLiveNewReviewAvailable(msg.data);
             }
+            if (msg.type === 'new_item' && msg.data && msg.data.type === 'new_review_available') {
+                handleLiveNewReviewAvailable(msg.data);
+            }
         };
 
         socket.onclose = function() {
@@ -1363,6 +1396,25 @@
                 reviewDownCount.textContent = data.down_count;
             }
         }
+    }
+    function handleLiveNewReviewAvailable(data) {
+        if (!data) {
+            return;
+        }
+
+        if (String(data.tmdb_id) !== String(contentInfo.tmdb_id)) {
+            return;
+        }
+
+        if (String(data.content_type).toLowerCase() !== String(contentInfo.content_type).toLowerCase()) {
+            return;
+        }
+
+        if (String(data.user_id) === String(currentUserId)) {
+            return;
+        }
+
+        showNewReviewBanner('New review posted. Refresh to view it.');
     }
     function handleLiveNewComment(data) {
         // Your own AJAX submit already adds your comment, so skip websocket duplicate.
